@@ -380,12 +380,10 @@ def build(data, meta, out):
     rect(s, 0.9, 3.25, 1.9, 0.04, GOLD)
     tb(s, 0.9, 3.4, 9, 0.5, "Weekly Executive Review", size=24, color=NAVY)
     tb(s, 0.9, 3.95, 11.5, 0.4, f"Deck as of {asof}   ·   AR snapshot {cur_d} (vs {prev_d} and {ms_d} baseline)   ·   Cash to {meta['collections_to']}   ·   Figures in MMAD", size=12.5, color=SLATE)
-    cards = [("Gross exposure", newar["current"], RED, "Incl. unrecognized"), ("Unrecognized revenue", unrec["current"], BLUE, "Not yet booked as AR"),
-             ("Total AR", tot["current"], SLATE, "Recognized AR balance"), ("Unbilled", unb["current"], TEAL, "Delivered, not billed"),
-             ("Unpaid", unp["current"], GOLD, "Billed, not collected"), ("Advance", adv["current"], NAVY2, "Advance payment")]
+    cards = [("Gross exposure", newar, RED), ("Unrecognized revenue", unrec, BLUE), ("Total AR", tot, SLATE), ("Unbilled", unb, TEAL), ("Unpaid", unp, GOLD), ("Advance", adv, NAVY2)]
     cw = (SW - 0.6 - 0.12 * 5) / 6
-    for i, (lab, val, col, sub) in enumerate(cards):
-        card(s, 0.3 + i * (cw + 0.12), 5.55, cw, 1.35, lab, f0(val), sub, fill=col, value_size=24)
+    for i, (lab, r, col) in enumerate(cards):
+        card(s, 0.3 + i * (cw + 0.12), 5.55, cw, 1.35, lab, f0(r["current"]), f"vs {prev_s}:  {fd(dwow(r))}", fill=col, value_size=24, sub_size=10)
 
     # ------------------------------------------------------------------ 2. Key messages
     s = D.slide("Key Messages", "The AR, cash and payables position at a glance")

@@ -471,30 +471,39 @@ def default_messages(ar, cash, lc, ap, meta):
     k = {m[0]: m for m in ar["kpi"]}
     tot = k["Total AR"]; unb = k["Unbilled"]; unp = k["Unpaid"]; adv = k["Advance Payment"]
     unrec = [m for m in ar["kpi"] if m[0].startswith("Unrecognized")][0]; new = [m for m in ar["kpi"] if m[0].startswith("Total NEW AR")][0]
-    k["Advance Payment"] = k.get("Advance Payment") or [m for m in ar["kpi"] if m[0].startswith("Advance")][0]
-    def d(x): return f"{x:+,.0f}".replace("-", "−")
-    pct_unb = unb[3] / tot[3] * 100
+    def d(x): return "0" if abs(x) < 0.5 else f"{x:+,.0f}".replace("-", "−")
+    def dd(m): return d(round(m[3]) - round(m[2]))
+    def dm(m): return d(round(m[3]) - round(m[1])) if m[1] else "n/a"
+    ms_lab = meta["ar_month_start_date"].strftime("%d %b") if meta.get("ar_month_start_date") else "month start"
+    pw_lab = meta["ar_prev_date"].strftime("%d %b"); cw_lab = meta["ar_current_date"].strftime("%d %b")
     cm = {r[0]: r for r in cash["cash_monthly"]}
-    net = cm["NET position (cash IN + cash OUT)"]; cin = cm["Total cash IN (procurement)"]; cout = cm["Total cash OUT (procurement)"]
+    cin = cm["Total cash IN (procurement)"]; cout = cm["Total cash OUT (procurement)"]
+    cb = cash["cash_bu"]; net_act = sum(r[5] for r in cb); appr = -sum(r[6] for r in cb); net_appr = sum(r[7] for r in cb); pend = -sum(r[8] for r in cb); net_all = sum(r[9] for r in cb)
+    out_act = -(cout[1] + cout[2] + cout[3] + cout[4])
     lc_open = sum(l["encours_mad"] for l in lc["lines"] if l["opened"] == "Yes"); lc_all = sum(l["encours_mad"] for l in lc["lines"])
-    ap_tot = sum(v for v in ap["by_bu_origin"].values())
-    ap_over = sum(v for kk, v in ap["buckets"].items() if kk.endswith("|Overdue"))
-    coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll)
-    ms_lab = ("month-start (" + meta["ar_month_start_date"].strftime("%d %b") + ")") if meta.get("ar_month_start_date") else "month-start"
+    mt = collections.defaultdict(float)
+    for l in lc["lines"]:
+        for m, v in l["months"].items(): mt[m[:4]] += v
+    lc_oct = sum(l["months"].get(lc["months"][0], 0) for l in lc["lines"]) if lc["months"] else 0
+    ap_tot = sum(v for v in ap["by_bu_origin"].values()); ap_over = sum(v for kk, v in ap["buckets"].items() if kk.endswith("|Overdue"))
+    o = {kk.split("|")[1]: 0 for kk in ap["by_bu_origin"]}
+    for kk, v in ap["by_bu_origin"].items(): o[kk.split("|")[1]] += v
+    coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll); dep = sum(c[7] for c in coll)
+    month = meta["as_of_date"].strftime("%B")
     return [
-        ["Total AR " + ("down" if tot[3] < tot[2] else "up") + f" {abs(tot[3]-tot[2]):,.0f} MMAD vs last week and " + ("down" if tot[3] < tot[1] else "up") + f" {abs(tot[3]-tot[1]):,.0f} MMAD vs the {ms_lab} baseline",
-         f"Total AR stands at {tot[3]:,.0f} MMAD ({d(tot[3]-tot[2])} WoW, {d(tot[3]-tot[1])} vs month start). Adding {unrec[3]:,.0f} MMAD of unrecognized revenue ({d(unrec[3]-unrec[2])} vs last week), gross exposure is {new[3]:,.0f} MMAD. "
-         f"Unbilled is {unb[3]:,.0f} MMAD ({pct_unb:.0f}% of AR, {d(unb[3]-unb[2])} WoW); unpaid is {unp[3]:,.0f} MMAD ({d(unp[3]-unp[2])} WoW, {d(unp[3]-unp[1])} vs baseline)."],
-        [f"Collections: {oct_cur:,.0f} MMAD received in October to date ({d(oct_cur-oct_pw)} WoW), {ytd:,.0f} MMAD YTD",
-         f"Invoices paid moved from {oct_pw:,.0f} to {oct_cur:,.0f} MMAD this month (payment date basis, amount invoiced). YTD payments received reach {ytd:,.0f} MMAD ({ytd/1000:,.2f} Bn MAD)."],
-        [f"Procurement cash position: net {d(net[6])} MMAD Jul–Oct including October commitments",
-         f"Cumulative procurement cash IN of {cin[6]:,.0f} MMAD vs cash OUT of {abs(cout[6]):,.0f} MMAD (Jul–Sep actuals, Oct actuals to {meta['payments_to']}, plus {abs(cout[5]):,.0f} MMAD of approved and pending October commitments). "
-         f"October alone: {cin[4]:,.0f} MMAD in vs {abs(cout[4]):,.0f} MMAD paid, {abs(cout[5]):,.0f} MMAD still to pay."],
-        [f"Payables: {ap_tot:,.0f} MMAD of supplier invoices in AP (4411 + parked + downpayments), {ap_over:,.0f} MMAD past due",
-         f"{ap['n_lines']:,} open supplier lines. Parked invoices and 4411 open items dominate; see the AP slide for due-date buckets, tiers and top suppliers."],
-        [f"Letters of credit: {lc_open:,.0f} MMAD outstanding on opened LCs, {lc_all:,.0f} MMAD including LCs still to be opened",
-         f"October LC maturities of {cash['lc_oct_maturity_total']:,.0f} MMAD are counted as approved payments in the cash position. "
-         f"{sum(l['part_2026'] for l in lc['lines']):,.0f} MMAD falls in 2026 and {sum(l['part_2027'] for l in lc['lines']):,.0f} MMAD in 2027 per the maturity schedule."],
+        [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} vs {pw_lab}, {dm(tot)} vs {ms_lab}",
+         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW). "
+         f"Unrecognized revenue {unrec[3]:,.0f} ({dd(unrec)} WoW, {dm(unrec)} vs {ms_lab}); gross exposure {new[3]:,.0f} MMAD ({dd(new)} WoW)."],
+        [f"Invoices paid in {month} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
+         f"Invoices deposited in {month}: {dep:,.0f} MMAD."],
+        [f"Procurement cash Jul–{month[:3]}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
+         f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {meta['payments_to']} gives {d(net_act)} MMAD. "
+         f"Approved payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of {month} LC maturities) bring the position to {d(net_appr)} MMAD; "
+         f"pending payments of {pend:,.0f} MMAD bring it to {d(net_all)} MMAD."],
+        [f"Supplier payables {ap_tot:,.0f} MMAD, of which {ap_over:,.0f} MMAD past due",
+         f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD ({ap['n_lines']:,} open lines)."],
+        [f"Letters of credit {lc_all:,.0f} MMAD: {lc_open:,.0f} on opened LCs, {lc_all - lc_open:,.0f} still to be opened",
+         f"{lc_oct:,.0f} MMAD matures in {month}; {mt.get('2026', 0):,.0f} MMAD in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027."],
     ]
 
 def prev_from_dashboard(d):
