@@ -10,29 +10,34 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 
 ## Weekly run (about 5 minutes)
 
-1. Drop the four refreshed files anywhere (names can change, paths are parameters):
-   * **AR dashboard** – `AR_PRE.xlsx` (sheets `Executive Summary` + `Comparatives`). Before extracting, make sure the
-     dashboard's *Snapshot* tab holds last week and the *AR Baseline* tab holds the month-start position.
+1. Drop the refreshed files anywhere (names can change, paths are parameters):
+   * **Raw AR extract of the week** – `AR_PRE_Week_<n>.xlsx`, single sheet `AR` (one line per invoice / unbilled line).
+     `ar_engine.py` aggregates it with the dashboard rules; the totals reproduce the BU meeting Power BI report exactly
+     (e.g. week 3: total 12,396.7 MMAD, unbilled 9,479.1, unpaid 2,369.6, advance 548.0).
+   * **Previous week** – last week's `inputs/history/weekly_inputs_<date>.xlsx` (`--prev-inputs`), or last week's raw AR
+     extract (`--ar-prev`, gives per-BU status deltas as well).
+   * **Beginning-of-month AR file** – the raw AR line list saved at the start of the month (`--ar-baseline`). Same file all
+     month; it is the "vs month start" baseline.
    * **Cash flow workbook** – `CASH_FLOW_ANALYSIS - BUs <month> W<n>.xlsx` (sheets `EXEC Summary`, `Approved vs Tracking log …`,
      `Priority list …`, `LC Ongoing …`).
    * **Bank LC situation** – `LCs SITUATION - <date>.xlsx` (sheet `LC avec echéance`).
    * **Supplier invoices** – `Supplier Invoices - <month> W<n>.xlsx` (sheet `4411 - Parked - Downpayment`).
    * **UR Tracking Consolidation** – unrecognized revenue (`Summary UR`, `Sheet1` previous BU update, `Summary PO by BU`).
-   * **Beginning-of-month AR file** – the raw AR line list saved at the start of the month (`AR_Beg_of_the_month.xlsx`,
-     sheet `AR`). Same file all month; it is the "vs month start" baseline.
 2. Extract the inputs (dates are the only things to type):
    ```bash
    python3 extract_inputs.py \
-     --ar AR_PRE.xlsx --cash "CASH_FLOW_ANALYSIS - BUs October W3.xlsx" \
-     --lc "LCs SITUATION - October 19th.xlsx" --ap "Supplier Invoices - Oct W3.xlsx" \
-     --ur "UR Tracking Consolidation.xlsx" \
+     --ar "AR_PRE_Week_4.xlsx" --prev-inputs inputs/history/weekly_inputs_2026-10-21.xlsx \
      --ar-baseline "AR_Beg_of_the_month.xlsx" --ar-baseline-date 2026-10-07 \
-     --as-of 2026-10-21 --ar-date 2026-10-14 --ar-prev-date 2026-10-07 \
-     --collections-to 19/10 --payments-to 15/10 --lc-date 19/10 --ap-label "Oct W3" \
+     --cash "CASH_FLOW_ANALYSIS - BUs October W4.xlsx" \
+     --lc "LCs SITUATION - October 26th.xlsx" --ap "Supplier Invoices - Oct W4.xlsx" \
+     --ur "UR Tracking Consolidation.xlsx" \
+     --as-of 2026-10-28 --ar-date 2026-10-27 --ar-prev-date 2026-10-20 \
+     --collections-to 26/10 --payments-to 22/10 --lc-date 26/10 --ap-label "Oct W4" \
      --out inputs/weekly_inputs.xlsx
    ```
-   Without `--ar-baseline` the month-start columns fall back to the dashboard's own *AR Baseline* tab; without `--ur`
-   the unrecognized revenue comes from the dashboard.
+   After the run, copy `inputs/weekly_inputs.xlsx` to `inputs/history/weekly_inputs_<as-of>.xlsx` so it can serve as
+   next week's previous-week source. (`--ar-dashboard` accepts the old processed AR dashboard as the previous week; it was
+   used once for the transition on 21 Oct 2026.)
 3. Open `inputs/weekly_inputs.xlsx` and review. Everything on the slides comes from this workbook:
    * `KEY_MESSAGES` – five auto-drafted messages; rewrite the wording freely.
    * `COLLECTIONS_MONTHLY` – labor / non-labor split per month (the current month total is refreshed from the AR
@@ -56,6 +61,8 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 | `AR_UNBILLED_STATUS` | detailed unbilled statuses (OCP / JESA / at risk) | 6 |
 | `AR_UNPAID_STATUS` | unpaid by OCP processing status | 6 |
 | `AR_AGING` | AR by year of origin | 4 |
+| `AR_BU_DETAIL` | per BU: ownership, unbilled statuses, unpaid groups and phases, aging buckets, advance statuses | BU zoom slides |
+| `AR_BU_PROJECTS` | per BU: top 8 unbilled and unpaid projects | BU zoom slides |
 | `UNRECOGNIZED` | unrecognized suppliers by BU and status | 7 |
 | `COLLECTIONS_BU`, `COLLECTIONS_MONTHLY` | payments received by BU (month to date, prior month, YTD) and monthly series | 8 |
 | `CASH_MONTHLY` | group cash IN / OUT / net by month incl. October commitments, PSR block | 9 |
