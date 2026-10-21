@@ -12,6 +12,7 @@
   "ap_label": "Oct W3",
   "cash_basis": "Jul\u2013Aug\u2013Sep actuals + Oct actuals (collections to 19/10, payments to 15/10) + October LC maturities per bank LC situation 19/10 v003 (156.4M, counted as approved) + open October commitments (approved + pending)",
   "units": "MMAD (millions of MAD)",
+  "ur_prev_source": "last week's deck",
   "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
   "deposited_month": 144.0273779292046
  }

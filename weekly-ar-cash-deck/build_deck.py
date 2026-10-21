@@ -520,15 +520,15 @@ def build(data, meta, out):
 
     # ------------------------------------------------------------------ 7. Unrecognized revenue & suppliers
     ut = data["UNRECOGNIZED"]
-    s = D.slide("Unrecognized Revenue & Suppliers", f"Unrecognized revenue of {f0(unrec['current'])} MMAD incl. markup ({fd(dwow(unrec))} vs the previous BU update): executed scope not yet booked as AR")
+    s = D.slide("Unrecognized Revenue & Suppliers", f"Unrecognized revenue of {f0(unrec['current'])} MMAD incl. markup ({fd(dwow(unrec))} vs last week): executed scope not yet booked as AR")
     sup_tot = sum((r["total_suppliers"] or 0) for r in ut); adj = sum((r["lines_to_adjust"] or 0) for r in ut)
-    card(s, 0.4, 1.3, 6.0, 1.15, "Unrecognized revenue (incl. JESA cost + fee)", f"{f0(unrec['current'])} MMAD", f"Supplier scope {f0(sup_tot)} + lines to be adjusted {f0(adj)}  ·  previous BU update {f0(unrec['prev_week'])}", fill=BLUE, value_size=24)
+    card(s, 0.4, 1.3, 6.0, 1.15, "Unrecognized revenue (incl. JESA cost + fee)", f"{f0(unrec['current'])} MMAD", f"Supplier scope {f0(sup_tot)} + lines to be adjusted {f0(adj)}  ·  last week {f0(unrec['prev_week'])}", fill=BLUE, value_size=24)
     po = {r["bu"]: r for r in data.get("UR_PO_SUMMARY", [])}
     cv = sum((r["contract_value"] or 0) for r in po.values()); rec = sum((r["recognized"] or 0) for r in po.values()); rem = sum((r["remaining"] or 0) for r in po.values())
     card(s, 6.75, 1.3, 6.25, 1.15, "Supplier PO book", f"{f0(cv)} MMAD contract value", f"Recognized (SAP GR) {f0(rec)}  ·  unrecognized {f0(sum((r['unrecognized'] or 0) for r in po.values()))}  ·  remaining to execute {f0(rem)}", fill=NAVY, value_size=22)
     utb = sorted([r for r in ut if (r["grand_total"] or 0) > 0.05 or (r["prev_week_total"] or 0) > 0.05], key=lambda r: -(r["grand_total"] or 0))
-    tb(s, 0.4, 2.55, 6, 0.3, "By business unit – previous BU update vs current (MMAD)", size=12.5, bold=True, color=NAVY)
-    bar_chart(s, 0.3, 2.85, 6.2, 4.25, [short(r["bu"]) for r in utb], [("Previous update", [r["prev_week_total"] for r in utb]), ("Current", [r["grand_total"] for r in utb])], [LBLUE, BLUE], horizontal=True, gap=40, cat_size=9, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM)
+    tb(s, 0.4, 2.55, 6, 0.3, "By business unit – last week vs this week (MMAD)", size=12.5, bold=True, color=NAVY)
+    bar_chart(s, 0.3, 2.85, 6.2, 4.25, [short(r["bu"]) for r in utb], [(prev_s, [r["prev_week_total"] for r in utb]), (cur_s, [r["grand_total"] for r in utb])], [LBLUE, BLUE], horizontal=True, gap=40, cat_size=9, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM)
     tb(s, 6.75, 2.55, 6.2, 0.3, "Unrecognized suppliers by status (MMAD)", size=12.5, bold=True, color=NAVY)
     cats = ["Attachment pending approval", "Signed by client", "Attachment pending submission", "Scope executed under CN", "Scope executed at risk"]
     eq = [sum((r[k] or 0) for r in ut) for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk")]
@@ -635,7 +635,7 @@ def build(data, meta, out):
             if rows: table(s, x0, 1.5, 6.15, ["WBS", "Project", "Status", "MMAD", ("% unb." if typ == "Unbilled" else "% unp.")], rows, col_w=[0.95, 2.25, 2.05, 0.5, 0.45], font_size=7.5, header_size=7.5, row_h=0.27, header_h=0.32, align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
         u = urt.get(b)
         if u and (u["grand_total"] or 0) > 0.05:
-            tb(s, 0.4, 4.2, 6.0, 0.3, f"Unrecognized suppliers – {f0(u['grand_total'])} MMAD" + (f" ({fd(round(u['grand_total'] or 0) - round(u['prev_week_total'] or 0))} vs prev. update)" if u.get("prev_week_total") is not None else ""), size=12, bold=True, color=NAVY)
+            tb(s, 0.4, 4.2, 6.0, 0.3, f"Unrecognized suppliers – {f0(u['grand_total'])} MMAD" + (f" ({fd(round(u['grand_total'] or 0) - round(u['prev_week_total'] or 0))} WoW)" if u.get("prev_week_total") is not None else ""), size=12, bold=True, color=NAVY)
             cats = ["Pending approval", "Signed by client", "Pending submission", "Under CN", "At risk"]
             eq = [u[k] or 0 for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk")]
             sb = [u[k] or 0 for k in ("sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk")]
@@ -877,7 +877,7 @@ def build(data, meta, out):
         ["AR position (previous week)", "Last week's raw AR extract or weekly_inputs.xlsx (this week: the 14-Oct AR dashboard)", f"Snapshot {prev_d}", "prev_week columns"],
         ["Cash position (group & by BU), October paid / approved / pending, tracking-log status, priority list", "Cash flow workbook (CASH_FLOW_ANALYSIS – BUs) – 'EXEC Summary', 'Approved vs Tracking log', 'Priority list', 'LC Ongoing'", f"Data as of {datef(meta['cash_data_as_of'])}; collections to {meta['collections_to']}; payments to {meta['payments_to']}", "CASH_MONTHLY, CASH_BU, CASH_BU_OCT, ONGOING"],
         ["Month-start baseline (AR by component, BU, status, aging)", "Beginning-of-month AR line list (AR_Beg_of_the_month.xlsx) aggregated with the dashboard rules", f"AR position {ms_d}", "AR_KPI / AR_BU / AR_* month_start columns"],
-        ["Unrecognized revenue by BU and status, previous BU update, PO book", "UR Tracking Consolidation – 'Summary UR', 'Sheet1', 'Summary PO by BU'", asof, "UNRECOGNIZED, UR_ATTACHMENT_STATUS, UR_PO_SUMMARY"],
+        ["Unrecognized revenue by BU and status, PO book (previous week = last week's deck / inputs)", "UR Tracking Consolidation – 'Summary UR', 'Summary PO by BU'", asof, "UNRECOGNIZED, UR_ATTACHMENT_STATUS, UR_PO_SUMMARY"],
         ["LC commitments, opened vs to be opened, maturity schedule, action status", "Bank LC situation (LCs SITUATION) – 'LC avec echéance'", f"LC situation {meta['lc_date']}", "LC_LINES"],
         ["Open supplier invoices by due date, tier, BU/origin, top suppliers", "Supplier invoice extract (4411 – Parked – Downpayment)", f"AP file {meta['ap_label']}", "AP_BUCKETS, AP_BU_ORIGIN, AP_TIERS, AP_TOP_SUPPLIERS"],
         ["Payments received (amount invoiced by payment date, labor / non-labor), invoices deposited", "Paid lines of the raw AR extract", f"Payments to {cur_d}", "COLLECTIONS_BU, COLLECTIONS_MONTHLY"],

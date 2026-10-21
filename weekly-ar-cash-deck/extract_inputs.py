@@ -483,7 +483,7 @@ def default_messages(ar, cash, lc, ap, meta):
     ms_lab = ("month-start (" + meta["ar_month_start_date"].strftime("%d %b") + ")") if meta.get("ar_month_start_date") else "month-start"
     return [
         ["Total AR " + ("down" if tot[3] < tot[2] else "up") + f" {abs(tot[3]-tot[2]):,.0f} MMAD vs last week and " + ("down" if tot[3] < tot[1] else "up") + f" {abs(tot[3]-tot[1]):,.0f} MMAD vs the {ms_lab} baseline",
-         f"Total AR stands at {tot[3]:,.0f} MMAD ({d(tot[3]-tot[2])} WoW, {d(tot[3]-tot[1])} vs month start). Adding {unrec[3]:,.0f} MMAD of unrecognized revenue ({d(unrec[3]-unrec[2])} vs the previous BU update), gross exposure is {new[3]:,.0f} MMAD. "
+         f"Total AR stands at {tot[3]:,.0f} MMAD ({d(tot[3]-tot[2])} WoW, {d(tot[3]-tot[1])} vs month start). Adding {unrec[3]:,.0f} MMAD of unrecognized revenue ({d(unrec[3]-unrec[2])} vs last week), gross exposure is {new[3]:,.0f} MMAD. "
          f"Unbilled is {unb[3]:,.0f} MMAD ({pct_unb:.0f}% of AR, {d(unb[3]-unb[2])} WoW); unpaid is {unp[3]:,.0f} MMAD ({d(unp[3]-unp[2])} WoW, {d(unp[3]-unp[1])} vs baseline)."],
         [f"Collections: {oct_cur:,.0f} MMAD received in October to date ({d(oct_cur-oct_pw)} WoW), {ytd:,.0f} MMAD YTD",
          f"Invoices paid moved from {oct_pw:,.0f} to {oct_cur:,.0f} MMAD this month (payment date basis, amount invoiced). YTD payments received reach {ytd:,.0f} MMAD ({ytd/1000:,.2f} Bn MAD)."],
@@ -527,6 +527,8 @@ def prev_from_inputs(path):
          "ap": {r["bu"]: {"downpayment": r["downpayment_cur"], "parked": r["parked_cur"], "inv4411": r["inv4411_cur"], "lc": r["lc_cur"]} for r in recs("AP_BU")}}
     if "AR_BU_DETAIL" in wb.sheetnames:
         P["detail"] = {(r["bu"], r["section"], r["item"]): r["current"] or 0 for r in recs("AR_BU_DETAIL")}
+    if "UNRECOGNIZED" in wb.sheetnames:
+        P["ur_prev"] = {r["bu"]: r["grand_total"] or 0 for r in recs("UNRECOGNIZED")}
     return P
 
 PHASES = ["Rejected", "Treasury", "OCP subs", "Ordonnancement", "Missing reception", "Other"]
@@ -547,6 +549,7 @@ def main():
     ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", required=True); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
+    ap_.add_argument("--ur-prev", default=None, help="JSON {bu: MMAD} with last week's unrecognized revenue by BU (overrides the UR file's 'previous BU update' and the prev inputs)")
     ap_.add_argument("--as-of", required=True, help="deck date YYYY-MM-DD")
     ap_.add_argument("--ar-date", required=True, help="AR snapshot date YYYY-MM-DD")
     ap_.add_argument("--ar-prev-date", required=True, help="previous AR snapshot date YYYY-MM-DD")
@@ -571,6 +574,11 @@ def main():
     if MS: print("month-start AR (MMAD):", {k: round(v, 1) for k, v in MS["kpi"].items()})
     cash = extract_cash(a.cash); lc = extract_lc(a.lc); ap = extract_ap(a.ap, as_of)
     ur = extract_ur(a.ur) if a.ur else None
+    if ur and a.ur_prev:
+        ur["prev"] = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_prev)).items()}; ur["prev_source"] = "last week's deck"
+    elif ur and P.get("ur_prev"):
+        ur["prev"] = P["ur_prev"]; ur["prev_source"] = "last week's inputs"
+    elif ur: ur["prev_source"] = "UR file previous BU update (incl. markup)"
     ms_date = dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else None
 
     # ------------------------------------------------------------------ assemble the 'ar' structure used by the writers
@@ -655,7 +663,7 @@ def main():
     meta = {"as_of_date": as_of, "week_label": a.week_label or f"Week {as_of.isocalendar()[1]}", "ar_current_date": ar_date, "ar_prev_date": prev_date,
             "ar_month_start_date": ms_date, "cash_data_as_of": cash["data_as_of"].date() if cash["data_as_of"] else None,
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
-            "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
+            "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"]}
 
     wb = openpyxl.Workbook(); wb.remove(wb.active)
@@ -672,7 +680,7 @@ def main():
     write_sheet(wb, "AR_BU_DETAIL", ["bu", "section", "item", "month_start", "prev_week", "current"], detail, note="Per-BU detail for the zoom slides: owner, unbilled_status, unpaid_group, unpaid_phase, aging_unbilled, aging_unpaid, advance_status (MMAD). prev_week filled when last week's raw AR file or inputs workbook with detail is available.", widths=[28, 18, 50])
     write_sheet(wb, "AR_BU_PROJECTS", ["bu", "type", "wbs", "project", "amount", "status"], projects, note="Top 8 unbilled and unpaid projects per BU (MMAD, current week).", widths=[28, 10, 14, 50, 10, 44])
     write_sheet(wb, "UNRECOGNIZED", ["bu", "eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk", "sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk", "total_suppliers", "lines_to_adjust", "grand_total", "prev_week_total"],
-                [r[:14] + [(ur["prev"].get(r[0]) if ur else None)] for r in ar["unrecognized_table"]], note="Unrecognized suppliers by status, MMAD incl. markup; prev_week_total = previous BU update (incl. markup).", widths=[28] + [14] * 14)
+                [r[:14] + [(ur["prev"].get(r[0]) if ur else None)] for r in ar["unrecognized_table"]], note=f"Unrecognized suppliers by status, MMAD incl. markup; prev_week_total = {(ur or {}).get('prev_source', 'n/a')}.", widths=[28] + [14] * 14)
     if ur:
         write_sheet(wb, "UR_ATTACHMENT_STATUS", ["bu", "eq_under_jesa_approval", "eq_under_jesa_preparation", "eq_under_client_approval", "eq_signed_by_client", "eq_accrual_posted", "sub_under_jesa_approval", "sub_under_jesa_preparation", "sub_under_client_approval", "sub_signed_by_client", "sub_accrual_posted", "total"], ur["attachment"], note="Status of JESA attachments to client (UR consolidation, MMAD incl. markup).", widths=[28] + [14] * 11)
         write_sheet(wb, "UR_PO_SUMMARY", ["bu", "contract_value", "recognized", "unrecognized", "remaining"], ur["po"], note="Supplier PO consolidation by BU (MMAD).", widths=[28, 16, 16, 16, 16])
