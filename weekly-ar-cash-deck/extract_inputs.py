@@ -490,10 +490,13 @@ def default_messages(ar, cash, lc, ap, meta):
     for kk, v in ap["by_bu_origin"].items(): o[kk.split("|")[1]] += v
     coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll); dep = sum(c[7] for c in coll)
     month = meta["as_of_date"].strftime("%B")
+    ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot")
     return [
         [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} vs {pw_lab}, {dm(tot)} vs {ms_lab}",
-         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW). "
-         f"Unrecognized revenue {unrec[3]:,.0f} ({dd(unrec)} WoW, {dm(unrec)} vs {ms_lab}); gross exposure {new[3]:,.0f} MMAD ({dd(new)} WoW)."],
+         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW)."
+         + (f" Unbilled under JESA responsibility {ju[0]:,.0f} MMAD (PSR {ju[1]:,.0f} / Procurement {ju[2]:,.0f}); non-OCP receivables {nonocp:,.0f} MMAD." if ju else "")],
+        [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs {ms_lab}); gross exposure {new[3]:,.0f} MMAD ({dd(new)} WoW)",
+         f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee."],
         [f"Invoices paid in {month} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
          f"Invoices deposited in {month}: {dep:,.0f} MMAD."],
         [f"Procurement cash Jul–{month[:3]}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
@@ -691,9 +694,11 @@ def main():
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"]}
 
+    ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
+    ar["nonocp_tot"] = sum(cur["nonocp"].values())
     wb = openpyxl.Workbook(); wb.remove(wb.active)
     write_sheet(wb, "META", ["key", "value"], [[k, (v.isoformat() if isinstance(v, dt.date) else v)] for k, v in meta.items()], note="Dates and labels used on the slides. Edit freely.", widths=[24, 60])
-    write_sheet(wb, "KEY_MESSAGES", ["n", "title", "body"], [[i + 1, t, b] for i, (t, b) in enumerate(default_messages(ar, cash, lc, ap, meta))], note="Auto-drafted from the numbers; rewrite the wording as needed (max 5 messages).", widths=[4, 70, 120])
+    write_sheet(wb, "KEY_MESSAGES", ["n", "title", "body"], [[i + 1, t, b] for i, (t, b) in enumerate(default_messages(ar, cash, lc, ap, meta))], note="Drafted from the figures in deck order; rewrite the wording as needed (max 6 messages).", widths=[4, 70, 120])
     write_sheet(wb, "AR_KPI", ["metric", "month_start", "prev_week", "current"], ar["kpi"], note="Key figures (MMAD): AR from the raw AR extract (dashboard rules), unrecognized from the UR consolidation, AP from the supplier invoice file, LC from the bank LC situation.", widths=[44])
     ls = ar["labor_split"]
     write_sheet(wb, "AR_SPLITS", ["metric", "value"], [["Total AR labor", ls["total_labor"]], ["Total AR non-labor", ls["total_nonlabor"]], ["Unbilled labor", ls["unbilled_labor"]], ["Unbilled non-labor", ls["unbilled_nonlabor"]], ["Unpaid labor", ls["unpaid_labor"]], ["Unpaid non-labor", ls["unpaid_nonlabor"]]] + [[f"AR {k}", v] for k, v in ar["ocp_split"].items()], note="Current week only (labor = PSR/PROC column; OCP = Client 1).", widths=[30])

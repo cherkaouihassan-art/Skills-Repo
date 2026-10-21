@@ -385,15 +385,33 @@ def build(data, meta, out):
     for i, (lab, r, col) in enumerate(cards):
         card(s, 0.3 + i * (cw + 0.12), 5.55, cw, 1.35, lab, f0(r["current"]), f"vs {prev_s}:  {fd(dwow(r))}", fill=col, value_size=24, sub_size=10)
 
+    # ------------------------------------------------------------------ 1b. Agenda
+    s = D.slide("Agenda", f"Weekly review – {asof}")
+    items = [("1", "Key messages", "Headline position: AR, unrecognized revenue, collections, cash, payables and letters of credit"),
+             ("2", "Accounts receivable", "Executive summary, movement vs last week and vs month start, position by business unit, unbilled and unpaid status, non-OCP clients, unbilled under JESA responsibility"),
+             ("3", "Unrecognized revenue & suppliers", "Executed scope not yet booked as AR, by business unit and status; supplier PO book"),
+             ("4", "Payments received", "Invoices paid in the month and year to date, by business unit"),
+             ("5", "Cash position – procurement", "Cash in versus cash out by month and by business unit; paid, approved and pending payments"),
+             ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
+             ("7", "Zoom by business unit", "Position, movement, projects and unrecognized revenue for each business unit"),
+             ("8", "Backups & sources", "LC and payables detail; sources and definitions")]
+    y0 = 1.3; step = (SH - 0.6 - y0) / len(items)
+    for i, (n, t, d_) in enumerate(items):
+        y = y0 + i * step
+        circle_num(s, 0.6, y + 0.05, 0.42, n)
+        tb(s, 1.3, y - 0.02, 4.0, 0.4, t, size=14, bold=True, color=NAVY)
+        tb(s, 5.2, y + 0.02, 7.7, step - 0.1, d_, size=10.5, color=DARK)
+        if i < len(items) - 1: rect(s, 1.3, y + step - 0.1, 11.6, 0.012, RGBColor(0xD5, 0xDE, 0xE6))
+
     # ------------------------------------------------------------------ 2. Key messages
     s = D.slide("Key Messages", "The AR, cash and payables position at a glance")
-    msgs = data["KEY_MESSAGES"][:5]
+    msgs = data["KEY_MESSAGES"][:6]
     y0 = 1.35; step = (SH - 0.6 - y0) / max(len(msgs), 1)
     for i, m in enumerate(msgs):
         y = y0 + i * step
         circle_num(s, 0.55, y + 0.08, 0.48, m["n"])
-        tb(s, 1.3, y, 11.5, 0.4, str(m["title"]), size=13.5, bold=True, color=NAVY)
-        tb(s, 1.3, y + 0.4, 11.5, step - 0.62, str(m["body"]), size=11.5, color=DARK, line_spacing=1.1)
+        tb(s, 1.3, y, 11.5, 0.4, str(m["title"]), size=13 if len(msgs) > 5 else 13.5, bold=True, color=NAVY)
+        tb(s, 1.3, y + 0.36, 11.5, step - 0.55, str(m["body"]), size=10.5 if len(msgs) > 5 else 11.5, color=DARK, line_spacing=1.05)
         if i < len(msgs) - 1: rect(s, 1.3, y + step - 0.08, 11.5, 0.012, RGBColor(0xD5, 0xDE, 0xE6))
 
     # ------------------------------------------------------------------ 3. AR executive summary
@@ -547,7 +565,7 @@ def build(data, meta, out):
         rows.append([short(b), f0(ub_), f0(up_), f0(tot_), f"{tot_/(n_unb+n_unp)*100:.0f}%", fd(d_)]); colors[(i, 5)] = delta_color(d_)
     rows.append(["Total non-OCP", f0(n_unb), f0(n_unp), f0(n_unb + n_unp), "100%", fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))])
     table(s, 0.4, 2.75, 5.6, ["BU", "Unbilled", "Unpaid", "Total", "%", "Δ vs MS"], rows, col_w=[1.7, 0.8, 0.8, 0.8, 0.6, 0.8], font_size=9, header_size=8.5, row_h=0.3, header_h=0.32, colors=colors, total_last=True)
-    tb(s, 0.4, 2.75 + 0.32 + 0.3 * len(rows) + 0.15, 5.6, 1.0, [[("Reading: ", {"bold": True, "color": NAVY}), (f"non-OCP clients (Client 1 = NON OCP) carry {f0(n_unb + n_unp)} MMAD, of which Global Mining (Ma'aden) accounts for {nv('Global Mining', 'Unbilled', 'current') + nv('Global Mining', 'Unpaid', 'current'):,.0f} MMAD. The right-hand table lists the projects driving the balance; statuses follow the AR coding (C-* with the client, J-* with JESA).", {})]], size=9, color=DARK, line_spacing=1.1)
+    tb(s, 0.4, 2.75 + 0.32 + 0.3 * len(rows) + 0.15, 5.6, 1.0, [[(f"Non-OCP clients carry {f0(n_unb + n_unp)} MMAD, of which Global Mining (Ma'aden) accounts for {nv('Global Mining', 'Unbilled', 'current') + nv('Global Mining', 'Unpaid', 'current'):,.0f} MMAD. Statuses: C-* pending with the client, J-* pending with JESA.", {})]], size=9, color=DARK, line_spacing=1.1)
     npr = data.get("NONOCP_PROJECTS", [])[:14]
     tb(s, 6.3, 2.45, 6.8, 0.3, "Projects driving non-OCP receivables (MMAD)", size=12, bold=True, color=NAVY)
     def clean_txt(v, n):
@@ -582,13 +600,13 @@ def build(data, meta, out):
         rows.append([short(b), f0(l_), f0(n_), f0(t_), f"{t_/ub_b*100:.0f}%" if ub_b else "–", fd(d_)]); colors[(i, 5)] = delta_color(d_)
     rows.append(["Total JESA", f0(j_lab), f0(j_nl), f0(j_tot), f"{j_tot/unb['current']*100:.0f}%", fd(round(j_tot)-round(j_lab_ms+j_nl_ms))])
     table(s, 0.4, 2.85, 6.2, ["BU", "PSR", "Procurement", "Total", "% of BU unbilled", "Δ vs MS"], rows, col_w=[1.6, 0.8, 1.0, 0.8, 1.1, 0.8], font_size=9, header_size=8.5, row_h=0.3, header_h=0.34, colors=colors, total_last=True)
-    tb(s, 0.4, 2.85 + 0.34 + 0.3 * len(rows) + 0.1, 6.2, 0.5, "PSR = labor lines (PSR/PROC = PSR); Procurement = non-labor lines. Negative procurement amounts are credit lines pending JESA PM approval (AM, Global Mining).", size=8, italic=True, color=GREY)
+    tb(s, 0.4, 2.85 + 0.34 + 0.3 * len(rows) + 0.1, 6.2, 0.5, "PSR = labor scope; Procurement = non-labor scope. Negative procurement amounts are credit lines pending JESA PM approval (AM, Global Mining).", size=8, italic=True, color=GREY)
     js = data.get("JESA_UNBILLED_STATUS", [])
     tb(s, 6.9, 2.55, 6.2, 0.3, "By status – what JESA still has to do (MMAD)", size=12, bold=True, color=NAVY)
     rows = [[(str(r["status"])[:44] + "…") if len(str(r["status"])) > 45 else str(r["status"]), f0(r["labor"]), f0(r["non_labor"]), f0((r["labor"] or 0) + (r["non_labor"] or 0)), f"{((r['labor'] or 0)+(r['non_labor'] or 0))/j_tot*100:.0f}%" if j_tot else "–"] for r in js]
     rows.append(["Total under JESA", f0(j_lab), f0(j_nl), f0(j_tot), "100%"])
     table(s, 6.9, 2.85, 6.2, ["Status", "PSR", "Procurement", "Total", "%"], rows, col_w=[3.1, 0.75, 0.95, 0.75, 0.65], font_size=8, header_size=8, row_h=0.25, header_h=0.28, total_last=True, align=[PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
-    tb(s, 6.9, 2.85 + 0.28 + 0.25 * len(rows) + 0.1, 6.2, 0.7, [[("Reading: ", {"bold": True, "color": NAVY}), ("J-* statuses are the steps JESA controls (attachment creation, internal reviews, PM approval, service-sheet submission, invoicing); service sheets postponed and at-risk scope are excluded. Negative values are credit lines pending JESA PM approval.", {})]], size=8.5, color=DARK, line_spacing=1.1)
+    tb(s, 6.9, 2.85 + 0.28 + 0.25 * len(rows) + 0.1, 6.2, 0.7, [[("J-* statuses are the steps under JESA control (attachment creation, internal reviews, PM approval, service-sheet submission, invoicing); service sheets postponed and at-risk scope are excluded. Negative values are credit lines pending JESA PM approval.", {})]], size=8.5, color=DARK, line_spacing=1.1)
 
     # ------------------------------------------------------------------ 7. Unrecognized revenue & suppliers
     ut = data["UNRECOGNIZED"]
@@ -615,6 +633,201 @@ def build(data, meta, out):
     rows.append(["Total (all BUs)", f0(cv), f0(rec), f0(sum((r["unrecognized"] or 0) for r in po.values())), f0(rem)])
     table(s, 6.75, 5.45, 6.25, ["BU", "Contract value", "Recognized", "Unrecognized", "Remaining"], rows, col_w=[1.8, 1.2, 1.1, 1.1, 1.05], font_size=7.5, header_size=7.5, row_h=0.18, header_h=0.24, total_last=True)
 
+
+    # ------------------------------------------------------------------ 8. Collections (payments received)
+    cb = data["COLLECTIONS_BU"]; cm = data["COLLECTIONS_MONTHLY"]
+    oct_cur = sum(r["month_current"] or 0 for r in cb); oct_pw = sum(r["month_prev_week"] or 0 for r in cb); prior = sum(r["prior_month"] or 0 for r in cb)
+    ytd = sum(r["ytd_current"] or 0 for r in cb); ytd_pw = sum(r["ytd_prev_week"] or 0 for r in cb); ninv = sum(int(r["invoices_ytd"] or 0) for r in cb)
+    month_name = datef(meta["as_of_date"], "%B"); prior_name = (dt.date.fromisoformat(str(meta["as_of_date"])[:10]).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
+    dep = sum((r.get("deposited_month") or 0) for r in cb)
+    s = D.slide("Payments Received (Collections)", f"{f0(oct_cur)} MMAD of invoices paid in {month_name} to {cur_s} ({fd(oct_cur-oct_pw)} vs {prev_s}); {ytd/1000:,.2f} Bn MAD year to date")
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    kpi_card(s, 0.3, 1.25, cw, 1.15, f"{month_name} to date", oct_cur, delta_wow=oct_cur - oct_pw, good_when_negative=False)
+    kpi_card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{prior_name} (full month)", prior)
+    kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, "YTD received", ytd, delta_wow=ytd - ytd_pw, good_when_negative=False)
+    lab_ytd = sum(r["labor"] or 0 for r in cm); nl_ytd = sum(r["non_labor"] or 0 for r in cm)
+    kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Labor / non-labor YTD", None, value_size=18)
+    tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.55, cw - 0.2, 0.8, [[(f"{f0(lab_ytd)} ", {"bold": True, "color": BLUE, "size": 16}), (f"· {lab_ytd/(lab_ytd+nl_ytd)*100:.0f}% labor", {"size": 9, "color": SLATE})], [(f"{f0(nl_ytd)} ", {"bold": True, "color": ORANGE, "size": 16}), (f"· {nl_ytd/(lab_ytd+nl_ytd)*100:.0f}% non-labor", {"size": 9, "color": SLATE})]], size=10)
+    kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, f"Invoices deposited in {month_name[:3]}", dep)
+    tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 2.08, cw - 0.2, 0.26, f"{ninv:,} invoices paid YTD", size=8.5, color=SLATE)
+    months = [r for r in cm if (r["labor"] or 0) + (r["non_labor"] or 0) > 0]
+    tb(s, 0.4, 2.6, 7, 0.3, f"Monthly payments received 2026 (MMAD, amount invoiced by payment date) – {month_name} in progress", size=12.5, bold=True, color=NAVY)
+    ch = bar_chart(s, 0.3, 2.9, 7.3, 4.2, [r["month"] for r in months], [("Labor (PSR)", [r["labor"] for r in months]), ("Non-labor (procurement)", [r["non_labor"] for r in months])], [BLUE, ORANGE], stacked=True, gap=45, label_size=7.5, label_colors=[WHITE, DARK])
+    hide_small_labels(ch, [[r["labor"] for r in months], [r["non_labor"] for r in months]], 45)
+    tb(s, 7.85, 2.6, 5.2, 0.3, "By business unit (MMAD)", size=13, bold=True, color=NAVY)
+    rows, colors = [], {}
+    cbs = sorted(cb, key=lambda r: -(r["ytd_current"] or 0))
+    for i, r in enumerate(cbs):
+        d1 = (r["month_current"] or 0) - (r["month_prev_week"] or 0)
+        rows.append([short(r["bu"]), f0(r["month_prev_week"]), f0(r["month_current"]), fd(d1), f0(r["prior_month"]), f0(r["ytd_current"]), f"{(r['ytd_current'] or 0)/ytd*100:.0f}%"]); colors[(i, 3)] = delta_color(d1, False)
+    rows.append(["Total", f0(oct_pw), f0(oct_cur), fd(oct_cur - oct_pw), f0(prior), f0(ytd), "100%"])
+    table(s, 7.85, 2.9, 5.2, ["BU", f"{month_name[:3]} to {prev_s}", f"{month_name[:3]} to {cur_s}", "Δ WoW", prior_name[:3], "YTD", "% YTD"], rows, col_w=[1.4, 0.8, 0.8, 0.7, 0.7, 0.8, 0.6], font_size=8.5, header_size=8, colors=colors, total_last=True, row_h=0.26, header_h=0.4)
+
+    # ------------------------------------------------------------------ 9. Cash position – procurement
+    cmo = {r["line"]: r for r in data["CASH_MONTHLY"]}
+    cin = cmo["Total cash IN (procurement)"]; cout = cmo["Total cash OUT (procurement)"]; net = cmo["NET position (cash IN + cash OUT)"]
+    sup = cmo["Cash OUT suppliers (by tier)"]; lcp = cmo["Cash OUT LC payments"]; cus = cmo["Cash OUT customs"]; div = cmo["Dividends / PROC compensable"]; proc = cmo["Procurement collections (OCP payment report)"]
+    psr = cmo["PSR collections (labor)"]; prov = cmo["PSR provisions (AM ring-fence + W&E reserve)"]; npsr = cmo["NET PSR after provisions"]
+    ong = {r["bucket"]: r for r in data["ONGOING"]}
+    appr_lc = ong["Approved – October LC maturities"]["amount"]; appr_sup = ong["Approved – supplier invoices"]["amount"]; pend = ong["Pending payment approval"]["amount"]; paid_oct = ong["Paid in October to date (suppliers + LC + customs)"]["amount"]
+    s = D.slide("Cash Position – Procurement (JESA Group incl. AM)", f"Jul–{month_name[:3]} 2026: cash IN {f0(cin['cumulative'])} vs cash OUT {f0(-cout['cumulative'])} MMAD incl. {month_name} commitments → net {fd(net['cumulative'])} MMAD")
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    card(s, 0.3, 1.25, cw, 1.15, "Cash IN Jul–Oct", f0(cin["cumulative"]), f"OCP payments {f0(proc['cumulative'])} + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=22)
+    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, "Cash OUT actuals", f0(-(cout["jul"] + cout["aug"] + cout["sep"] + cout["oct_actual"])), f"Jul–Sep {f0(-(cout['jul']+cout['aug']+cout['sep']))} + Oct to {meta['payments_to']} {f0(-cout['oct_actual'])}", fill=NAVY2, value_size=22)
+    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, f"{month_name} commitments", f0(-cout["oct_ongoing"]), f"Approved {f0(appr_lc + appr_sup)} (LC {f0(appr_lc)}) + pending {f0(pend)}", fill=GOLD, value_size=22)
+    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Net position", fd(net["cumulative"]), "Cash IN + cash OUT incl. commitments", fill=(RED if net["cumulative"] < 0 else GREEN), value_size=22)
+    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, "PSR (labor) net", fd(npsr["cumulative"]), f"Collections {f0(psr['cumulative'])} less provisions {f0(-prov['cumulative'])}", fill=SLATE, value_size=22)
+    mcats = ["Jul", "Aug", "Sep", f"Oct to date", "Oct commitments"]
+    keys = ["jul", "aug", "sep", "oct_actual", "oct_ongoing"]
+    tb(s, 0.4, 2.6, 7, 0.3, "Monthly cash IN vs cash OUT – procurement (MMAD)", size=13, bold=True, color=NAVY)
+    ch = bar_chart(s, 0.3, 2.9, 6.9, 4.0, mcats, [("Cash IN", [cin[k] for k in keys]), ("Cash OUT", [-cout[k] for k in keys]), ("Net", [net[k] for k in keys])], [TEAL, NAVY2, GOLD], gap=70, label_size=8, number_format='#,##0;−#,##0;0', overlap=-10)
+    tb(s, 7.45, 2.6, 5.6, 0.3, "Cash position by month (MMAD)", size=13, bold=True, color=NAVY)
+    rows, colors = [], {}
+    def rowf(lab, r, sign=1, bold=False):
+        return [lab] + [f0(sign * (r[k] or 0)) for k in keys] + [f0(sign * (r["cumulative"] or 0))]
+    rows.append(rowf("OCP procurement collections", proc)); rows.append(rowf("Dividends / PROC compensable", div)); rows.append(rowf("Total cash IN", cin))
+    rows.append(rowf("Suppliers (by tier)", sup)); rows.append(rowf("LC payments", lcp)); rows.append(rowf("Customs", cus)); rows.append(rowf("Total cash OUT", cout))
+    rows.append([ "NET position"] + [fd(net[k]) for k in keys] + [fd(net["cumulative"])])
+    for j in range(1, 7): colors[(7, j)] = delta_color(net[keys[j - 1]] if j < 6 else net["cumulative"], good_when_negative=False)
+    rows.append(rowf("PSR collections (labor)", psr)); rows.append(rowf("PSR provisions", prov)); rows.append(["NET PSR after provisions"] + [fd(npsr[k]) for k in keys] + [fd(npsr["cumulative"])])
+    table(s, 7.45, 2.9, 5.6, ["MMAD", "Jul", "Aug", "Sep", f"Oct to {meta['payments_to']}", "Oct ongoing", "Cumul."], rows, col_w=[2.1, 0.65, 0.65, 0.65, 0.8, 0.8, 0.75], font_size=8.5, header_size=8, bold_rows=(2, 6, 7, 10), colors=colors, row_h=0.27, header_h=0.36)
+    tb(s, 7.45, 6.55, 5.6, 0.55, f"Basis: {meta['cash_basis']}", size=7, italic=True, color=GREY)
+
+    # ------------------------------------------------------------------ 10. Cash by BU
+    cbu = sorted(data["CASH_BU"], key=lambda r: -(r["cash_in"] or 0))
+    s = D.slide("Cash Position by Business Unit – Procurement", f"Cumulative Jul–{month_name[:3]} 2026 cash IN, cash OUT and net balance by BU, before and after {month_name} commitments (MMAD)")
+    rows, colors = [], {}
+    tot_r = {k: 0.0 for k in ("cash_in", "cash_out_suppliers", "cash_out_lc", "cash_out_customs", "net_actuals", "oct_approved", "net_after_approved", "oct_pending", "net_all_ongoing")}
+    for i, r in enumerate(cbu):
+        rows.append([short(r["bu"]), f0(r["cash_in"]), f0(-(r["cash_out_suppliers"] or 0)), f0(-(r["cash_out_lc"] or 0)), f0(-(r["cash_out_customs"] or 0)), fd(r["net_actuals"]), f0(-(r["oct_approved"] or 0)), fd(r["net_after_approved"]), f0(-(r["oct_pending"] or 0)), fd(r["net_all_ongoing"])])
+        for j, k in ((5, "net_actuals"), (7, "net_after_approved"), (9, "net_all_ongoing")): colors[(i, j)] = delta_color(r[k], False)
+        for k in tot_r: tot_r[k] += r[k] or 0
+    rows.append(["Total BUs", f0(tot_r["cash_in"]), f0(-tot_r["cash_out_suppliers"]), f0(-tot_r["cash_out_lc"]), f0(-tot_r["cash_out_customs"]), fd(tot_r["net_actuals"]), f0(-tot_r["oct_approved"]), fd(tot_r["net_after_approved"]), f0(-tot_r["oct_pending"]), fd(tot_r["net_all_ongoing"])])
+    n = len(rows) - 1
+    for j, k in ((5, "net_actuals"), (7, "net_after_approved"), (9, "net_all_ongoing")): colors[(n, j)] = delta_color(tot_r[k], False)
+    table(s, 0.35, 1.25, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{month_name[:3]} approved", "Net after approved", f"{month_name[:3]} pending", "Net all ongoing"], rows,
+          col_w=[1.7, 1, 1.1, 0.9, 1, 1.05, 1.05, 1.2, 1.0, 1.15], font_size=9, header_size=8.5, row_h=0.27, header_h=0.42, total_last=True, first_col_bold=True)
+    yb = 1.25 + 0.42 + 0.27 * len(rows) + 0.2
+    bar_chart(s, 0.3, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Cash IN", [r["cash_in"] for r in cbu]), ("Cash OUT (incl. commitments)", [-((r["cash_out_suppliers"] or 0) + (r["cash_out_lc"] or 0) + (r["cash_out_customs"] or 0) + (r["oct_approved"] or 0) + (r["oct_pending"] or 0)) for r in cbu])], [TEAL, NAVY2], gap=50, cat_size=7.5, label_size=7, title="Cash IN vs cash OUT by BU (MMAD)")
+    bar_chart(s, 6.75, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Net after all ongoing", [r["net_all_ongoing"] for r in cbu])], [GOLD], legend=False, gap=50, cat_size=7.5, label_size=7.5, title="Net balance after all ongoing commitments (MMAD)", number_format='+#,##0;−#,##0;0')
+    ch = s.shapes[-1].chart; color_points(ch, 0, [GREEN if (r["net_all_ongoing"] or 0) >= 0 else RED for r in cbu])
+
+    # ------------------------------------------------------------------ 11. Ongoing payments – October
+    s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved (incl. {f0(appr_lc)} LC maturities) and {f0(pend)} MMAD pending approval")
+    tb(s, 0.4, 1.25, 6.2, 0.3, f"{month_name} cash OUT: actual and committed (MMAD)", size=13, bold=True, color=NAVY)
+    total_oct = round(paid_oct) + round(appr_lc) + round(appr_sup) + round(pend)
+    waterfall(s, 0.3, 1.55, 6.3, 2.45, [f"Paid to {meta['payments_to']}", "Approved – LC maturities", "Approved – supplier invoices", "Pending approval", f"Total {month_name} outflow"],
+              [paid_oct, appr_lc, appr_sup, pend, total_oct], ["total", "delta", "delta", "delta", "total"])
+    # override colors: all additions in gold shades
+    ch = s.shapes[-1].chart; color_points(ch, 1, [NAVY2, GOLD, GOLD, ORANGE, NAVY2])
+    obo = sorted(data["CASH_BU_OCT"], key=lambda r: ((r["oct_paid_suppliers"] or 0) + (r["oct_paid_lc"] or 0) + (r["oct_paid_customs"] or 0) + (r["oct_ongoing_suppliers"] or 0) + (r["oct_ongoing_lc"] or 0)))
+    tb(s, 0.4, 4.05, 6.2, 0.3, f"{month_name} by business unit (MMAD)", size=13, bold=True, color=NAVY)
+    rows, colors = [], {}
+    t = [0.0] * 5
+    for i, r in enumerate(obo):
+        paid = -((r["oct_paid_suppliers"] or 0) + (r["oct_paid_lc"] or 0) + (r["oct_paid_customs"] or 0)); os_ = -(r["oct_ongoing_suppliers"] or 0); ol = -(r["oct_ongoing_lc"] or 0); ci = r["oct_cash_in"] or 0
+        netv = round(ci) - round(paid) - round(os_) - round(ol)
+        rows.append([short(r["bu"]), f0(ci), f0(paid), f0(os_), f0(ol), fd(netv)]); colors[(i, 5)] = delta_color(netv, False)
+        for j, v in enumerate((ci, paid, os_, ol, netv)): t[j] += v
+    rows.append(["Total", f0(t[0]), f0(t[1]), f0(t[2]), f0(t[3]), fd(t[4])]); colors[(len(rows) - 1, 5)] = delta_color(t[4], False)
+    table(s, 0.4, 4.35, 6.2, ["BU", "Cash IN to date", f"Paid to {meta['payments_to']}", "Ongoing suppliers", "Ongoing LC", "Net"], rows, col_w=[1.5, 1, 1, 1, 0.9, 0.8], font_size=8.5, header_size=8, row_h=0.215, header_h=0.34, colors=colors, total_last=True)
+    # right: tracking log status
+    tl = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Tracking log –") and not str(r["bucket"]).endswith("Total approved supplier payments") and (r["amount"] or 0) > 0.05]
+    tl_tot = [r for r in data["ONGOING"] if str(r["bucket"]).endswith("Total approved supplier payments")]
+    tl_tot = tl_tot[0] if tl_tot else {"amount": sum(r["amount"] for r in tl), "lines": sum(r["lines"] or 0 for r in tl)}
+    tb(s, 6.95, 1.25, 6.1, 0.3, "Approved supplier invoices – status vs payment tracking log", size=13, bold=True, color=NAVY)
+    tb(s, 6.95, 1.55, 6.1, 0.3, f"{f0(tl_tot['amount'])} MMAD / {int(tl_tot['lines'] or 0)} approved supplier lines by payment status (approved position excl. LC: {f0(appr_sup)} MMAD)", size=9.5, color=SLATE)
+    def clean(lbl):
+        l = str(lbl).replace("Tracking log – ", "").lower()
+        if "pending ap" in l: return "Pending AP (unpaid)"
+        if "pending treso" in l: return "Pending Treasury (unpaid)"
+        if "paid after" in l: return "Paid after cut-off, awaiting SAP"
+        if "not in sap" in l: return "Paid per log, not yet in SAP"
+        if "reversed" in l: return "Paid, SAP clearing reversed"
+        if "no date" in l: return "Paid per log, no date"
+        if "cancelled" in l: return "Cancelled – to review"
+        if "not in tracking" in l: return "Not in tracking log"
+        return str(lbl).replace("Tracking log – ", "")[:40]
+    tl_s = sorted(tl, key=lambda r: -(r["amount"] or 0))
+    bar_chart(s, 6.85, 1.85, 6.2, 2.5, [clean(r["bucket"])[:32] for r in tl_s], [("Approved", [r["amount"] for r in tl_s])], [BLUE], horizontal=True, legend=False, gap=35, cat_size=8, label_size=8.5, number_format='#,##0.0')
+    rows = [[clean(r["bucket"])[:60], str(int(r["lines"] or 0)), f1(r["amount"]), f"{(r['amount'] or 0)/(tl_tot['amount'] or 1)*100:.0f}%"] for r in tl_s]
+    rows.append(["Total approved supplier payments", str(int(tl_tot["lines"] or 0)), f1(tl_tot["amount"]), "100%"])
+    table(s, 6.95, 4.45, 6.1, ["Tracking-log status", "Lines", "MMAD", "%"], rows, col_w=[3.6, 0.7, 0.9, 0.7], font_size=8.5, header_size=8, row_h=0.22, header_h=0.3, total_last=True)
+    pri = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Priority list")]
+    pri_tot = next((r["amount"] for r in pri if "total approved" in str(r["bucket"])), None)
+    pri_cls = [r for r in pri if str(r["bucket"]).startswith("Priority list – P")]
+    if pri_tot:
+        tb(s, 6.95, 4.45 + 0.3 + 0.22 * len(rows) + 0.1, 6.1, 0.7, [[("Priority list (02.10): ", {"bold": True, "color": NAVY}), (f"{f0(pri_tot)} MMAD approved for payment — " + " · ".join(f"{str(r['bucket']).replace('Priority list – ','')} {f0(r['amount'])}" for r in sorted(pri_cls, key=lambda r: str(r['bucket']))), {})]], size=9, line_spacing=1.1)
+
+    # ------------------------------------------------------------------ 12. Accounts payable
+    apb = data["AP_BU"]; bk = data["AP_BUCKETS"]
+    s = D.slide("Accounts Payable – supplier payables & LC", f"Payables incl. LC of {f0(ap_tot['current'])} MMAD ({fd(ap_tot['current']-ap_tot['prev_week'])} WoW): parked {f0(ap_pk['current'])}, 4411 {f0(ap_44['current'])}, downpayments {f0(ap_dp['current'])}, LC {f0(ap_lc['current'])}")
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    for i, (lab, r) in enumerate([("Total payables incl. LC", ap_tot), ("Parked invoices", ap_pk), ("Invoices 4411 (open items)", ap_44), ("Downpayments", ap_dp), ("LC opened (bank situation)", ap_lc)]):
+        kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.05, lab, r["current"], delta_wow=r["current"] - r["prev_week"], good_when_negative=True)
+    tb(s, 0.4, 2.45, 6.5, 0.3, "Payables by business unit – this week and Δ WoW (MMAD)", size=13, bold=True, color=NAVY)
+    rows, colors = [], {}
+    apbs = sorted([r for r in apb if sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")) > 0.05], key=lambda r: -sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")))
+    for i, r in enumerate(apbs):
+        cur = sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")); prev = sum((r[k] or 0) for k in ("downpayment_prev", "parked_prev", "inv4411_prev", "lc_prev"))
+        rows.append([short(r["bu"]), f0(r["downpayment_cur"]), f0(r["parked_cur"]), f0(r["inv4411_cur"]), f0(r["lc_cur"]), f0(cur), fd(cur - prev)]); colors[(i, 6)] = delta_color(cur - prev)
+    rows.append(["Total", f0(ap_dp["current"]), f0(ap_pk["current"]), f0(ap_44["current"]), f0(ap_lc["current"]), f0(ap_tot["current"]), fd(ap_tot["current"] - ap_tot["prev_week"])])
+    table(s, 0.4, 2.75, 6.5, ["BU", "Down-payment", "Parked", "4411", "LC", "Total", "Δ WoW"], rows, col_w=[1.5, 0.9, 0.8, 0.8, 0.8, 0.85, 0.85], font_size=9.5, header_size=8.5, row_h=0.33, header_h=0.36, colors=colors, total_last=True)
+    tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs; parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers.", size=8, italic=True, color=GREY)
+    # right: due date buckets from the invoice file
+    origins = ["Invoices - 4411", "Parked Invoice", "Downpayment"]; buckets = ["Overdue", "Due ≤ 30d", "Due 31–60d", "Due > 60d", "No due date"]
+    bm = {(r["origin"], r["bucket"]): r["amount"] or 0 for r in bk}
+    buckets = [b for b in buckets if any(bm.get((o, b), 0) > 0.05 for o in origins)]
+    ap_file_tot = sum(bm.values()); overdue = sum(bm.get((o, "Overdue"), 0) for o in origins)
+    tb(s, 7.2, 2.45, 5.9, 0.3, f"Open supplier invoices by due date – AP file {meta['ap_label']} (MMAD)", size=13, bold=True, color=NAVY)
+    tb(s, 7.2, 2.75, 5.9, 0.3, f"{f0(ap_file_tot)} MMAD of open lines, of which {f0(overdue)} MMAD ({overdue/ap_file_tot*100:.0f}%) past due at {asof}", size=9.5, color=SLATE)
+    ch = bar_chart(s, 7.1, 3.0, 6.0, 2.45, buckets, [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=True, gap=50, cat_size=8.5, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM, label_colors=[WHITE, WHITE, DARK])
+    hide_small_labels(ch, [[bm.get((o, b), 0) for b in buckets] for o in origins], 30)
+    tiers = sorted(data["AP_TIERS"], key=lambda r: -(r["amount"] or 0))
+    def tier_group(t):
+        t = str(t).lower()
+        if "international" in t: return "International"
+        if "national" in t: return "National (tiers 1–3)"
+        return "Other / not tiered"
+    tg = {}
+    for r in tiers: tg[tier_group(r["tier"])] = tg.get(tier_group(r["tier"]), 0) + (r["amount"] or 0)
+    tb(s, 7.2, 5.45, 5.9, 0.3, "By supplier tier (MMAD)", size=11, bold=True, color=NAVY)
+    rows = [[k, f0(v), f"{v/ap_file_tot*100:.0f}%"] for k, v in sorted(tg.items(), key=lambda x: -x[1])]
+    table(s, 7.2, 5.72, 5.9, ["Tier group", "MMAD", "%"], rows, col_w=[3, 1.4, 1.4], font_size=8.5, header_size=8, row_h=0.22, header_h=0.26)
+    tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
+
+    # ------------------------------------------------------------------ 13. Letters of credit
+    lcl = data["LC_LINES"]; months = [k for k in lcl[0].keys() if str(k).startswith("202")]
+    lc_all = sum(r["encours_mad"] or 0 for r in lcl); lc_open = sum((r["encours_mad"] or 0) for r in lcl if r["opened"] == "Yes"); lc_noo = lc_all - lc_open
+    mt = {m: sum((r[m] or 0) for r in lcl) for m in months}
+    p26 = sum(v for m, v in mt.items() if str(m).startswith("2026")); p27 = sum(v for m, v in mt.items() if str(m).startswith("2027"))
+    s = D.slide("Letters of Credit – outstanding & maturities", f"{f0(lc_all)} MMAD of LC commitments at {meta['lc_date']}: {f0(lc_open)} opened, {f0(lc_noo)} still to be opened; {f0(appr_lc)} MMAD maturing in {month_name}")
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    card(s, 0.3, 1.25, cw, 1.05, "Total LC commitments", f0(lc_all), "Encours in MMAD, bank LC situation", fill=NAVY, value_size=22)
+    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.05, "Opened LCs", f0(lc_open), "LC reference and opening date exist", fill=NAVY2, value_size=22)
+    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.05, "To be opened", f0(lc_noo), "Committed, LC not yet issued", fill=SLATE, value_size=22)
+    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.05, f"{month_name} maturities", f0(appr_lc), "Counted as approved payments", fill=GOLD, value_size=22)
+    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.05, "2026 / 2027 maturities", f"{f0(p26)} / {f0(p27)}", f"Per monthly schedule; unscheduled {f0(lc_all - p26 - p27)}", fill=TEAL, value_size=20)
+    tb(s, 0.4, 2.45, 7.5, 0.3, "LC maturity schedule by month (MMAD)", size=13, bold=True, color=NAVY)
+    last_nz = max(i for i, m in enumerate(months) if mt[m] > 0.05); mkeep = months[:last_nz + 1]
+    bar_chart(s, 0.3, 2.75, 7.6, 2.5, [dt.date.fromisoformat(m + "-01").strftime("%b-%y") for m in mkeep], [("Maturities", [mt[m] for m in mkeep])], [NAVY2], legend=False, gap=40, cat_size=8, label_size=8)
+    # by BU / project
+    byp = {}
+    for r in lcl:
+        k = r["bu"]; d = byp.setdefault(k, {"open": 0, "noo": 0, "oct": 0})
+        d["open" if r["opened"] == "Yes" else "noo"] += r["encours_mad"] or 0; d["oct"] += r[months[0]] or 0
+    rows = [[short(k), f0(v["open"]), f0(v["noo"]), f0(v["open"] + v["noo"]), f0(v["oct"])] for k, v in sorted(byp.items(), key=lambda x: -(x[1]["open"] + x[1]["noo"]))]
+    rows.append(["Total", f0(lc_open), f0(lc_noo), f0(lc_all), f0(mt[months[0]])])
+    tb(s, 0.4, 5.3, 7.5, 0.3, "By business unit (MMAD)", size=11, bold=True, color=NAVY)
+    table(s, 0.4, 5.58, 7.5, ["BU", "Opened", "To be opened", "Total", f"{dt.date.fromisoformat(months[0]+'-01').strftime('%b-%y')} maturity"], rows, col_w=[2, 1.2, 1.3, 1.2, 1.6], font_size=8.5, header_size=8, row_h=0.2, header_h=0.26, total_last=True)
+    # by action
+    act = {}
+    for r in lcl:
+        a = short_action(r["action"]); act[a] = act.get(a, 0) + (r["encours_mad"] or 0)
+    acts = sorted([(k, v) for k, v in act.items() if v > 0.05], key=lambda x: -x[1])
+    if len(acts) > 8: acts = acts[:8] + [("Other actions", sum(v for _, v in acts[8:]))]
+    tb(s, 8.2, 2.45, 4.9, 0.3, "By action status (MMAD)", size=13, bold=True, color=NAVY)
+    bar_chart(s, 8.1, 2.75, 5.0, 4.2, [k for k, _ in acts], [("Encours", [v for _, v in acts])], [TEAL], horizontal=True, legend=False, gap=30, cat_size=7.5, label_size=8)
 
     # ------------------------------------------------------------------ 7b. Zoom per business unit
     det = {}
@@ -722,202 +935,7 @@ def build(data, meta, out):
                 ch = bar_chart(s, 6.65, 4.5, 6.4, 2.6, acats, [("Equipment", aeq), ("Subcontracts", asb)], [NAVY2, BLUE], stacked=True, gap=50, cat_size=8, label_size=8, label_colors=[WHITE, WHITE], legend_pos=XL_LEGEND_POSITION.BOTTOM)
                 hide_small_labels(ch, [aeq, asb], max(10, (at["total"] or 0) * 0.05))
         else:
-            tb(s, 0.4, 4.3, 12, 0.4, "No unrecognized supplier scope reported for this business unit in the UR consolidation.", size=10, italic=True, color=SLATE)
-
-    # ------------------------------------------------------------------ 8. Collections (payments received)
-    cb = data["COLLECTIONS_BU"]; cm = data["COLLECTIONS_MONTHLY"]
-    oct_cur = sum(r["month_current"] or 0 for r in cb); oct_pw = sum(r["month_prev_week"] or 0 for r in cb); prior = sum(r["prior_month"] or 0 for r in cb)
-    ytd = sum(r["ytd_current"] or 0 for r in cb); ytd_pw = sum(r["ytd_prev_week"] or 0 for r in cb); ninv = sum(int(r["invoices_ytd"] or 0) for r in cb)
-    month_name = datef(meta["as_of_date"], "%B"); prior_name = (dt.date.fromisoformat(str(meta["as_of_date"])[:10]).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
-    dep = sum((r.get("deposited_month") or 0) for r in cb)
-    s = D.slide("Payments Received (Collections)", f"{f0(oct_cur)} MMAD of invoices paid in {month_name} to {cur_s} ({fd(oct_cur-oct_pw)} vs {prev_s}); {ytd/1000:,.2f} Bn MAD year to date")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
-    kpi_card(s, 0.3, 1.25, cw, 1.15, f"{month_name} to date", oct_cur, delta_wow=oct_cur - oct_pw, good_when_negative=False)
-    kpi_card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{prior_name} (full month)", prior)
-    kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, "YTD received", ytd, delta_wow=ytd - ytd_pw, good_when_negative=False)
-    lab_ytd = sum(r["labor"] or 0 for r in cm); nl_ytd = sum(r["non_labor"] or 0 for r in cm)
-    kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Labor / non-labor YTD", None, value_size=18)
-    tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.55, cw - 0.2, 0.8, [[(f"{f0(lab_ytd)} ", {"bold": True, "color": BLUE, "size": 16}), (f"· {lab_ytd/(lab_ytd+nl_ytd)*100:.0f}% labor", {"size": 9, "color": SLATE})], [(f"{f0(nl_ytd)} ", {"bold": True, "color": ORANGE, "size": 16}), (f"· {nl_ytd/(lab_ytd+nl_ytd)*100:.0f}% non-labor", {"size": 9, "color": SLATE})]], size=10)
-    kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, f"Invoices deposited in {month_name[:3]}", dep)
-    tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 2.08, cw - 0.2, 0.26, f"{ninv:,} invoices paid YTD", size=8.5, color=SLATE)
-    months = [r for r in cm if (r["labor"] or 0) + (r["non_labor"] or 0) > 0]
-    tb(s, 0.4, 2.6, 7, 0.3, f"Monthly payments received 2026 (MMAD, amount invoiced by payment date) – {month_name} in progress", size=12.5, bold=True, color=NAVY)
-    ch = bar_chart(s, 0.3, 2.9, 7.3, 4.2, [r["month"] for r in months], [("Labor (PSR)", [r["labor"] for r in months]), ("Non-labor (procurement)", [r["non_labor"] for r in months])], [BLUE, ORANGE], stacked=True, gap=45, label_size=7.5, label_colors=[WHITE, DARK])
-    hide_small_labels(ch, [[r["labor"] for r in months], [r["non_labor"] for r in months]], 45)
-    tb(s, 7.85, 2.6, 5.2, 0.3, "By business unit (MMAD)", size=13, bold=True, color=NAVY)
-    rows, colors = [], {}
-    cbs = sorted(cb, key=lambda r: -(r["ytd_current"] or 0))
-    for i, r in enumerate(cbs):
-        d1 = (r["month_current"] or 0) - (r["month_prev_week"] or 0)
-        rows.append([short(r["bu"]), f0(r["month_prev_week"]), f0(r["month_current"]), fd(d1), f0(r["prior_month"]), f0(r["ytd_current"]), f"{(r['ytd_current'] or 0)/ytd*100:.0f}%"]); colors[(i, 3)] = delta_color(d1, False)
-    rows.append(["Total", f0(oct_pw), f0(oct_cur), fd(oct_cur - oct_pw), f0(prior), f0(ytd), "100%"])
-    table(s, 7.85, 2.9, 5.2, ["BU", f"{month_name[:3]} to {prev_s}", f"{month_name[:3]} to {cur_s}", "Δ WoW", prior_name[:3], "YTD", "% YTD"], rows, col_w=[1.4, 0.8, 0.8, 0.7, 0.7, 0.8, 0.6], font_size=8.5, header_size=8, colors=colors, total_last=True, row_h=0.26, header_h=0.4)
-
-    # ------------------------------------------------------------------ 9. Cash position – procurement
-    cmo = {r["line"]: r for r in data["CASH_MONTHLY"]}
-    cin = cmo["Total cash IN (procurement)"]; cout = cmo["Total cash OUT (procurement)"]; net = cmo["NET position (cash IN + cash OUT)"]
-    sup = cmo["Cash OUT suppliers (by tier)"]; lcp = cmo["Cash OUT LC payments"]; cus = cmo["Cash OUT customs"]; div = cmo["Dividends / PROC compensable"]; proc = cmo["Procurement collections (OCP payment report)"]
-    psr = cmo["PSR collections (labor)"]; prov = cmo["PSR provisions (AM ring-fence + W&E reserve)"]; npsr = cmo["NET PSR after provisions"]
-    ong = {r["bucket"]: r for r in data["ONGOING"]}
-    appr_lc = ong["Approved – October LC maturities"]["amount"]; appr_sup = ong["Approved – supplier invoices"]["amount"]; pend = ong["Pending payment approval"]["amount"]; paid_oct = ong["Paid in October to date (suppliers + LC + customs)"]["amount"]
-    s = D.slide("Cash Position – Procurement (JESA Group incl. AM)", f"Jul–{month_name[:3]} 2026: cash IN {f0(cin['cumulative'])} vs cash OUT {f0(-cout['cumulative'])} MMAD incl. {month_name} commitments → net {fd(net['cumulative'])} MMAD")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
-    card(s, 0.3, 1.25, cw, 1.15, "Cash IN Jul–Oct", f0(cin["cumulative"]), f"OCP payments {f0(proc['cumulative'])} + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=22)
-    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, "Cash OUT actuals", f0(-(cout["jul"] + cout["aug"] + cout["sep"] + cout["oct_actual"])), f"Jul–Sep {f0(-(cout['jul']+cout['aug']+cout['sep']))} + Oct to {meta['payments_to']} {f0(-cout['oct_actual'])}", fill=NAVY2, value_size=22)
-    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, f"{month_name} commitments", f0(-cout["oct_ongoing"]), f"Approved {f0(appr_lc + appr_sup)} (LC {f0(appr_lc)}) + pending {f0(pend)}", fill=GOLD, value_size=22)
-    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Net position", fd(net["cumulative"]), "Cash IN + cash OUT incl. commitments", fill=(RED if net["cumulative"] < 0 else GREEN), value_size=22)
-    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, "PSR (labor) net", fd(npsr["cumulative"]), f"Collections {f0(psr['cumulative'])} less provisions {f0(-prov['cumulative'])}", fill=SLATE, value_size=22)
-    mcats = ["Jul", "Aug", "Sep", f"Oct to date", "Oct commitments"]
-    keys = ["jul", "aug", "sep", "oct_actual", "oct_ongoing"]
-    tb(s, 0.4, 2.6, 7, 0.3, "Monthly cash IN vs cash OUT – procurement (MMAD)", size=13, bold=True, color=NAVY)
-    ch = bar_chart(s, 0.3, 2.9, 6.9, 4.0, mcats, [("Cash IN", [cin[k] for k in keys]), ("Cash OUT", [-cout[k] for k in keys]), ("Net", [net[k] for k in keys])], [TEAL, NAVY2, GOLD], gap=70, label_size=8, number_format='#,##0;−#,##0;0', overlap=-10)
-    tb(s, 7.45, 2.6, 5.6, 0.3, "Cash position by month (MMAD)", size=13, bold=True, color=NAVY)
-    rows, colors = [], {}
-    def rowf(lab, r, sign=1, bold=False):
-        return [lab] + [f0(sign * (r[k] or 0)) for k in keys] + [f0(sign * (r["cumulative"] or 0))]
-    rows.append(rowf("OCP procurement collections", proc)); rows.append(rowf("Dividends / PROC compensable", div)); rows.append(rowf("Total cash IN", cin))
-    rows.append(rowf("Suppliers (by tier)", sup)); rows.append(rowf("LC payments", lcp)); rows.append(rowf("Customs", cus)); rows.append(rowf("Total cash OUT", cout))
-    rows.append([ "NET position"] + [fd(net[k]) for k in keys] + [fd(net["cumulative"])])
-    for j in range(1, 7): colors[(7, j)] = delta_color(net[keys[j - 1]] if j < 6 else net["cumulative"], good_when_negative=False)
-    rows.append(rowf("PSR collections (labor)", psr)); rows.append(rowf("PSR provisions", prov)); rows.append(["NET PSR after provisions"] + [fd(npsr[k]) for k in keys] + [fd(npsr["cumulative"])])
-    table(s, 7.45, 2.9, 5.6, ["MMAD", "Jul", "Aug", "Sep", f"Oct to {meta['payments_to']}", "Oct ongoing", "Cumul."], rows, col_w=[2.1, 0.65, 0.65, 0.65, 0.8, 0.8, 0.75], font_size=8.5, header_size=8, bold_rows=(2, 6, 7, 10), colors=colors, row_h=0.27, header_h=0.36)
-    tb(s, 7.45, 6.55, 5.6, 0.55, f"Totals computed on unrounded values. Basis: {meta['cash_basis']}", size=7, italic=True, color=GREY)
-
-    # ------------------------------------------------------------------ 10. Cash by BU
-    cbu = sorted(data["CASH_BU"], key=lambda r: -(r["cash_in"] or 0))
-    s = D.slide("Cash Position by Business Unit – Procurement", f"Cumulative Jul–{month_name[:3]} 2026 cash IN, cash OUT and net balance by BU, before and after {month_name} commitments (MMAD)")
-    rows, colors = [], {}
-    tot_r = {k: 0.0 for k in ("cash_in", "cash_out_suppliers", "cash_out_lc", "cash_out_customs", "net_actuals", "oct_approved", "net_after_approved", "oct_pending", "net_all_ongoing")}
-    for i, r in enumerate(cbu):
-        rows.append([short(r["bu"]), f0(r["cash_in"]), f0(-(r["cash_out_suppliers"] or 0)), f0(-(r["cash_out_lc"] or 0)), f0(-(r["cash_out_customs"] or 0)), fd(r["net_actuals"]), f0(-(r["oct_approved"] or 0)), fd(r["net_after_approved"]), f0(-(r["oct_pending"] or 0)), fd(r["net_all_ongoing"])])
-        for j, k in ((5, "net_actuals"), (7, "net_after_approved"), (9, "net_all_ongoing")): colors[(i, j)] = delta_color(r[k], False)
-        for k in tot_r: tot_r[k] += r[k] or 0
-    rows.append(["Total BUs", f0(tot_r["cash_in"]), f0(-tot_r["cash_out_suppliers"]), f0(-tot_r["cash_out_lc"]), f0(-tot_r["cash_out_customs"]), fd(tot_r["net_actuals"]), f0(-tot_r["oct_approved"]), fd(tot_r["net_after_approved"]), f0(-tot_r["oct_pending"]), fd(tot_r["net_all_ongoing"])])
-    n = len(rows) - 1
-    for j, k in ((5, "net_actuals"), (7, "net_after_approved"), (9, "net_all_ongoing")): colors[(n, j)] = delta_color(tot_r[k], False)
-    table(s, 0.35, 1.25, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{month_name[:3]} approved", "Net after approved", f"{month_name[:3]} pending", "Net all ongoing"], rows,
-          col_w=[1.7, 1, 1.1, 0.9, 1, 1.05, 1.05, 1.2, 1.0, 1.15], font_size=9, header_size=8.5, row_h=0.27, header_h=0.42, total_last=True, first_col_bold=True)
-    yb = 1.25 + 0.42 + 0.27 * len(rows) + 0.2
-    bar_chart(s, 0.3, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Cash IN", [r["cash_in"] for r in cbu]), ("Cash OUT (incl. commitments)", [-((r["cash_out_suppliers"] or 0) + (r["cash_out_lc"] or 0) + (r["cash_out_customs"] or 0) + (r["oct_approved"] or 0) + (r["oct_pending"] or 0)) for r in cbu])], [TEAL, NAVY2], gap=50, cat_size=7.5, label_size=7, title="Cash IN vs cash OUT by BU (MMAD)")
-    bar_chart(s, 6.75, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Net after all ongoing", [r["net_all_ongoing"] for r in cbu])], [GOLD], legend=False, gap=50, cat_size=7.5, label_size=7.5, title="Net balance after all ongoing commitments (MMAD)", number_format='+#,##0;−#,##0;0')
-    ch = s.shapes[-1].chart; color_points(ch, 0, [GREEN if (r["net_all_ongoing"] or 0) >= 0 else RED for r in cbu])
-
-    # ------------------------------------------------------------------ 11. Ongoing payments – October
-    s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved (incl. {f0(appr_lc)} LC maturities) and {f0(pend)} MMAD pending approval")
-    tb(s, 0.4, 1.25, 6.2, 0.3, f"{month_name} cash OUT: actual and committed (MMAD)", size=13, bold=True, color=NAVY)
-    total_oct = round(paid_oct) + round(appr_lc) + round(appr_sup) + round(pend)
-    waterfall(s, 0.3, 1.55, 6.3, 2.45, [f"Paid to {meta['payments_to']}", "Approved – LC maturities", "Approved – supplier invoices", "Pending approval", f"Total {month_name} outflow"],
-              [paid_oct, appr_lc, appr_sup, pend, total_oct], ["total", "delta", "delta", "delta", "total"])
-    # override colors: all additions in gold shades
-    ch = s.shapes[-1].chart; color_points(ch, 1, [NAVY2, GOLD, GOLD, ORANGE, NAVY2])
-    obo = sorted(data["CASH_BU_OCT"], key=lambda r: ((r["oct_paid_suppliers"] or 0) + (r["oct_paid_lc"] or 0) + (r["oct_paid_customs"] or 0) + (r["oct_ongoing_suppliers"] or 0) + (r["oct_ongoing_lc"] or 0)))
-    tb(s, 0.4, 4.05, 6.2, 0.3, f"{month_name} by business unit (MMAD)", size=13, bold=True, color=NAVY)
-    rows, colors = [], {}
-    t = [0.0] * 5
-    for i, r in enumerate(obo):
-        paid = -((r["oct_paid_suppliers"] or 0) + (r["oct_paid_lc"] or 0) + (r["oct_paid_customs"] or 0)); os_ = -(r["oct_ongoing_suppliers"] or 0); ol = -(r["oct_ongoing_lc"] or 0); ci = r["oct_cash_in"] or 0
-        netv = round(ci) - round(paid) - round(os_) - round(ol)
-        rows.append([short(r["bu"]), f0(ci), f0(paid), f0(os_), f0(ol), fd(netv)]); colors[(i, 5)] = delta_color(netv, False)
-        for j, v in enumerate((ci, paid, os_, ol, netv)): t[j] += v
-    rows.append(["Total", f0(t[0]), f0(t[1]), f0(t[2]), f0(t[3]), fd(t[4])]); colors[(len(rows) - 1, 5)] = delta_color(t[4], False)
-    table(s, 0.4, 4.35, 6.2, ["BU", "Cash IN to date", f"Paid to {meta['payments_to']}", "Ongoing suppliers", "Ongoing LC", "Net"], rows, col_w=[1.5, 1, 1, 1, 0.9, 0.8], font_size=8.5, header_size=8, row_h=0.215, header_h=0.34, colors=colors, total_last=True)
-    # right: tracking log status
-    tl = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Tracking log –") and not str(r["bucket"]).endswith("Total approved supplier payments") and (r["amount"] or 0) > 0.05]
-    tl_tot = [r for r in data["ONGOING"] if str(r["bucket"]).endswith("Total approved supplier payments")]
-    tl_tot = tl_tot[0] if tl_tot else {"amount": sum(r["amount"] for r in tl), "lines": sum(r["lines"] or 0 for r in tl)}
-    tb(s, 6.95, 1.25, 6.1, 0.3, "Approved supplier invoices – status vs payment tracking log", size=13, bold=True, color=NAVY)
-    tb(s, 6.95, 1.55, 6.1, 0.3, f"{f0(tl_tot['amount'])} MMAD / {int(tl_tot['lines'] or 0)} lines checked against the log (approved position excl. LC: {f0(appr_sup)} MMAD)", size=9.5, color=SLATE)
-    def clean(lbl):
-        l = str(lbl).replace("Tracking log – ", "").lower()
-        if "pending ap" in l: return "Pending AP (unpaid)"
-        if "pending treso" in l: return "Pending Treasury (unpaid)"
-        if "paid after" in l: return "Paid after cut-off, awaiting SAP"
-        if "not in sap" in l: return "Paid per log, not yet in SAP"
-        if "reversed" in l: return "Paid, SAP clearing reversed"
-        if "no date" in l: return "Paid per log, no date"
-        if "cancelled" in l: return "Cancelled – to review"
-        if "not in tracking" in l: return "Not in tracking log"
-        return str(lbl).replace("Tracking log – ", "")[:40]
-    tl_s = sorted(tl, key=lambda r: -(r["amount"] or 0))
-    bar_chart(s, 6.85, 1.85, 6.2, 2.5, [clean(r["bucket"])[:32] for r in tl_s], [("Approved", [r["amount"] for r in tl_s])], [BLUE], horizontal=True, legend=False, gap=35, cat_size=8, label_size=8.5, number_format='#,##0.0')
-    rows = [[clean(r["bucket"])[:60], str(int(r["lines"] or 0)), f1(r["amount"]), f"{(r['amount'] or 0)/(tl_tot['amount'] or 1)*100:.0f}%"] for r in tl_s]
-    rows.append(["Total approved supplier payments", str(int(tl_tot["lines"] or 0)), f1(tl_tot["amount"]), "100%"])
-    table(s, 6.95, 4.45, 6.1, ["Tracking-log status", "Lines", "MMAD", "%"], rows, col_w=[3.6, 0.7, 0.9, 0.7], font_size=8.5, header_size=8, row_h=0.22, header_h=0.3, total_last=True)
-    pri = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Priority list")]
-    pri_tot = next((r["amount"] for r in pri if "total approved" in str(r["bucket"])), None)
-    pri_cls = [r for r in pri if str(r["bucket"]).startswith("Priority list – P")]
-    if pri_tot:
-        tb(s, 6.95, 4.45 + 0.3 + 0.22 * len(rows) + 0.1, 6.1, 0.7, [[("Priority list (02.10): ", {"bold": True, "color": NAVY}), (f"{f0(pri_tot)} MMAD approved for payment — " + " · ".join(f"{str(r['bucket']).replace('Priority list – ','')} {f0(r['amount'])}" for r in sorted(pri_cls, key=lambda r: str(r['bucket']))), {})]], size=9, line_spacing=1.1)
-
-    # ------------------------------------------------------------------ 12. Accounts payable
-    apb = data["AP_BU"]; bk = data["AP_BUCKETS"]
-    s = D.slide("Accounts Payable – supplier payables & LC", f"Payables incl. LC of {f0(ap_tot['current'])} MMAD ({fd(ap_tot['current']-ap_tot['prev_week'])} WoW): parked {f0(ap_pk['current'])}, 4411 {f0(ap_44['current'])}, downpayments {f0(ap_dp['current'])}, LC {f0(ap_lc['current'])}")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
-    for i, (lab, r) in enumerate([("Total payables incl. LC", ap_tot), ("Parked invoices", ap_pk), ("Invoices 4411 (open items)", ap_44), ("Downpayments", ap_dp), ("LC opened (bank situation)", ap_lc)]):
-        kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.05, lab, r["current"], delta_wow=r["current"] - r["prev_week"], good_when_negative=True)
-    tb(s, 0.4, 2.45, 6.5, 0.3, "Payables by business unit – this week and Δ WoW (MMAD)", size=13, bold=True, color=NAVY)
-    rows, colors = [], {}
-    apbs = sorted([r for r in apb if sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")) > 0.05], key=lambda r: -sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")))
-    for i, r in enumerate(apbs):
-        cur = sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")); prev = sum((r[k] or 0) for k in ("downpayment_prev", "parked_prev", "inv4411_prev", "lc_prev"))
-        rows.append([short(r["bu"]), f0(r["downpayment_cur"]), f0(r["parked_cur"]), f0(r["inv4411_cur"]), f0(r["lc_cur"]), f0(cur), fd(cur - prev)]); colors[(i, 6)] = delta_color(cur - prev)
-    rows.append(["Total", f0(ap_dp["current"]), f0(ap_pk["current"]), f0(ap_44["current"]), f0(ap_lc["current"]), f0(ap_tot["current"]), fd(ap_tot["current"] - ap_tot["prev_week"])])
-    table(s, 0.4, 2.75, 6.5, ["BU", "Down-payment", "Parked", "4411", "LC", "Total", "Δ WoW"], rows, col_w=[1.5, 0.9, 0.8, 0.8, 0.8, 0.85, 0.85], font_size=9.5, header_size=8.5, row_h=0.33, header_h=0.36, colors=colors, total_last=True)
-    tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs (bank LC situation); parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers. Previous week = 14-Oct AP extract.", size=8, italic=True, color=GREY)
-    # right: due date buckets from the invoice file
-    origins = ["Invoices - 4411", "Parked Invoice", "Downpayment"]; buckets = ["Overdue", "Due ≤ 30d", "Due 31–60d", "Due > 60d", "No due date"]
-    bm = {(r["origin"], r["bucket"]): r["amount"] or 0 for r in bk}
-    buckets = [b for b in buckets if any(bm.get((o, b), 0) > 0.05 for o in origins)]
-    ap_file_tot = sum(bm.values()); overdue = sum(bm.get((o, "Overdue"), 0) for o in origins)
-    tb(s, 7.2, 2.45, 5.9, 0.3, f"Open supplier invoices by due date – AP file {meta['ap_label']} (MMAD)", size=13, bold=True, color=NAVY)
-    tb(s, 7.2, 2.75, 5.9, 0.3, f"{f0(ap_file_tot)} MMAD of open lines, of which {f0(overdue)} MMAD ({overdue/ap_file_tot*100:.0f}%) past due at {asof}", size=9.5, color=SLATE)
-    ch = bar_chart(s, 7.1, 3.0, 6.0, 2.45, buckets, [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=True, gap=50, cat_size=8.5, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM, label_colors=[WHITE, WHITE, DARK])
-    hide_small_labels(ch, [[bm.get((o, b), 0) for b in buckets] for o in origins], 30)
-    tiers = sorted(data["AP_TIERS"], key=lambda r: -(r["amount"] or 0))
-    def tier_group(t):
-        t = str(t).lower()
-        if "international" in t: return "International"
-        if "national" in t: return "National (tiers 1–3)"
-        return "Other / not tiered"
-    tg = {}
-    for r in tiers: tg[tier_group(r["tier"])] = tg.get(tier_group(r["tier"]), 0) + (r["amount"] or 0)
-    tb(s, 7.2, 5.45, 5.9, 0.3, "By supplier tier (MMAD)", size=11, bold=True, color=NAVY)
-    rows = [[k, f0(v), f"{v/ap_file_tot*100:.0f}%"] for k, v in sorted(tg.items(), key=lambda x: -x[1])]
-    table(s, 7.2, 5.72, 5.9, ["Tier group", "MMAD", "%"], rows, col_w=[3, 1.4, 1.4], font_size=8.5, header_size=8, row_h=0.22, header_h=0.26)
-    tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Note: due-date buckets are computed from the invoice due date in the supplier extract; lines without a due date are excluded from the buckets.", size=7.5, italic=True, color=GREY)
-
-    # ------------------------------------------------------------------ 13. Letters of credit
-    lcl = data["LC_LINES"]; months = [k for k in lcl[0].keys() if str(k).startswith("202")]
-    lc_all = sum(r["encours_mad"] or 0 for r in lcl); lc_open = sum((r["encours_mad"] or 0) for r in lcl if r["opened"] == "Yes"); lc_noo = lc_all - lc_open
-    mt = {m: sum((r[m] or 0) for r in lcl) for m in months}
-    p26 = sum(v for m, v in mt.items() if str(m).startswith("2026")); p27 = sum(v for m, v in mt.items() if str(m).startswith("2027"))
-    s = D.slide("Letters of Credit – outstanding & maturities", f"{f0(lc_all)} MMAD of LC commitments at {meta['lc_date']}: {f0(lc_open)} opened, {f0(lc_noo)} still to be opened; {f0(appr_lc)} MMAD maturing in {month_name}")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
-    card(s, 0.3, 1.25, cw, 1.05, "Total LC commitments", f0(lc_all), "Encours in MMAD, bank LC situation", fill=NAVY, value_size=22)
-    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.05, "Opened LCs", f0(lc_open), "LC reference and opening date exist", fill=NAVY2, value_size=22)
-    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.05, "To be opened", f0(lc_noo), "Committed, LC not yet issued", fill=SLATE, value_size=22)
-    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.05, f"{month_name} maturities", f0(appr_lc), "Counted as approved payments", fill=GOLD, value_size=22)
-    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.05, "2026 / 2027 maturities", f"{f0(p26)} / {f0(p27)}", f"Per monthly schedule; unscheduled {f0(lc_all - p26 - p27)}", fill=TEAL, value_size=20)
-    tb(s, 0.4, 2.45, 7.5, 0.3, "LC maturity schedule by month (MMAD)", size=13, bold=True, color=NAVY)
-    last_nz = max(i for i, m in enumerate(months) if mt[m] > 0.05); mkeep = months[:last_nz + 1]
-    bar_chart(s, 0.3, 2.75, 7.6, 2.5, [dt.date.fromisoformat(m + "-01").strftime("%b-%y") for m in mkeep], [("Maturities", [mt[m] for m in mkeep])], [NAVY2], legend=False, gap=40, cat_size=8, label_size=8)
-    # by BU / project
-    byp = {}
-    for r in lcl:
-        k = r["bu"]; d = byp.setdefault(k, {"open": 0, "noo": 0, "oct": 0})
-        d["open" if r["opened"] == "Yes" else "noo"] += r["encours_mad"] or 0; d["oct"] += r[months[0]] or 0
-    rows = [[short(k), f0(v["open"]), f0(v["noo"]), f0(v["open"] + v["noo"]), f0(v["oct"])] for k, v in sorted(byp.items(), key=lambda x: -(x[1]["open"] + x[1]["noo"]))]
-    rows.append(["Total", f0(lc_open), f0(lc_noo), f0(lc_all), f0(mt[months[0]])])
-    tb(s, 0.4, 5.3, 7.5, 0.3, "By business unit (MMAD)", size=11, bold=True, color=NAVY)
-    table(s, 0.4, 5.58, 7.5, ["BU", "Opened", "To be opened", "Total", f"{dt.date.fromisoformat(months[0]+'-01').strftime('%b-%y')} maturity"], rows, col_w=[2, 1.2, 1.3, 1.2, 1.6], font_size=8.5, header_size=8, row_h=0.2, header_h=0.26, total_last=True)
-    # by action
-    act = {}
-    for r in lcl:
-        a = short_action(r["action"]); act[a] = act.get(a, 0) + (r["encours_mad"] or 0)
-    acts = sorted([(k, v) for k, v in act.items() if v > 0.05], key=lambda x: -x[1])
-    if len(acts) > 8: acts = acts[:8] + [("Other actions", sum(v for _, v in acts[8:]))]
-    tb(s, 8.2, 2.45, 4.9, 0.3, "By action status (MMAD)", size=13, bold=True, color=NAVY)
-    bar_chart(s, 8.1, 2.75, 5.0, 4.2, [k for k, _ in acts], [("Encours", [v for _, v in acts])], [TEAL], horizontal=True, legend=False, gap=30, cat_size=7.5, label_size=8)
+            tb(s, 0.4, 4.3, 12, 0.4, "No unrecognized supplier scope reported for this business unit.", size=10, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 14. Backup: LC detail
     s = D.slide("Backup – Letters of Credit detail", f"Largest LC lines by outstanding amount (bank LC situation {meta['lc_date']}, MMAD)")
@@ -942,27 +960,27 @@ def build(data, meta, out):
     table(s, 6.8, 1.55, 6.2, ["#", "Supplier", "BU", "MMAD", "% of AP"], rows, col_w=[0.4, 3.0, 1.4, 0.8, 0.8], font_size=8.5, header_size=8, row_h=0.26, header_h=0.3, align=[PP_ALIGN.CENTER, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
     bar_chart(s, 0.3, 1.55 + 0.3 + 0.26 * len(m) + 0.5, 6.2, SH - 0.5 - (1.55 + 0.3 + 0.26 * len(m) + 0.5), [b for b in buckets], [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=False, gap=60, cat_size=8, label_size=7.5, title="Due-date buckets by origin (MMAD)", legend_pos=XL_LEGEND_POSITION.BOTTOM)
 
-    # ------------------------------------------------------------------ 16. Data sources & weekly inputs
-    s = D.slide("Data sources & weekly input structure", "What feeds each section of this deck, and the as-of date of each source")
+    # ------------------------------------------------------------------ 16. Sources & definitions
+    s = D.slide("Sources & definitions", "Where each figure comes from and how it is defined")
     rows = [
-        ["AR position (current week): components, by BU, ownership, statuses, phases, aging, BU zooms, projects, collections", "Weekly raw AR extract (sheet 'AR'), aggregated with the dashboard rules", f"Snapshot {cur_d}", "AR_KPI, AR_BU, AR_UNBILLED_*, AR_UNPAID_STATUS, AR_AGING, AR_BU_DETAIL, AR_BU_PROJECTS, COLLECTIONS_*"],
-        ["AR position (previous week)", "Last week's raw AR extract or weekly_inputs.xlsx (this week: the 14-Oct AR dashboard)", f"Snapshot {prev_d}", "prev_week columns"],
-        ["Cash position (group & by BU), October paid / approved / pending, tracking-log status, priority list", "Cash flow workbook (CASH_FLOW_ANALYSIS – BUs) – 'EXEC Summary', 'Approved vs Tracking log', 'Priority list', 'LC Ongoing'", f"Data as of {datef(meta['cash_data_as_of'])}; collections to {meta['collections_to']}; payments to {meta['payments_to']}", "CASH_MONTHLY, CASH_BU, CASH_BU_OCT, ONGOING"],
-        ["Month-start baseline (AR by component, BU, status, aging)", "Beginning-of-month AR line list (AR_Beg_of_the_month.xlsx) aggregated with the dashboard rules", f"AR position {ms_d}", "AR_KPI / AR_BU / AR_* month_start columns"],
-        ["Unrecognized revenue by BU and status, PO book (previous week = last week's deck / inputs)", "UR Tracking Consolidation – 'Summary UR', 'Summary PO by BU'", asof, "UNRECOGNIZED, UR_ATTACHMENT_STATUS, UR_PO_SUMMARY"],
-        ["DSO (group and by BU)", "BU meeting Power BI report (DSO excl. advances), entered monthly", "October 2026 (prior: September)", "DSO"],
-        ["Non-OCP receivables and JESA-responsibility unbilled (PSR / Procurement)", "Weekly raw AR extract (Client 1 = NON OCP; J-* statuses; PSR/PROC column)", f"Snapshot {cur_d}", "NONOCP_BU, NONOCP_PROJECTS, JESA_UNBILLED_*"],
-        ["LC commitments, opened vs to be opened, maturity schedule, action status", "Bank LC situation (LCs SITUATION) – 'LC avec echéance'", f"LC situation {meta['lc_date']}", "LC_LINES"],
-        ["Open supplier invoices by due date, tier, BU/origin, top suppliers", "Supplier invoice extract (4411 – Parked – Downpayment)", f"AP file {meta['ap_label']}", "AP_BUCKETS, AP_BU_ORIGIN, AP_TIERS, AP_TOP_SUPPLIERS"],
-        ["Payments received (amount invoiced by payment date, labor / non-labor), invoices deposited", "Paid lines of the raw AR extract", f"Payments to {cur_d}", "COLLECTIONS_BU, COLLECTIONS_MONTHLY"],
-        ["Key messages", "Auto-drafted from the figures, then edited", asof, "KEY_MESSAGES"],
+        ["Accounts receivable (advance, unbilled, unpaid), statuses, aging, non-OCP, JESA responsibility, collections", "AR extract of the week", f"{cur_d}; previous week {prev_d}; month start {ms_d}"],
+        ["Unrecognized revenue by business unit and status, supplier PO book", "UR tracking consolidation", f"{asof}; previous week and month start from the earlier reviews"],
+        ["DSO excluding advances, group and by business unit", "BU meeting report", "October 2026 (prior month: September)"],
+        ["Cash position, October paid / approved / pending payments, priority list", "Cash flow analysis by business unit", f"{datef(meta['cash_data_as_of'])}; collections to {meta['collections_to']}, payments to {meta['payments_to']}"],
+        ["Supplier payables by business unit, due date, tier and supplier", "Supplier invoice extract (4411, parked, downpayments)", f"AP extract {meta['ap_label']}"],
+        ["Letters of credit: outstanding, maturity schedule, action status", "Bank LC situation", f"LC situation {meta['lc_date']}"],
     ]
-    table(s, 0.4, 1.25, 12.5, ["Deck section", "Source file / sheet", "As-of", "Input tab (weekly_inputs.xlsx)"], rows, col_w=[3.4, 4.0, 2.4, 2.7], font_size=8, header_size=8.5, row_h=0.38, header_h=0.3,
-          align=[PP_ALIGN.LEFT] * 4)
-    tb(s, 0.4, 5.85, 12.5, 1.25, [[("Weekly run: ", {"bold": True, "color": NAVY}), ("1) drop the refreshed source files (raw AR extract, cash flow workbook, LC situation, supplier invoices, UR consolidation; month-start AR file once a month)  →  2) run extract_inputs.py with last week's inputs workbook as the previous-week source  →  3) review / edit weekly_inputs.xlsx (key messages)  →  4) run build_deck.py.", {})],
-                                  [("Comparatives: ", {"bold": True, "color": NAVY}), (f"week-on-week compares the {cur_d} extract with the {prev_d} position; 'vs month start' uses the beginning-of-month AR file ({ms_d} position). All three are aggregated with the same rules (unearned-on-LS and negative advance lines excluded), which reproduce the BU meeting report totals.", {})],
-                                  [("Scope notes: ", {"bold": True, "color": NAVY}), ("cash position covers procurement (non-labor) flows for the JESA Group including AM; PSR (labor) collections are shown net of the AM ring-fence and the W&E reserve provision. AR figures are in MMAD HT as per the AR dashboard.", {})]],
-       size=9.5, line_spacing=1.15)
+    table(s, 0.4, 1.25, 12.5, ["Figures", "Source", "As of"], rows, col_w=[5.6, 3.6, 3.3], font_size=9, header_size=9, row_h=0.42, header_h=0.32, align=[PP_ALIGN.LEFT] * 3)
+    defs = [("Total AR", "advance payments + unbilled + unpaid, amounts HT in MMAD."),
+            ("Unbilled", "delivered scope not yet invoiced, excluding unearned amounts on lump-sum contracts; split by ownership of the next action (client / OCP, JESA, service sheets postponed, at risk)."),
+            ("Unpaid", "invoiced, not yet collected; split current / past due / rejected and by OCP processing phase."),
+            ("Unrecognized revenue", "supplier and equipment scope executed but not yet booked as AR, including the 6% JESA cost + fee."),
+            ("Gross exposure", "total AR + unrecognized revenue."),
+            ("Week on week / vs month start", f"position at {cur_s} compared with {prev_s} and with the first AR position of the month ({ms_s})."),
+            ("Payments received", "invoices paid by payment date, on the amount-invoiced basis used in the BU meeting report."),
+            ("Cash position", "procurement (non-labor) cash in and out for the JESA Group including AM; PSR (labor) collections shown net of the AM ring-fence and the Water & Environment reserve."),
+            ("DSO", "days sales outstanding excluding advances, as reported in the BU meeting report.")]
+    tb(s, 0.4, 4.15, 12.5, 2.9, [[(t + ": ", {"bold": True, "color": NAVY}), (d_, {})] for t, d_ in defs], size=9, color=DARK, line_spacing=1.1)
 
     D.save(out)
     print("saved", out, "slides:", D.n)
