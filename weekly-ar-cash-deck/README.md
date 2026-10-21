@@ -64,9 +64,10 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 | `AR_BU_DETAIL` | per BU: ownership, unbilled statuses, unpaid groups and phases, aging buckets, advance statuses | BU zoom slides |
 | `AR_BU_PROJECTS` | per BU: top 8 unbilled and unpaid projects | BU zoom slides |
 | `UNRECOGNIZED` | unrecognized suppliers by BU and status | 7 |
-| `COLLECTIONS_BU`, `COLLECTIONS_MONTHLY` | payments received by BU (month to date, prior month, YTD) and monthly series | 8 |
+| `COLLECTIONS_BU`, `COLLECTIONS_MONTHLY` | payments received by BU (month to date, prior month, YTD, non-OCP split, deposited) and monthly series | 4, 6, 8, 11, BU zooms |
 | `CASH_MONTHLY` | group cash IN / OUT / net by month incl. October commitments, PSR block | 9 |
-| `CASH_BU`, `CASH_BU_OCT` | cumulative and current-month cash position by BU | 10, 11 |
+| `CASH_BU`, `CASH_BU_OCT` | cumulative and current-month cash position by BU | 13 |
+| `CASH_PSR_BU` | PSR (labor) collections by BU and month, with the provision lines in `CASH_MONTHLY` | 14 (PSR slide) |
 | `ONGOING` | paid / approved (LC, suppliers) / pending, tracking-log status, priority list | 9, 11 |
 | `AP_BU` | payables & LC by BU, previous vs current week (AR dashboard) | 12 |
 | `AP_BUCKETS`, `AP_BU_ORIGIN`, `AP_TIERS`, `AP_TOP_SUPPLIERS` | supplier-invoice file analysis | 12, 15 |

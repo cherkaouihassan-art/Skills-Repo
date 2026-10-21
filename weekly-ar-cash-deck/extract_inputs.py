@@ -221,7 +221,20 @@ def extract_cash(path):
                         ("PSR provisions (AM ring-fence + W&E reserve)", "= Total provisions"),
                         ("NET PSR after provisions", "= PSR collections available")]:
         vals, _ = series(anchor, start=s3); monthly.append([lab] + vals)
+    for lab, anchor in [("PSR provision – AM ring-fence", "AM PSR (Labor)"), ("PSR provision – W&E reserve", "Water & Environnement — PSR reserve"),
+                        ("Overhead payments (FYI, not deducted)", "FYI — Overhead")]:
+        try:
+            vals, _ = series(anchor, start=s3); monthly.append([lab] + vals)
+        except Exception as e:
+            print("WARN PSR line:", lab, e)
     out["cash_monthly"] = monthly
+    # PSR (labor) collections by BU (section 3)
+    psr_bu = []; i = s3 + 1
+    while i < len(ex) and not str(ex[i][2] or "").strip().lower().startswith("total psr"):
+        b = canon_bu(ex[i][2]) if ex[i][2] else None
+        if b: psr_bu.append([b] + [num(ex[i][c], 1e6) for c in range(3, 9)])
+        i += 1
+    out["psr_bu"] = psr_bu
 
     # Section 5 by BU
     s5 = find_row(ex, "5.   PROCUREMENT NET BALANCE BY BU", col=2) + 2
@@ -657,7 +670,7 @@ def main():
     ar["collections_bu"] = []
     for b in bus:
         cb = cur["coll_bu"]
-        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0)])
+        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0)])
     ar["ap_bu"] = [[b, ap_prev_bu.get(b, {}).get("downpayment", 0.0), ap_cur_bu[b]["downpayment"], ap_prev_bu.get(b, {}).get("parked", 0.0), ap_cur_bu[b]["parked"],
                     ap_prev_bu.get(b, {}).get("inv4411", 0.0), ap_cur_bu[b]["inv4411"], ap_prev_bu.get(b, {}).get("lc", 0.0), ap_cur_bu[b]["lc"]] for b in bus if b in ap_cur_bu or b in ap_prev_bu]
     # per-BU detail (current / prev when a raw prev file or prev inputs with detail exist / month start)
@@ -729,12 +742,13 @@ def main():
                 note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
     write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month"], [[b, v.get("current"), v.get("prior")] for b, v in dso.items()],
                 note="DSO excluding advances (days), from the BU meeting Power BI report. Update monthly; 'JESA Group' row = group DSO.", widths=[28, 12, 14])
-    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
-                note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT.", widths=[28])
+    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
+                note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT; nonocp_* = same measures for non-OCP clients (Client 1).", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     write_sheet(wb, "COLLECTIONS_MONTHLY", ["month", "labor", "non_labor"], [[m, cur["coll_month"].get((i + 1, "labor"), 0.0), cur["coll_month"].get((i + 1, "non_labor"), 0.0)] for i, m in enumerate(months)],
                 note="Monthly payments received (amount invoiced, by payment date), labor (PSR) vs non-labor (PROC).", widths=[10])
     write_sheet(wb, "CASH_MONTHLY", ["line", "jul", "aug", "sep", "oct_actual", "oct_ongoing", "cumulative"], cash["cash_monthly"], note="Cash flow workbook 'EXEC Summary' (MMAD): cash in positive, cash out negative.", widths=[48])
+    write_sheet(wb, "CASH_PSR_BU", ["bu", "jul", "aug", "sep", "oct_actual", "oct_ongoing", "cumulative"], cash.get("psr_bu", []), note="PSR (labor) collections by BU per OCP payment report (EXEC Summary section 3), MMAD.", widths=[28])
     write_sheet(wb, "CASH_BU", ["bu", "cash_in", "cash_out_suppliers", "cash_out_lc", "cash_out_customs", "net_actuals", "oct_approved", "net_after_approved", "oct_pending", "net_all_ongoing"], cash["cash_bu"], note="Procurement net balance by BU, Jul–Oct cumulative (EXEC Summary section 5).", widths=[28])
     bu_oct = []
     for b in BU_ORDER:

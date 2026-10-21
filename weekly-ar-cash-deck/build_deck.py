@@ -77,6 +77,15 @@ def delta_color(v, good_when_negative=True, neutral_below=0.5):
     neg = float(v) < 0
     return GREEN if (neg == good_when_negative) else RED
 
+HEAT_GOOD = (RGBColor(0xE3, 0xF3, 0xE8), RGBColor(0xB9, 0xE2, 0xC6), RGBColor(0x8C, 0xCF, 0xA3))
+HEAT_BAD = (RGBColor(0xFB, 0xE6, 0xE2), RGBColor(0xF4, 0xC1, 0xB8), RGBColor(0xEC, 0x9A, 0x8C))
+def heat_fill(v, good_when_negative=True, steps=(1, 20, 100)):
+    """background shade for a variance cell: green when AR goes down, red when it goes up; darker = larger move."""
+    if v is None or abs(float(v)) < steps[0]: return None
+    lvl = 0 if abs(float(v)) < steps[1] else (1 if abs(float(v)) < steps[2] else 2)
+    good = (float(v) < 0) == good_when_negative
+    return (HEAT_GOOD if good else HEAT_BAD)[lvl]
+
 def datef(s, fmt="%d %b %Y"):
     if s is None: return ""
     if isinstance(s, (dt.date, dt.datetime)): return s.strftime(fmt)
@@ -177,7 +186,8 @@ def table(slide, x, y, w, header, rows, col_w=None, font_size=9, header_size=9, 
             col = DARK
             if colors and (i - 1, j) in colors: col = colors[(i - 1, j)]
             bold = is_total or ((i - 1) in bold_rows) or (first_col_bold and j == 0)
-            setcell(t.cell(i, j), v, font_size, bold, col, base_fill, al)
+            cell_fill = fills[(i - 1, j)] if (fills and (i - 1, j) in fills) else base_fill
+            setcell(t.cell(i, j), v, font_size, bold, col, cell_fill, al)
     return gs
 
 # ----------------------------------------------------------------------------- charts
@@ -370,6 +380,13 @@ def build(data, meta, out):
         return f"{cur_} days" + (f" (prior {int(float(pr))})" if pr not in (None, "") else "")
     arbu = {}
     for r in data["AR_BU"]: arbu.setdefault(r["bu"], {})[r["component"]] = r
+    collbu = data["COLLECTIONS_BU"]; coll_map = {r["bu"]: r for r in collbu}
+    def cget(b, k): return (coll_map.get(b) or {}).get(k) or 0
+    paid_m = sum(cget(b, "month_current") for b in coll_map); paid_m_pw = sum(cget(b, "month_prev_week") for b in coll_map)
+    paid_ytd = sum(cget(b, "ytd_current") for b in coll_map); dep_m = sum(cget(b, "deposited_month") for b in coll_map)
+    nonocp_m = sum(cget(b, "nonocp_month_current") for b in coll_map); nonocp_m_pw = sum(cget(b, "nonocp_month_prev_week") for b in coll_map)
+    nonocp_ytd = sum(cget(b, "nonocp_ytd") for b in coll_map); nonocp_prior = sum(cget(b, "nonocp_prior_month") for b in coll_map)
+    month_name = datef(meta["as_of_date"], "%B"); prior_name = (dt.date.fromisoformat(str(meta["as_of_date"])[:10]).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
     def dwow(r): return round(r["current"] or 0) - round(r["prev_week"] or 0)
     def dms(r): return round(r["current"] or 0) - round(r["month_start"] or 0)
 
@@ -379,11 +396,15 @@ def build(data, meta, out):
     tb(s, 0.9, 1.95, 11.5, 1.1, "AR, Cash & Payables Position", size=44, bold=True, color=NAVY)
     rect(s, 0.9, 3.25, 1.9, 0.04, GOLD)
     tb(s, 0.9, 3.4, 9, 0.5, "Weekly Executive Review", size=24, color=NAVY)
-    tb(s, 0.9, 3.95, 11.5, 0.4, f"Deck as of {asof}   ·   AR snapshot {cur_d} (vs {prev_d} and {ms_d} baseline)   ·   Cash to {meta['collections_to']}   ·   Figures in MMAD", size=12.5, color=SLATE)
+    tb(s, 0.9, 3.95, 11.5, 0.4, f"Deck as of {asof}", size=12.5, color=SLATE)
     cards = [("Gross exposure", newar, RED), ("Unrecognized revenue", unrec, BLUE), ("Total AR", tot, SLATE), ("Unbilled", unb, TEAL), ("Unpaid", unp, GOLD), ("Advance", adv, NAVY2)]
     cw = (SW - 0.6 - 0.12 * 5) / 6
     for i, (lab, r, col) in enumerate(cards):
-        card(s, 0.3 + i * (cw + 0.12), 5.55, cw, 1.35, lab, f0(r["current"]), f"vs {prev_s}:  {fd(dwow(r))}", fill=col, value_size=24, sub_size=10)
+        x0 = 0.3 + i * (cw + 0.12)
+        card(s, x0, 5.55, cw, 1.35, lab, f0(r["current"]), fill=col, value_size=24)
+        d = dwow(r)
+        rect(s, x0 + 0.1, 5.55 + 1.35 - 0.45, cw - 0.2, 0.34, WHITE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
+        tb(s, x0 + 0.1, 5.55 + 1.35 - 0.45, cw - 0.2, 0.34, [[(f"vs {prev_s}  ", {"size": 9, "color": SLATE}), (f"{fd(d)} MDH", {"size": 11, "bold": True, "color": delta_color(d)})]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
     # ------------------------------------------------------------------ 1b. Agenda
     s = D.slide("Agenda", f"Weekly review – {asof}")
@@ -432,10 +453,17 @@ def build(data, meta, out):
         tb(s, 3.65, yy + 0.3, 1.6, 0.3, f"{f0(v)}  ·  {v/tot['current']*100:.0f}% of AR", size=9.5, color=SLATE)
     # OCP callout
     ocp = splits.get("AR OCP", 0); nocp = splits.get("AR NON OCP", 0)
-    rect(s, 5.3, 2.75, 7.7, 1.1, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, 5.3, 2.75, 0.08, 1.1, NAVY2)
-    tb(s, 5.55, 2.8, 2.2, 0.9, f"{ocp/(ocp+nocp)*100:.0f}%", size=36, bold=True, color=BLUE, anchor=MSO_ANCHOR.MIDDLE)
-    tb(s, 7.7, 2.85, 5.2, 0.95, [[("of AR is OCP-related", {"size": 15, "bold": True, "color": NAVY})], [(f"OCP {f0(ocp)}  ·  Non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", {"size": 11, "color": SLATE})],
-                                  [((("DSO excl. advances, JESA Group: " + dso_txt("JESA Group") + "  ·  ") if dso_txt("JESA Group") else "") + "Receivables remain almost entirely concentrated with OCP", {"size": 10, "color": SLATE})]], anchor=MSO_ANCHOR.MIDDLE)
+    mw = (7.7 - 0.24) / 3
+    gdso = dso.get("JESA Group", {}); gdso_v = (f"{int(float(gdso['dso_current']))} days" if gdso.get("dso_current") not in (None, "") else "n/a")
+    minis = [("OCP share of AR", f"{ocp/(ocp+nocp)*100:.0f}%", f"OCP {f0(ocp)}  ·  non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", BLUE),
+             ("DSO JESA Group", gdso_v, ("prior month " + str(int(float(gdso["dso_prior_month"]))) + " days") if gdso.get("dso_prior_month") not in (None, "") else "excl. advances, BU meeting report", NAVY),
+             (f"Paid in {month_name[:3]} to {cur_s}", f"{f0(paid_m)} MDH", f"deposited in {month_name[:3]} {f0(dep_m)}  ·  YTD paid {f0(paid_ytd)}", TEAL)]
+    for i, (lab, val, sub, col) in enumerate(minis):
+        x0 = 5.3 + i * (mw + 0.12)
+        rect(s, x0, 2.75, mw, 1.05, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, x0, 2.75, 0.07, 1.05, col)
+        tb(s, x0 + 0.15, 2.8, mw - 0.25, 0.25, lab.upper(), size=8.5, bold=True, color=SLATE)
+        tb(s, x0 + 0.15, 3.02, mw - 0.25, 0.45, val, size=20, bold=True, color=col)
+        tb(s, x0 + 0.15, 3.48, mw - 0.25, 0.3, sub, size=8, color=SLATE)
     # labor vs non-labor
     tb(s, 5.4, 4.0, 7, 0.35, "Labor vs non-labor split", size=14, bold=True, color=NAVY)
     nl_pct = splits.get("Total AR non-labor", 0) / tot["current"] * 100
@@ -462,15 +490,21 @@ def build(data, meta, out):
         items = sorted(((bu, key(arbu[bu][comp])) for bu in arbu if comp in arbu[bu]), key=lambda t: t[1])
         neg = [f"{short(b)} {fd(v)}" for b, v in items if v <= -1][:4]; pos = [f"{short(b)} {fd(v)}" for b, v in reversed(items) if v >= 1][:3]
         return neg, pos
-    lines = []
-    for comp, r in (("Unbilled", unb), ("Unpaid", unp), ("Total AR", tot)):
-        n, p = drivers(comp, dwow)
-        lines.append([(f"{comp} {fd(dwow(r))} WoW: ", {"bold": True, "color": NAVY}), ("decreases " + ", ".join(n) if n else "no decrease", {}), ("; increases " + ", ".join(p) if p else "", {})])
-    for comp, r in (("Unbilled", unb), ("Unpaid", unp), ("Total AR", tot)):
-        n, p = drivers(comp, dms)
-        lines.append([(f"{comp} {fd(dms(r))} vs month start: ", {"bold": True, "color": NAVY}), ("decreases " + ", ".join(n) if n else "no decrease", {}), ("; increases " + ", ".join(p) if p else "", {})])
-    tb(s, 0.4, 3.75, 7.6, 0.3, "What moved", size=13, bold=True, color=NAVY)
-    tb(s, 0.4, 4.05, 7.6, 2.0, lines, size=9.5, color=DARK, line_spacing=1.15)
+    tb(s, 0.4, 3.55, 7.6, 0.3, "What moved by business unit (MMAD) – green = AR down, red = AR up, darker = larger move", size=11, bold=True, color=NAVY)
+    mv_bus = sorted([b for b in arbu if "Total AR" in arbu[b] and (arbu[b]["Total AR"]["current"] or 0) >= 20], key=lambda b: -abs(dwow(arbu[b]["Total AR"])))
+    rows, colors, fills = [], {}, {}
+    for i, b in enumerate(mv_bus):
+        vals = [dwow(arbu[b]["Unbilled"]), dwow(arbu[b]["Unpaid"]), dwow(arbu[b]["Total AR"]), dms(arbu[b]["Unbilled"]), dms(arbu[b]["Unpaid"]), dms(arbu[b]["Total AR"])]
+        rows.append([short(b), f0(arbu[b]["Total AR"]["current"])] + [fd(v) for v in vals])
+        for j, v in enumerate(vals, start=2):
+            f_ = heat_fill(v)
+            if f_ is not None: fills[(i, j)] = f_; colors[(i, j)] = (GREEN if f_ in HEAT_GOOD else RED)
+            else: colors[(i, j)] = GREY
+    rows.append(["Total JESA", f0(tot["current"]), fd(dwow(unb)), fd(dwow(unp)), fd(dwow(tot)), fd(dms(unb)), fd(dms(unp)), fd(dms(tot))])
+    n = len(rows) - 1
+    for j, v in enumerate([dwow(unb), dwow(unp), dwow(tot), dms(unb), dms(unp), dms(tot)], start=2): colors[(n, j)] = delta_color(v)
+    table(s, 0.4, 3.85, 7.6, ["Business Unit", f"Total AR\n{cur_s}", "Unbilled\nΔ WoW", "Unpaid\nΔ WoW", "Total AR\nΔ WoW", "Unbilled\nΔ vs MS", "Unpaid\nΔ vs MS", "Total AR\nΔ vs MS"], rows,
+          col_w=[1.7, 0.95, 0.85, 0.85, 0.85, 0.85, 0.85, 0.85], font_size=8.5, header_size=8, row_h=0.235, header_h=0.4, fills=fills, colors=colors, total_last=True, first_col_bold=True, zebra=False)
     # aging table
     ag = data["AR_AGING"]
     ag_rows, ag_col = [], {}
@@ -483,13 +517,15 @@ def build(data, meta, out):
     tb(s, 8.3, 1.25, 4.7, 0.3, "AR aging by year of origin", size=13, bold=True, color=NAVY)
     table(s, 8.3, 1.6, 4.7, ["Year", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs\nm. start"], ag_rows, col_w=[1.4, 0.9, 0.9, 0.9, 0.8, 0.9], font_size=9, colors=ag_col, total_last=True, row_h=0.28)
     # chart deltas by component
-    bar_chart(s, 8.2, 3.75, 4.9, 3.3, ["Advance", "Unbilled", "Unpaid", "Total AR"],
-              [("Δ WoW", [dwow(adv), dwow(unb), dwow(unp), dwow(tot)]), ("Δ vs month start", [dms(adv), dms(unb), dms(unp), dms(tot)])],
-              [BLUE, GOLD], gap=80, number_format='+#,##0;−#,##0;0', title="Movement by component (MMAD)", label_size=8)
+    for k, (ttl, fn) in enumerate(((f"Δ vs last week ({prev_s})", dwow), (f"Δ vs month start ({ms_s})", dms))):
+        vals = [fn(adv), fn(unb), fn(unp), fn(tot)]
+        ch = bar_chart(s, 8.2 + k * 2.5, 3.75, 2.4, 3.1, ["Advance", "Unbilled", "Unpaid", "Total AR"], [(ttl, vals)], [BLUE], legend=False, gap=45, number_format='+#,##0;−#,##0;0', title=ttl, label_size=8, cat_size=7.5)
+        color_points(ch, 0, [delta_color(v) if abs(v) >= 0.5 else GREY for v in vals])
+    tb(s, 8.2, 6.85, 4.9, 0.25, "Movement by component (MMAD): green = AR decreased, red = AR increased", size=8, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
     # ------------------------------------------------------------------ 5. AR by BU
     s = D.slide("AR Position by Business Unit", f"This week vs last week and vs the month-start baseline ({ms_s}), MMAD; DSO excl. advances in days (BU meeting report)")
-    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", "DSO\n(days)"]
+    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", f"Paid\n{month_name[:3]}", "DSO\n(days)"]
     rows, colors = [], {}
     bus = [b for b in BU_ORDER if b in arbu]
     sums = {k: 0.0 for k in ("ms", "pw", "cu", "ub", "ubp", "up", "upp", "ad", "un")}
@@ -497,15 +533,15 @@ def build(data, meta, out):
         t_, u_, p_, a_ = arbu[b]["Total AR"], arbu[b]["Unbilled"], arbu[b]["Unpaid"], arbu[b]["Advance"]
         un = (arbu[b].get("Unrecognized") or {}).get("current") or 0
         dr = dso.get(b, {}); dsv = (str(int(float(dr["dso_current"]))) if dr.get("dso_current") not in (None, "") else "–")
-        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un), dsv])
+        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un), f0(cget(b, "month_current")), dsv])
         colors[(i, 4)] = delta_color(dwow(t_)); colors[(i, 5)] = delta_color(dms(t_)); colors[(i, 7)] = delta_color(dwow(u_)); colors[(i, 9)] = delta_color(dwow(p_))
         sums["ms"] += t_["month_start"] or 0; sums["pw"] += t_["prev_week"] or 0; sums["cu"] += t_["current"] or 0; sums["ub"] += u_["current"] or 0; sums["ubp"] += u_["prev_week"] or 0
         sums["up"] += p_["current"] or 0; sums["upp"] += p_["prev_week"] or 0; sums["ad"] += a_["current"] or 0; sums["un"] += un
     gd = dso.get("JESA Group", {}); gdv = (str(int(float(gd["dso_current"]))) if gd.get("dso_current") not in (None, "") else "–")
-    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"]), gdv])
+    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"]), f0(paid_m), gdv])
     n = len(rows) - 1
     colors[(n, 4)] = delta_color(sums["cu"] - sums["pw"]); colors[(n, 5)] = delta_color(sums["cu"] - sums["ms"]); colors[(n, 7)] = delta_color(sums["ub"] - sums["ubp"]); colors[(n, 9)] = delta_color(sums["up"] - sums["upp"])
-    table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.6, 0.95, 0.95, 0.95, 0.8, 0.9, 0.9, 0.8, 0.85, 0.8, 0.8, 0.9, 0.95, 0.7], font_size=9, header_size=8.5, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
+    table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.55, 0.9, 0.9, 0.9, 0.75, 0.85, 0.85, 0.75, 0.8, 0.75, 0.75, 0.85, 0.9, 0.7, 0.65], font_size=8.5, header_size=8, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
     yb = 1.25 + 0.5 + 0.265 * len(rows) + 0.2
     hb = SH - 0.45 - yb
     bar_chart(s, 0.3, yb, 6.3, hb, [short(b) for b in bus[:9]], [("Δ WoW", [dwow(arbu[b]["Total AR"]) for b in bus[:9]])], [BLUE], legend=False, number_format='+#,##0;−#,##0;0', title="Total AR – Δ week on week by BU (MMAD)", cat_size=8, gap=50)
@@ -550,7 +586,9 @@ def build(data, meta, out):
     n_unb = sum(nv(b, "Unbilled", "current") for b in no); n_unp = sum(nv(b, "Unpaid", "current") for b in no)
     n_unb_ms = sum(nv(b, "Unbilled", "month_start") for b in no); n_unp_ms = sum(nv(b, "Unpaid", "month_start") for b in no)
     s = D.slide("Non-OCP Clients – unbilled & unpaid", f"Non-OCP receivables of {f0(n_unb + n_unp)} MMAD ({(n_unb+n_unp)/tot['current']*100:.1f}% of AR): unbilled {f0(n_unb)}, unpaid {f0(n_unp)}; {fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))} vs month start")
-    cw = (SW - 0.6 - 0.12 * 3) / 4
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.2, cw, 1.1, f"Non-OCP paid in {month_name[:3]} to {cur_s}", nonocp_m, delta_wow=round(nonocp_m) - round(nonocp_m_pw), good_when_negative=False, value_size=20)
+    tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.2 + 1.1 - 0.32, cw - 0.3, 0.26, f"{prior_name[:3]} {f0(nonocp_prior)}  ·  YTD {f0(nonocp_ytd)}", size=8.5, color=SLATE, align=PP_ALIGN.RIGHT)
     kpi_card(s, 0.3, 1.2, cw, 1.1, "Non-OCP AR (unbilled + unpaid)", n_unb + n_unp, delta_ms=round(n_unb + n_unp) - round(n_unb_ms + n_unp_ms), value_size=20, ms_label="vs month start")
     kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.1, "Non-OCP unbilled", n_unb, delta_ms=round(n_unb) - round(n_unb_ms), value_size=20, ms_label="vs month start")
     kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.2, cw, 1.1, "Non-OCP unpaid", n_unp, delta_ms=round(n_unp) - round(n_unp_ms), value_size=20, ms_label="vs month start")
@@ -562,9 +600,9 @@ def build(data, meta, out):
     for i, b in enumerate(nb):
         ub_, up_ = nv(b, "Unbilled", "current"), nv(b, "Unpaid", "current"); tot_ = ub_ + up_
         d_ = round(tot_) - round(nv(b, "Unbilled", "month_start") + nv(b, "Unpaid", "month_start"))
-        rows.append([short(b), f0(ub_), f0(up_), f0(tot_), f"{tot_/(n_unb+n_unp)*100:.0f}%", fd(d_)]); colors[(i, 5)] = delta_color(d_)
-    rows.append(["Total non-OCP", f0(n_unb), f0(n_unp), f0(n_unb + n_unp), "100%", fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))])
-    table(s, 0.4, 2.75, 5.6, ["BU", "Unbilled", "Unpaid", "Total", "%", "Δ vs MS"], rows, col_w=[1.7, 0.8, 0.8, 0.8, 0.6, 0.8], font_size=9, header_size=8.5, row_h=0.3, header_h=0.32, colors=colors, total_last=True)
+        rows.append([short(b), f0(ub_), f0(up_), f0(tot_), f"{tot_/(n_unb+n_unp)*100:.0f}%", fd(d_), f0(cget(b, "nonocp_month_current"))]); colors[(i, 5)] = delta_color(d_)
+    rows.append(["Total non-OCP", f0(n_unb), f0(n_unp), f0(n_unb + n_unp), "100%", fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms)), f0(nonocp_m)])
+    table(s, 0.4, 2.75, 5.6, ["BU", "Unbilled", "Unpaid", "Total", "%", "Δ vs MS", f"Paid {month_name[:3]}"], rows, col_w=[1.55, 0.75, 0.75, 0.75, 0.55, 0.75, 0.75], font_size=9, header_size=8.5, row_h=0.3, header_h=0.32, colors=colors, total_last=True)
     tb(s, 0.4, 2.75 + 0.32 + 0.3 * len(rows) + 0.15, 5.6, 1.0, [[(f"Non-OCP clients carry {f0(n_unb + n_unp)} MMAD, of which Global Mining (Ma'aden) accounts for {nv('Global Mining', 'Unbilled', 'current') + nv('Global Mining', 'Unpaid', 'current'):,.0f} MMAD. Statuses: C-* pending with the client, J-* pending with JESA.", {})]], size=9, color=DARK, line_spacing=1.1)
     npr = data.get("NONOCP_PROJECTS", [])[:14]
     tb(s, 6.3, 2.45, 6.8, 0.3, "Projects driving non-OCP receivables (MMAD)", size=12, bold=True, color=NAVY)
@@ -652,20 +690,21 @@ def build(data, meta, out):
     cb = data["COLLECTIONS_BU"]; cm = data["COLLECTIONS_MONTHLY"]
     oct_cur = sum(r["month_current"] or 0 for r in cb); oct_pw = sum(r["month_prev_week"] or 0 for r in cb); prior = sum(r["prior_month"] or 0 for r in cb)
     ytd = sum(r["ytd_current"] or 0 for r in cb); ytd_pw = sum(r["ytd_prev_week"] or 0 for r in cb); ninv = sum(int(r["invoices_ytd"] or 0) for r in cb)
-    month_name = datef(meta["as_of_date"], "%B"); prior_name = (dt.date.fromisoformat(str(meta["as_of_date"])[:10]).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
     dep = sum((r.get("deposited_month") or 0) for r in cb)
     s = D.slide("Payments Received (Collections)", f"{f0(oct_cur)} MMAD of invoices paid in {month_name} to {cur_s} ({fd(oct_cur-oct_pw)} vs {prev_s}); {ytd/1000:,.2f} Bn MAD year to date")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
+    cw = (SW - 0.6 - 0.12 * 5) / 6
+    kpi_card(s, 0.3 + 5 * (cw + 0.12), 1.25, cw, 1.15, f"Non-OCP paid in {month_name[:3]}", nonocp_m, value_size=20)
+    tb(s, 0.3 + 5 * (cw + 0.12) + 0.15, 2.08, cw - 0.3, 0.26, [[("WoW ", {"color": SLATE, "size": 8.5}), (fd(round(nonocp_m) - round(nonocp_m_pw)), {"bold": True, "size": 9.5, "color": delta_color(round(nonocp_m) - round(nonocp_m_pw), False)}), (f"  ·  YTD {f0(nonocp_ytd)}", {"color": SLATE, "size": 8.5})]], size=8.5)
     kpi_card(s, 0.3, 1.25, cw, 1.15, f"{month_name} to date", oct_cur, delta_wow=oct_cur - oct_pw, good_when_negative=False)
     kpi_card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{prior_name} (full month)", prior)
     kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, "YTD received", ytd, delta_wow=ytd - ytd_pw, good_when_negative=False)
     lab_ytd = sum(r["labor"] or 0 for r in cm); nl_ytd = sum(r["non_labor"] or 0 for r in cm)
     kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Labor / non-labor YTD", None, value_size=18)
     tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.55, cw - 0.2, 0.8, [[(f"{f0(lab_ytd)} ", {"bold": True, "color": BLUE, "size": 16}), (f"· {lab_ytd/(lab_ytd+nl_ytd)*100:.0f}% labor", {"size": 9, "color": SLATE})], [(f"{f0(nl_ytd)} ", {"bold": True, "color": ORANGE, "size": 16}), (f"· {nl_ytd/(lab_ytd+nl_ytd)*100:.0f}% non-labor", {"size": 9, "color": SLATE})]], size=10)
-    kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, f"Invoices deposited in {month_name[:3]}", dep)
+    kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, f"Deposited in {month_name[:3]}", dep)
     tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 2.08, cw - 0.2, 0.26, f"{ninv:,} invoices paid YTD", size=8.5, color=SLATE)
     months = [r for r in cm if (r["labor"] or 0) + (r["non_labor"] or 0) > 0]
-    tb(s, 0.4, 2.6, 7, 0.3, f"Monthly payments received 2026 (MMAD, amount invoiced by payment date) – {month_name} in progress", size=12.5, bold=True, color=NAVY)
+    tb(s, 0.4, 2.6, 7, 0.3, f"Monthly payments received 2026 (MMAD, by payment date) – {month_name} in progress", size=12.5, bold=True, color=NAVY)
     ch = bar_chart(s, 0.3, 2.9, 7.3, 4.2, [r["month"] for r in months], [("Labor (PSR)", [r["labor"] for r in months]), ("Non-labor (procurement)", [r["non_labor"] for r in months])], [BLUE, ORANGE], stacked=True, gap=45, label_size=7.5, label_colors=[WHITE, DARK])
     hide_small_labels(ch, [[r["labor"] for r in months], [r["non_labor"] for r in months]], 45)
     tb(s, 7.85, 2.6, 5.2, 0.3, "By business unit (MMAD)", size=13, bold=True, color=NAVY)
@@ -673,9 +712,9 @@ def build(data, meta, out):
     cbs = sorted(cb, key=lambda r: -(r["ytd_current"] or 0))
     for i, r in enumerate(cbs):
         d1 = (r["month_current"] or 0) - (r["month_prev_week"] or 0)
-        rows.append([short(r["bu"]), f0(r["month_prev_week"]), f0(r["month_current"]), fd(d1), f0(r["prior_month"]), f0(r["ytd_current"]), f"{(r['ytd_current'] or 0)/ytd*100:.0f}%"]); colors[(i, 3)] = delta_color(d1, False)
-    rows.append(["Total", f0(oct_pw), f0(oct_cur), fd(oct_cur - oct_pw), f0(prior), f0(ytd), "100%"])
-    table(s, 7.85, 2.9, 5.2, ["BU", f"{month_name[:3]} to {prev_s}", f"{month_name[:3]} to {cur_s}", "Δ WoW", prior_name[:3], "YTD", "% YTD"], rows, col_w=[1.4, 0.8, 0.8, 0.7, 0.7, 0.8, 0.6], font_size=8.5, header_size=8, colors=colors, total_last=True, row_h=0.26, header_h=0.4)
+        rows.append([short(r["bu"]), f0(r["month_prev_week"]), f0(r["month_current"]), fd(d1), f0(r.get("nonocp_month_current")), f0(r["prior_month"]), f0(r["ytd_current"]), f"{(r['ytd_current'] or 0)/ytd*100:.0f}%"]); colors[(i, 3)] = delta_color(d1, False)
+    rows.append(["Total", f0(oct_pw), f0(oct_cur), fd(oct_cur - oct_pw), f0(nonocp_m), f0(prior), f0(ytd), "100%"])
+    table(s, 7.85, 2.9, 5.2, ["BU", f"{month_name[:3]} to {prev_s}", f"{month_name[:3]} to {cur_s}", "Δ WoW", f"o/w non-\nOCP {month_name[:3]}", prior_name[:3], "YTD", "% YTD"], rows, col_w=[1.3, 0.75, 0.75, 0.6, 0.75, 0.6, 0.7, 0.55], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
 
     # ------------------------------------------------------------------ 9. Cash position – procurement
     cmo = {r["line"]: r for r in data["CASH_MONTHLY"]}
@@ -725,6 +764,36 @@ def build(data, meta, out):
     bar_chart(s, 0.3, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Cash IN", [r["cash_in"] for r in cbu]), ("Cash OUT (incl. commitments)", [-((r["cash_out_suppliers"] or 0) + (r["cash_out_lc"] or 0) + (r["cash_out_customs"] or 0) + (r["oct_approved"] or 0) + (r["oct_pending"] or 0)) for r in cbu])], [TEAL, NAVY2], gap=50, cat_size=7.5, label_size=7, title="Cash IN vs cash OUT by BU (MMAD)")
     bar_chart(s, 6.75, yb, 6.3, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Net after all ongoing", [r["net_all_ongoing"] for r in cbu])], [GOLD], legend=False, gap=50, cat_size=7.5, label_size=7.5, title="Net balance after all ongoing commitments (MMAD)", number_format='+#,##0;−#,##0;0')
     ch = s.shapes[-1].chart; color_points(ch, 0, [GREEN if (r["net_all_ongoing"] or 0) >= 0 else RED for r in cbu])
+
+    # ------------------------------------------------------------------ 10b. PSR (labor) collections
+    pbu = sorted(data.get("CASH_PSR_BU", []), key=lambda r: -(r["cumulative"] or 0))
+    am_p = cmo.get("PSR provision – AM ring-fence"); we_p = cmo.get("PSR provision – W&E reserve"); oh = cmo.get("Overhead payments (FYI, not deducted)")
+    s = D.slide("PSR (Labor) Collections", f"Jul–{month_name[:3]} 2026: PSR collections {f0(psr['cumulative'])} MMAD, provisions {f0(-prov['cumulative'])} (AM ring-fence {f0(-(am_p['cumulative'] if am_p else 0))}, W&E reserve {f0(-(we_p['cumulative'] if we_p else 0))}) → {fd(npsr['cumulative'])} MMAD available")
+    cw = (SW - 0.6 - 0.12 * 4) / 5
+    card(s, 0.3, 1.25, cw, 1.15, "PSR collections Jul–Oct", f0(psr["cumulative"]), "Labor collections per OCP payment report", fill=TEAL, value_size=22)
+    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{month_name} to {meta['collections_to']}", f0(psr["oct_actual"]), f"Sep {f0(psr['sep'])}  ·  Aug {f0(psr['aug'])}  ·  Jul {f0(psr['jul'])}", fill=NAVY2, value_size=22)
+    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, "AM ring-fence", f0(-(am_p["cumulative"] if am_p else 0)), "AM PSR collections cover AM PSR costs", fill=GOLD, value_size=22)
+    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "W&E reserve provision", f0(-(we_p["cumulative"] if we_p else 0)), "100 MDH provision, 33.3 per month Jul–Sep", fill=GOLD, value_size=22)
+    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, "Available after provisions", fd(npsr["cumulative"]), (f"Overheads paid {f0(-oh['cumulative'])} MMAD (FYI, not deducted)" if oh else "Collections less provisions"), fill=(GREEN if npsr["cumulative"] >= 0 else RED), value_size=22)
+    tb(s, 0.4, 2.6, 6.6, 0.3, "PSR collections by business unit (MMAD)", size=13, bold=True, color=NAVY)
+    rows, colors = [], {}
+    for i, r in enumerate(pbu):
+        rows.append([short(r["bu"]), f0(r["jul"]), f0(r["aug"]), f0(r["sep"]), f0(r["oct_actual"]), f0(r["cumulative"]), f"{(r['cumulative'] or 0)/(psr['cumulative'] or 1)*100:.0f}%"])
+    rows.append(["Total PSR collections", f0(psr["jul"]), f0(psr["aug"]), f0(psr["sep"]), f0(psr["oct_actual"]), f0(psr["cumulative"]), "100%"])
+    nt = len(rows) - 1
+    if am_p: rows.append(["AM ring-fence", f0(am_p["jul"]), f0(am_p["aug"]), f0(am_p["sep"]), f0(am_p["oct_actual"]), f0(am_p["cumulative"]), ""])
+    if we_p: rows.append(["W&E reserve provision", f0(we_p["jul"]), f0(we_p["aug"]), f0(we_p["sep"]), f0(we_p["oct_actual"]), f0(we_p["cumulative"]), ""])
+    rows.append(["Available after provisions", fd(npsr["jul"]), fd(npsr["aug"]), fd(npsr["sep"]), fd(npsr["oct_actual"]), fd(npsr["cumulative"]), ""])
+    na = len(rows) - 1
+    for j, k in enumerate(("jul", "aug", "sep", "oct_actual", "cumulative"), start=1): colors[(na, j)] = delta_color(npsr[k], good_when_negative=False)
+    table(s, 0.4, 2.9, 6.6, ["MMAD", "Jul", "Aug", "Sep", f"Oct to {meta['collections_to']}", "Cumul.", "%"], rows, col_w=[2.1, 0.7, 0.7, 0.7, 0.9, 0.8, 0.6], font_size=8.5, header_size=8, bold_rows=(nt, na), fills={nt: LBLUE, na: LIGHT}, row_h=0.255, header_h=0.34, first_col_bold=True)
+    tb(s, 7.3, 2.6, 5.8, 0.3, "Monthly PSR collections vs provisions (MMAD)", size=13, bold=True, color=NAVY)
+    mk = ["jul", "aug", "sep", "oct_actual"]; mc = ["Jul", "Aug", "Sep", f"Oct to date"]
+    bar_chart(s, 7.2, 2.9, 5.9, 2.1, mc, [("PSR collections", [psr[k] for k in mk]), ("Provisions", [prov[k] for k in mk]), ("Available", [npsr[k] for k in mk])], [TEAL, GOLD, NAVY2], gap=60, label_size=8, number_format='#,##0;−#,##0;0', overlap=-10)
+    tb(s, 7.3, 5.05, 5.8, 0.3, f"Cumulative PSR collections by BU, Jul–{month_name[:3]} (MMAD)", size=13, bold=True, color=NAVY)
+    top_p = [r for r in pbu if (r["cumulative"] or 0) > 0.05][:8]
+    ch = bar_chart(s, 7.2, 5.3, 5.9, SH - 0.45 - 5.3, [short(r["bu"]) for r in top_p], [("Cumulative", [r["cumulative"] for r in top_p])], [TEAL], legend=False, horizontal=True, gap=35, cat_size=8, label_size=8)
+    color_points(ch, 0, [GOLD if r["bu"] == "AM" else TEAL for r in top_p])
 
     # ------------------------------------------------------------------ 11. Ongoing payments – October
     s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved (incl. {f0(appr_lc)} LC maturities) and {f0(pend)} MMAD pending approval")
@@ -909,14 +978,16 @@ def build(data, meta, out):
         if ph:
             bar_chart(s, 9.3, 4.65, 3.85, min(2.45, 0.6 + 0.38 * len(ph)), [((str(r["item"])[:19] + "…") if len(str(r["item"])) > 20 else str(r["item"])) for r in ph], [("Unpaid", [r["current"] for r in ph])], [NAVY2], horizontal=True, legend=False, gap=30, cat_size=7.5, label_size=7.5, title="Unpaid by phase (MMAD)")
         # variance table (bottom left)
-        tb(s, 0.4, 5.15, 4.5, 0.3, "Movement (MMAD)", size=12, bold=True, color=NAVY)
+        tb(s, 0.4, 5.02, 4.5, 0.3, "Movement (MMAD)", size=12, bold=True, color=NAVY)
         rows, colors = [], {}
         comps = [("Advance", a_), ("Unbilled", u_), ("Unpaid", p_), ("Total AR", t_)]
         for i, (lab, r) in enumerate(comps):
             rows.append([lab, f0(r["month_start"]), f0(r["prev_week"]), f0(r["current"]), fd(dwow(r)), fd(dms(r))]); colors[(i, 4)] = delta_color(dwow(r)); colors[(i, 5)] = delta_color(dms(r))
         rows.append(["Unrecognized", f0(unr_m) if unr_m is not None else "n/a", f0(unr_p) if unr_p is not None else "n/a", f0(unr_c), fd(round(unr_c) - round(unr_p)) if unr_p is not None else "n/a", fd(round(unr_c) - round(unr_m)) if unr_m is not None else "n/a"])
         colors[(4, 4)] = delta_color((unr_c - unr_p) if unr_p is not None else None); colors[(4, 5)] = delta_color((unr_c - unr_m) if unr_m is not None else None)
-        table(s, 0.4, 5.45, 4.5, ["", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs MS"], rows, col_w=[1.1, 0.75, 0.65, 0.65, 0.65, 0.7], font_size=8, header_size=7.5, row_h=0.235, header_h=0.3, colors=colors, bold_rows=(3,))
+        table(s, 0.4, 5.3, 4.5, ["", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs MS"], rows, col_w=[1.1, 0.75, 0.65, 0.65, 0.65, 0.7], font_size=8, header_size=7.5, row_h=0.235, header_h=0.3, colors=colors, bold_rows=(3,))
+        pm, pmp = cget(b, "month_current"), cget(b, "month_prev_week")
+        tb(s, 0.4, 6.8, 4.5, 0.3, [[("Paid: ", {"bold": True, "color": NAVY}), (f"{month_name[:3]} to {cur_s} {f0(pm)} MMAD (", {}), (fd(round(pm) - round(pmp)), {"bold": True, "color": delta_color(round(pm) - round(pmp), False)}), (f" vs {prev_s}) · {prior_name[:3]} {f0(cget(b, 'prior_month'))} · YTD {f0(cget(b, 'ytd_current'))}" + (f" · non-OCP {month_name[:3]} {f0(cget(b, 'nonocp_month_current'))}" if cget(b, "nonocp_month_current") else ""), {})]], size=8.5, color=DARK)
         # aging buckets (bottom middle)
         agu = {r["item"]: (r["current"] or 0) for r in det.get(b, {}).get("aging_unbilled", [])}; agp = {r["item"]: (r["current"] or 0) for r in det.get(b, {}).get("aging_unpaid", [])}
         bks = ["< 30 days", "31–60 days", "61–90 days", "91–120 days", "> 120 days"]

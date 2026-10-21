@@ -123,13 +123,20 @@ def aggregate(path, as_of, prev_cutoff=None):
             if isinstance(pd, (dt.datetime, dt.date)):
                 pdd = pd.date() if isinstance(pd, dt.datetime) else pd
                 inv = num(g(r, "Amount Invoiced")); lab = "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor"
+                nonp = str(g(r, "Client 1") or "").strip().upper().startswith("NON OCP")
                 if pdd.year == as_of.year:
                     coll_month[(pdd.month, lab)] += inv; coll_bu[(b, "ytd")] += inv; coll_cnt[b] += 1
+                    if nonp: coll_bu[(b, "ytd_nonocp")] += inv
                     if prev_cutoff and pdd <= prev_cutoff: coll_bu[(b, "ytd_prev")] += inv
                     if (pdd.year, pdd.month) == cur_m:
                         coll_bu[(b, "month")] += inv
-                        if prev_cutoff and pdd <= prev_cutoff: coll_bu[(b, "month_prev")] += inv
-                    if (pdd.year, pdd.month) == prior_m: coll_bu[(b, "prior")] += inv
+                        if nonp: coll_bu[(b, "month_nonocp")] += inv
+                        if prev_cutoff and pdd <= prev_cutoff:
+                            coll_bu[(b, "month_prev")] += inv
+                            if nonp: coll_bu[(b, "month_prev_nonocp")] += inv
+                    if (pdd.year, pdd.month) == prior_m:
+                        coll_bu[(b, "prior")] += inv
+                        if nonp: coll_bu[(b, "prior_nonocp")] += inv
             rd = g(r, "Reception date")
             if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt
             continue
