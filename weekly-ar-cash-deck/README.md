@@ -17,15 +17,22 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
      `Priority list …`, `LC Ongoing …`).
    * **Bank LC situation** – `LCs SITUATION - <date>.xlsx` (sheet `LC avec echéance`).
    * **Supplier invoices** – `Supplier Invoices - <month> W<n>.xlsx` (sheet `4411 - Parked - Downpayment`).
+   * **UR Tracking Consolidation** – unrecognized revenue (`Summary UR`, `Sheet1` previous BU update, `Summary PO by BU`).
+   * **Beginning-of-month AR file** – the raw AR line list saved at the start of the month (`AR_Beg_of_the_month.xlsx`,
+     sheet `AR`). Same file all month; it is the "vs month start" baseline.
 2. Extract the inputs (dates are the only things to type):
    ```bash
    python3 extract_inputs.py \
      --ar AR_PRE.xlsx --cash "CASH_FLOW_ANALYSIS - BUs October W3.xlsx" \
      --lc "LCs SITUATION - October 19th.xlsx" --ap "Supplier Invoices - Oct W3.xlsx" \
+     --ur "UR Tracking Consolidation.xlsx" \
+     --ar-baseline "AR_Beg_of_the_month.xlsx" --ar-baseline-date 2026-10-07 \
      --as-of 2026-10-21 --ar-date 2026-10-14 --ar-prev-date 2026-10-07 \
      --collections-to 19/10 --payments-to 15/10 --lc-date 19/10 --ap-label "Oct W3" \
      --out inputs/weekly_inputs.xlsx
    ```
+   Without `--ar-baseline` the month-start columns fall back to the dashboard's own *AR Baseline* tab; without `--ur`
+   the unrecognized revenue comes from the dashboard.
 3. Open `inputs/weekly_inputs.xlsx` and review. Everything on the slides comes from this workbook:
    * `KEY_MESSAGES` – five auto-drafted messages; rewrite the wording freely.
    * `COLLECTIONS_MONTHLY` – labor / non-labor split per month (the current month total is refreshed from the AR
@@ -61,8 +68,11 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 ## Comparatives
 
 * **Week on week** = AR dashboard *Snapshot* tab (previous week) vs current.
-* **vs month start** = AR dashboard *AR Baseline* tab vs current. The baseline date is read from the dashboard and printed
-  on the slides; re-save the baseline on the first working day of each month so the column is a true month-to-date comparison.
+* **vs month start** = beginning-of-month AR line list aggregated with the dashboard rules (unbilled excludes
+  `J-6-a Unearned on LS`; advance excludes `J-6-*` and `C-3-a` lines; at risk = `C-1-a/b`, SS postponed = `J-3-c`,
+  under JESA = other `J-*`, under OCP = `C-*` and PDR). The aggregation reproduces the dashboard snapshot to within 2 MMAD.
+* **Unrecognized revenue WoW** = `Summary UR` grand total (incl. markup) vs the "Previous BU Update" block including
+  markup 6% in `Sheet1` of the UR consolidation.
 
 ## Conventions
 

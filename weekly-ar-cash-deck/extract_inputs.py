@@ -329,6 +329,122 @@ def extract_ap(path, as_of):
             "buckets": {f"{k[0]}|{k[1]}": v for k, v in buckets.items()},
             "tiers": dict(tiers), "top_suppliers": [[s, v, sup_bu[s]] for s, v in top], "n_lines": len(data)}
 
+
+# ----------------------------------------------------------------------------- AR baseline (raw AR line list, e.g. beginning of month)
+def s2_code(label):
+    """'C-5-a Signed by …' / 'C-5.a Signed by …' -> 'c-5.a'; 'PDR' -> 'pdr'."""
+    l = str(label or "").strip()
+    if len(l) >= 5 and l[1] == "-" and l[3] in "-.": return (l[:3] + "." + l[4]).lower()
+    return l.lower()[:12]
+
+def extract_ar_baseline(path):
+    """Aggregate a raw AR line list with the AR dashboard rules (MMAD).
+    Rules reproduce the dashboard snapshot: unbilled excludes 'J-6-a Unearned on LS'; advance excludes J-6-* and C-3-a lines;
+    at risk = C-1-a/C-1-b; SS postponed = J-3-c; under JESA = other J-* codes; under OCP = C-* codes and PDR."""
+    import warnings; warnings.filterwarnings("ignore")
+    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    ws = wb["AR"] if "AR" in wb.sheetnames else wb.worksheets[0]
+    it = ws.iter_rows(values_only=True); hdr = [str(h).strip() if h else "" for h in next(it)]
+    I = {h: i for i, h in enumerate(hdr)}
+    def g(r, name): return r[I[name]] if name in I else None
+    kpi = collections.defaultdict(float); bu = collections.defaultdict(float); owner = collections.defaultdict(float)
+    st2 = collections.defaultdict(float); unp = collections.defaultdict(float); aging = collections.defaultdict(float); labor = collections.defaultdict(float)
+    for r in it:
+        if not any(v is not None for v in r): continue
+        s1 = str(g(r, "Status 1") or "").strip().lower()
+        comp = "Advance" if s1.startswith("advance") else ("Unbilled" if s1.startswith("unbilled") else ("Unpaid" if s1.startswith("unpaid") else None))
+        if comp is None: continue
+        code = s2_code(g(r, "Status 2")); amt = num(g(r, "Total Amount HT"), 1e6)
+        if comp == "Unbilled" and code == "j-6.a": continue
+        if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue
+        b = canon_bu(g(r, "Business Unit")) or str(g(r, "Business Unit"))
+        kpi[comp] += amt; bu[(b, comp)] += amt
+        y = str(g(r, "Year") or "").strip(); aging[y if y[:2] == "20" else "No year (advance lines)"] += amt
+        labor[(comp, "PSR" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "PROC")] += amt
+        if comp == "Unbilled":
+            cat = "At risk" if code in ("c-1.a", "c-1.b") else ("SS postponed" if code == "j-3.c" else ("Under JESA" if code.startswith("j-") else "Under OCP"))
+            owner[(b, cat)] += amt; st2[code] += amt
+        if comp == "Unpaid":
+            c = str(g(r, "OCP Comments") or "").strip().lower()
+            lab = ("Autres / NON-OCP" if "hors ocp" in c else "OCP SUB" if "ocp sub" in c else "En ordonnancement" if c.startswith("en ordonnancement") else "Transmise tréso" if c.startswith("transmise") else
+                   "Manque réception" if c.startswith("manque") else "Rejetée" if c.startswith("rejet") else "Autres / NON-OCP")
+            unp[lab] += amt
+    kpi["Total AR"] = kpi["Advance"] + kpi["Unbilled"] + kpi["Unpaid"]
+    return {"kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status2": dict(st2), "unpaid": dict(unp), "aging": dict(aging), "labor": dict(labor)}
+
+def apply_baseline(ar, base):
+    """Overwrite the month_start columns of the dashboard extract with the baseline aggregation."""
+    kmap = {"Advance Payment": "Advance", "Unbilled": "Unbilled", "Unpaid": "Unpaid", "Total AR": "Total AR"}
+    for m in ar["kpi"]:
+        if m[0] in kmap: m[1] = base["kpi"].get(kmap[m[0]], 0.0)
+    for r in ar["ar_bu"]:
+        r[2] = base["kpi"].get("x", 0.0) if False else (sum(v for (b, c), v in base["bu"].items() if b == r[0]) if r[1] == "Total AR" else base["bu"].get((r[0], r[1]), 0.0))
+    for r in ar["unbilled_owner"]: r[2] = base["owner"].get((r[0], r[1]), 0.0)
+    seen = set()
+    for r in ar["unbilled_status"]:
+        code = s2_code(r[1])
+        if r[0] == "Other": continue
+        r[2] = base["status2"].get(code, 0.0); seen.add(code)
+    resid = sum(v for c, v in base["status2"].items() if c not in seen)
+    for r in ar["unbilled_status"]:
+        if r[0] == "Other": r[2] = resid
+    for r in ar["unpaid_status"]: r[1] = base["unpaid"].get(r[0], 0.0)
+    for r in ar["aging"]: r[1] = base["aging"].get(r[0], 0.0)
+    return ar
+
+# ----------------------------------------------------------------------------- Unrecognized revenue tracking (UR consolidation)
+def extract_ur(path):
+    out = {}
+    su = load(path, "Summary UR")
+    i = find_row(su, "Business Unit", col=0) + 1; rows = []; att = []
+    while su[i][0] and str(su[i][0]).strip().lower() != "total":
+        r = su[i]; b = canon_bu(r[0])
+        if b:
+            rows.append([b] + [num(r[c], 1e6) for c in range(1, 14)])
+            att.append([b] + [num(r[c], 1e6) for c in range(16, 27)])
+        i += 1
+    out["table"] = rows; out["attachment"] = att
+    prev = {}
+    try:
+        s1 = load(path, "Sheet1")
+        hdr_i = find_row(s1, "Business Unit", col=1)
+        # right block (including markup 6%) starts at the second 'Business Unit' header in the same row
+        cols = [c for c, v in enumerate(s1[hdr_i]) if v and str(v).strip().lower() == "business unit"]
+        bc = cols[-1]
+        i = hdr_i + 1
+        while s1[i][bc] and str(s1[i][bc]).strip().lower() != "total":
+            b = canon_bu(s1[i][bc])
+            if b: prev[b] = num(s1[i][bc + 1], 1e6)
+            i += 1
+    except Exception as e:
+        print("WARN UR previous update:", e)
+    out["prev"] = prev
+    po = []
+    try:
+        sp = load(path, "Summary PO by BU"); i = find_row(sp, "Business Unit", col=0) + 1
+        while sp[i][0] and str(sp[i][0]).strip().lower() != "total":
+            b = canon_bu(sp[i][0])
+            if b: po.append([b] + [num(sp[i][c], 1e6) for c in range(1, 5)])
+            i += 1
+    except Exception as e:
+        print("WARN UR PO summary:", e)
+    out["po"] = po
+    return out
+
+def apply_ur(ar, ur):
+    cur = {r[0]: r[13] for r in ur["table"]}; tot_cur = sum(cur.values()); tot_prev = sum(ur["prev"].values()) if ur["prev"] else None
+    ar["unrecognized_table"] = [r for r in ur["table"]]
+    ar["unrecognized_bu"] = cur
+    tot_ar = {m[0]: m for m in ar["kpi"]}["Total AR"]
+    for m in ar["kpi"]:
+        if m[0].startswith("Unrecognized") or m[0].startswith("Attachments"):
+            m[3] = tot_cur
+            if tot_prev is not None: m[2] = tot_prev
+        if m[0].startswith("Total NEW AR"):
+            m[3] = tot_ar[3] + tot_cur
+            if tot_prev is not None: m[2] = tot_ar[2] + tot_prev
+    return ar
+
 # ----------------------------------------------------------------------------- Write workbook
 HDR_FILL = PatternFill("solid", fgColor="1B2F4B"); HDR_FONT = Font(bold=True, color="FFFFFF", name="Arial", size=10)
 NOTE_FONT = Font(italic=True, color="7A8794", name="Arial", size=9)
@@ -362,14 +478,14 @@ def default_messages(ar, cash, lc, ap, meta):
     ap_tot = sum(v for v in ap["by_bu_origin"].values())
     ap_over = sum(v for kk, v in ap["buckets"].items() if kk.endswith("|Overdue"))
     coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll)
-    ms_lab = meta["ar_month_start_date"].strftime("%d %b") if meta.get("ar_month_start_date") else "month start"
+    ms_lab = ("month-start (" + meta["ar_month_start_date"].strftime("%d %b") + ")") if meta.get("ar_month_start_date") else "month-start"
     return [
         ["Total AR " + ("down" if tot[3] < tot[2] else "up") + f" {abs(tot[3]-tot[2]):,.0f} MMAD vs last week and " + ("down" if tot[3] < tot[1] else "up") + f" {abs(tot[3]-tot[1]):,.0f} MMAD vs the {ms_lab} baseline",
-         f"Total AR stands at {tot[3]:,.0f} MMAD ({d(tot[3]-tot[2])} WoW, {d(tot[3]-tot[1])} vs baseline). Adding {unrec[3]:,.0f} MMAD of unrecognized revenue, gross exposure is {new[3]:,.0f} MMAD. "
+         f"Total AR stands at {tot[3]:,.0f} MMAD ({d(tot[3]-tot[2])} WoW, {d(tot[3]-tot[1])} vs month start). Adding {unrec[3]:,.0f} MMAD of unrecognized revenue ({d(unrec[3]-unrec[2])} vs the previous BU update), gross exposure is {new[3]:,.0f} MMAD. "
          f"Unbilled is {unb[3]:,.0f} MMAD ({pct_unb:.0f}% of AR, {d(unb[3]-unb[2])} WoW); unpaid is {unp[3]:,.0f} MMAD ({d(unp[3]-unp[2])} WoW, {d(unp[3]-unp[1])} vs baseline)."],
         [f"Collections: {oct_cur:,.0f} MMAD received in October to date ({d(oct_cur-oct_pw)} WoW), {ytd:,.0f} MMAD YTD",
          f"October receipts moved from {oct_pw:,.0f} to {oct_cur:,.0f} MMAD this week. YTD payments received reach {ytd:,.0f} MMAD ({ytd/1000:,.2f} Bn MAD)."],
-        [f"Procurement cash position: net {net[6]:+,.0f} MMAD Jul–Oct including October commitments",
+        [f"Procurement cash position: net {d(net[6])} MMAD Jul–Oct including October commitments",
          f"Cumulative procurement cash IN of {cin[6]:,.0f} MMAD vs cash OUT of {abs(cout[6]):,.0f} MMAD (Jul–Sep actuals, Oct actuals to {meta['payments_to']}, plus {abs(cout[5]):,.0f} MMAD of approved and pending October commitments). "
          f"October alone: {cin[4]:,.0f} MMAD in vs {abs(cout[4]):,.0f} MMAD paid, {abs(cout[5]):,.0f} MMAD still to pay."],
         [f"Payables: {ap_tot:,.0f} MMAD of supplier invoices in AP (4411 + parked + downpayments), {ap_over:,.0f} MMAD past due",
@@ -385,6 +501,9 @@ def main():
     ap_.add_argument("--as-of", required=True, help="deck date YYYY-MM-DD")
     ap_.add_argument("--ar-date", required=True, help="AR dashboard snapshot date YYYY-MM-DD")
     ap_.add_argument("--ar-prev-date", default=None, help="previous AR snapshot date (default: dashboard 'Previous baseline saved' - 1 day)")
+    ap_.add_argument("--ar-baseline", default=None, help="raw AR line list used as month-start baseline (e.g. AR_Beg_of_the_month.xlsx)")
+    ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
+    ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
     ap_.add_argument("--collections-to", default=None); ap_.add_argument("--payments-to", default=None); ap_.add_argument("--lc-date", default=None)
     ap_.add_argument("--ap-label", default=None); ap_.add_argument("--week-label", default=None)
     ap_.add_argument("--monthly-seed", default=None, help="JSON file with monthly collections seed {month:[labor,nonlabor]}")
@@ -393,6 +512,14 @@ def main():
 
     as_of = dt.date.fromisoformat(a.as_of); ar_date = dt.date.fromisoformat(a.ar_date)
     ar = extract_ar(a.ar); cash = extract_cash(a.cash); lc = extract_lc(a.lc); ap = extract_ap(a.ap, as_of)
+    ur = None
+    if a.ar_baseline:
+        base = extract_ar_baseline(a.ar_baseline); ar = apply_baseline(ar, base)
+        print("baseline totals (MMAD):", {k: round(v, 1) for k, v in base["kpi"].items()})
+        if a.ar_baseline_date: ar["month_start_date"] = dt.date.fromisoformat(a.ar_baseline_date)
+    if a.ur:
+        ur = extract_ur(a.ur); ar = apply_ur(ar, ur)
+        print("unrecognized (MMAD): current", round(sum(r[13] for r in ur["table"]), 1), "previous", round(sum(ur["prev"].values()), 1))
     prev_date = dt.date.fromisoformat(a.ar_prev_date) if a.ar_prev_date else (ar["prev_baseline_date"] - dt.timedelta(days=1) if ar["prev_baseline_date"] else None)
     meta = {
         "as_of_date": as_of, "week_label": a.week_label or f"Week {as_of.isocalendar()[1]}",
@@ -428,8 +555,15 @@ def main():
     write_sheet(wb, "AR_AGING", ["year", "month_start", "prev_week", "current"], ar["aging"], note="Total AR by year of origin.", widths=[24])
     write_sheet(wb, "UNRECOGNIZED", ["bu", "eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk",
                                      "sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk",
-                                     "total_suppliers", "lines_to_adjust", "grand_total"], ar["unrecognized_table"],
-                note="Unrecognized suppliers (equipment + subcontracts) by status, MMAD, current week.", widths=[28] + [14] * 13)
+                                     "total_suppliers", "lines_to_adjust", "grand_total", "prev_week_total"],
+                [r[:14] + [(ur["prev"].get(r[0]) if ur else None)] for r in ar["unrecognized_table"]],
+                note="Unrecognized suppliers (equipment + subcontracts) by status, MMAD incl. markup, current week; prev_week_total = previous BU update (incl. markup).", widths=[28] + [14] * 14)
+    if ur:
+        write_sheet(wb, "UR_ATTACHMENT_STATUS", ["bu", "eq_under_jesa_approval", "eq_under_jesa_preparation", "eq_under_client_approval", "eq_signed_by_client", "eq_accrual_posted",
+                                                 "sub_under_jesa_approval", "sub_under_jesa_preparation", "sub_under_client_approval", "sub_signed_by_client", "sub_accrual_posted", "total"],
+                    ur["attachment"], note="Status of JESA attachments to client (UR consolidation, MMAD incl. markup).", widths=[28] + [14] * 11)
+        write_sheet(wb, "UR_PO_SUMMARY", ["bu", "contract_value", "recognized", "unrecognized", "remaining"], ur["po"],
+                    note="Supplier PO consolidation by BU (MMAD): contract value, recognized (SAP GR), unrecognized, remaining.", widths=[28, 16, 16, 16, 16])
     write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd"],
                 sorted(ar["collections_bu"], key=lambda r: -r[5]), note="Payments received (collections) by BU: current month to date vs last week, prior full month, YTD.", widths=[28])
     # monthly collections series (seed + current month override)
