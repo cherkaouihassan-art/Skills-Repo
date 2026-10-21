@@ -610,29 +610,43 @@ def build(data, meta, out):
 
     # ------------------------------------------------------------------ 7. Unrecognized revenue & suppliers
     ut = data["UNRECOGNIZED"]
-    s = D.slide("Unrecognized Revenue & Suppliers", f"Unrecognized revenue of {f0(unrec['current'])} MMAD incl. markup ({fd(dwow(unrec))} vs last week): executed scope not yet booked as AR")
-    sup_tot = sum((r["total_suppliers"] or 0) for r in ut); adj = sum((r["lines_to_adjust"] or 0) for r in ut)
-    card(s, 0.4, 1.3, 6.0, 1.15, "Unrecognized revenue (incl. JESA cost + fee)", f"{f0(unrec['current'])} MMAD", f"Supplier scope {f0(sup_tot)} + lines to be adjusted {f0(adj)}  ·  last week {f0(unrec['prev_week'])}", fill=BLUE, value_size=24)
-    po = {r["bu"]: r for r in data.get("UR_PO_SUMMARY", [])}
-    cv = sum((r["contract_value"] or 0) for r in po.values()); rec = sum((r["recognized"] or 0) for r in po.values()); rem = sum((r["remaining"] or 0) for r in po.values())
-    card(s, 6.75, 1.3, 6.25, 1.15, "Supplier PO book", f"{f0(cv)} MMAD contract value", f"Recognized (SAP GR) {f0(rec)}  ·  unrecognized {f0(sum((r['unrecognized'] or 0) for r in po.values()))}  ·  remaining to execute {f0(rem)}", fill=NAVY, value_size=22)
-    utb = sorted([r for r in ut if (r["grand_total"] or 0) > 0.05 or (r["prev_week_total"] or 0) > 0.05], key=lambda r: -(r["grand_total"] or 0))
-    tb(s, 0.4, 2.55, 6, 0.3, "By business unit – last week vs this week (MMAD)", size=12.5, bold=True, color=NAVY)
-    bar_chart(s, 0.3, 2.85, 6.2, 4.25, [short(r["bu"]) for r in utb], [(prev_s, [r["prev_week_total"] for r in utb]), (cur_s, [r["grand_total"] for r in utb])], [LBLUE, BLUE], horizontal=True, gap=40, cat_size=9, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM)
-    tb(s, 6.75, 2.55, 6.2, 0.3, "Unrecognized suppliers by status (MMAD)", size=12.5, bold=True, color=NAVY)
-    cats = ["Attachment pending approval", "Signed by client", "Attachment pending submission", "Scope executed under CN", "Scope executed at risk"]
-    eq = [sum((r[k] or 0) for r in ut) for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk")]
-    sb = [sum((r[k] or 0) for r in ut) for k in ("sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk")]
-    ch = bar_chart(s, 6.65, 2.85, 6.4, 2.35, cats, [("Equipment", eq), ("Subcontracts", sb)], [NAVY2, BLUE], stacked=True, gap=50, cat_size=7.5, label_size=8, label_colors=[WHITE, WHITE])
-    hide_small_labels(ch, [eq, sb], 30)
-    tb(s, 6.75, 5.25, 6.2, 0.3, "Supplier PO book by business unit (MMAD)", size=11, bold=True, color=NAVY)
-    pos = sorted([r for r in po.values() if (r["contract_value"] or 0) > 0.05], key=lambda r: -(r["contract_value"] or 0))[:6]
-    rows = [[short(r["bu"]), f0(r["contract_value"]), f0(r["recognized"]), f0(r["unrecognized"]), f0(r["remaining"])] for r in pos]
-    oth = [r for r in po.values() if r not in pos]
-    rows.append(["Other BUs", f0(sum((r["contract_value"] or 0) for r in oth)), f0(sum((r["recognized"] or 0) for r in oth)), f0(sum((r["unrecognized"] or 0) for r in oth)), f0(sum((r["remaining"] or 0) for r in oth))])
-    rows.append(["Total (all BUs)", f0(cv), f0(rec), f0(sum((r["unrecognized"] or 0) for r in po.values())), f0(rem)])
-    table(s, 6.75, 5.45, 6.25, ["BU", "Contract value", "Recognized", "Unrecognized", "Remaining"], rows, col_w=[1.8, 1.2, 1.1, 1.1, 1.05], font_size=7.5, header_size=7.5, row_h=0.18, header_h=0.24, total_last=True)
-
+    MK = 1.06  # JESA cost + fee markup: unrecognized revenue = supplier cost x 1.06 (UR consolidation columns already include it)
+    ur_rev = unrec["current"] or 0; ur_cost = ur_rev / MK
+    ur_prev, ur_ms = unrec.get("prev_week"), unrec.get("month_start")
+    sub_txt = f"Unrecognized revenue of {f0(ur_rev)} MMAD = supplier balance ({f0(ur_cost)}) plus a 6% markup; {fd(dwow(unrec))} vs {prev_s}"
+    if ur_ms is not None: sub_txt += f", {fd(dms(unrec))} vs month start"
+    s = D.slide("Unrecognized Revenue & Suppliers", sub_txt)
+    card(s, 0.4, 1.3, 6.1, 1.15, "Unrecognized revenue", f"{f0(ur_rev)} MMAD", f"= unrecognized supplier cost × {MK} cost-and-fee markup  ·  {prev_s}: {f0(ur_prev)}" + (f"  ·  month start: {f0(ur_ms)}" if ur_ms is not None else ""), fill=BLUE, value_size=24, sub_size=8.5)
+    card(s, 6.85, 1.3, 6.15, 1.15, "Unrecognized suppliers — cost", f"{f0(ur_cost)} MMAD", "Executed but unbooked supplier & equipment scope (HT, excl. DP)", fill=SLATE, value_size=24, sub_size=8.5)
+    # by business unit (revenue incl. markup), one colour per BU
+    BU_COL = {"SP2M Ad Hoc Program": GOLD, "Water & Environment": NAVY2, "Fertilizers & Chemicals": TEAL, "Energy Operations": GREEN, "JESA Technologies": BLUE,
+              "Global Mining": GREY, "Building & Infrastructure": RED, "AM": NAVY, "Advisory": PURPLE, "Building & Capabilities": ORANGE, "Power to X": LBLUE}
+    utb = sorted([r for r in ut if (r["grand_total"] or 0) > 0.05], key=lambda r: -(r["grand_total"] or 0))
+    tb(s, 0.4, 2.6, 6, 0.3, "Unrecognized Revenue by Business Unit", size=13, bold=True, color=NAVY)
+    tb(s, 0.4, 2.88, 6, 0.25, "6% JESA cost + fee markup included (MMAD)" + (f"  ·  Δ vs {prev_s} in brackets" if ur_prev is not None else ""), size=9, color=SLATE)
+    cats = [short(r["bu"]) for r in utb]
+    if ur_prev is not None:
+        cats = [f"{short(r['bu'])}  ({fd(round(r['grand_total'] or 0) - round(r['prev_week_total'] or 0))})" if r.get("prev_week_total") is not None else short(r["bu"]) for r in utb]
+    ch = bar_chart(s, 0.3, 3.15, 6.3, 3.6, cats, [("Unrecognized revenue", [r["grand_total"] for r in utb])], [BLUE], horizontal=True, gap=35, cat_size=8.5, label_size=8.5, legend=False)
+    color_points(ch, 0, [BU_COL.get(r["bu"], BLUE) for r in utb])
+    tb(s, 0.4, 6.78, 6.2, 0.26, "No revenue recognition has been booked on these balances to date.", size=8.5, bold=True, color=RED)
+    # Table 7 - unrecognized suppliers by status, at cost
+    tb(s, 6.85, 2.6, 6.2, 0.3, "Table 7 — Unrecognized Suppliers by Status", size=13, bold=True, color=NAVY)
+    tb(s, 6.85, 2.88, 6.2, 0.25, "Executed but unbooked scope, at cost (MMAD)", size=9, color=SLATE)
+    stat = [("Pend. Submission", "pending_submission"), ("Pend. Approval", "pending_approval"), ("Under CN", "under_cn"), ("At-Risk", "at_risk")]
+    def st_sum(pfx, key):
+        v = sum((r[f"{pfx}_{key}"] or 0) for r in ut)
+        if key == "pending_approval": v += sum((r[f"{pfx}_signed_by_client"] or 0) for r in ut)
+        return v / MK
+    eq = [st_sum("eq", k) for _, k in stat]; sb = [st_sum("sub", k) for _, k in stat]
+    ch = bar_chart(s, 6.75, 3.1, 6.35, 2.05, [n for n, _ in stat], [("Equipment", eq), ("Subcontractors", sb)], [NAVY2, GOLD], stacked=True, horizontal=True, gap=45, cat_size=8.5, label_size=8, label_colors=[WHITE, DARK], legend_pos=XL_LEGEND_POSITION.TOP)
+    hide_small_labels(ch, [eq, sb], 60)
+    rows = [["Pending Approval", "Attachments submitted (PROCORE etc.), under the approval workflow; includes attachments already signed by the client"],
+            ["Pending Submission", "Executed scope not yet submitted for approval; may include potential / impending scope"],
+            ["Under CN", "Executed scope via a Change Notice (or a potential CN)"],
+            ["At-Risk", "Executed scope without any formal contract"]]
+    table(s, 6.85, 5.2, 6.2, ["Status (Table 7)", "Definition"], rows, col_w=[1.5, 4.7], font_size=8.5, header_size=9, row_h=0.33, header_h=0.3, align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT], first_col_bold=True, colors={(i, 0): BLUE for i in range(len(rows))})
+    tb(s, 6.85, 6.78, 6.2, 0.26, "*** Amounts in HT — executed progress, excluding DP amortization. Status split at cost (= revenue ÷ 1.06).", size=8, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 8. Collections (payments received)
     cb = data["COLLECTIONS_BU"]; cm = data["COLLECTIONS_MONTHLY"]

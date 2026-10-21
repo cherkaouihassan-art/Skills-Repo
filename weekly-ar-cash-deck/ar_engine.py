@@ -137,7 +137,7 @@ def aggregate(path, as_of, prev_cutoff=None):
         rd = g(r, "Reception date")
         if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt
         if comp is None: continue
-        if comp == "Unbilled" and code == "j-6.a": continue
+        if comp == "Unbilled" and code in ("j-6.a", "c-3.a"): continue  # dashboard rule: unearned on LS and DP clearing lines are not unbilled AR
         if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue
         kpi[comp] += amt; bu[(b, comp)] += amt
         y = str(g(r, "Year") or "").strip(); year[y if y[:2] == "20" else "No year (advance lines)"] += amt
