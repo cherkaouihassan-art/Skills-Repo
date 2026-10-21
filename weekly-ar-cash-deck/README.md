@@ -13,7 +13,7 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 1. Drop the refreshed files anywhere (names can change, paths are parameters):
    * **Raw AR extract of the week** – `AR_PRE_Week_<n>.xlsx`, single sheet `AR` (one line per invoice / unbilled line).
      `ar_engine.py` aggregates it with the dashboard rules; the totals reproduce the BU meeting Power BI report exactly
-     (e.g. week 3: total 12,395.1 MMAD, unbilled 9,477.5, unpaid 2,369.6, advance 548.0).
+     (e.g. week 3: total 12,396.7 MMAD, unbilled 9,479.1, unpaid 2,369.6, advance 548.0).
    * **Previous week** – last week's `inputs/history/weekly_inputs_<date>.xlsx` (`--prev-inputs`), or last week's raw AR
      extract (`--ar-prev`, gives per-BU status deltas as well).
    * **Beginning-of-month AR file** – the raw AR line list saved at the start of the month (`--ar-baseline`). Same file all
@@ -76,8 +76,8 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 
 * **Week on week** = AR dashboard *Snapshot* tab (previous week) vs current.
 * **vs month start** = beginning-of-month AR line list aggregated with the dashboard rules (unbilled excludes
-  `J-6-a Unearned on LS` and `C-3-a Pending DP clearing`; advance excludes `J-6-*` and `C-3-a` lines; at risk = `C-1-a/b`, SS postponed = `J-3-c`,
-  under JESA = other `J-*`, under OCP = `C-*` and PDR). The aggregation reproduces the processed AR dashboard (`AR_DASH - COMPARE`) exactly.
+  `J-6-a Unearned on LS`, DP-clearing lines `C-3-a` stay in unbilled; advance excludes `J-6-*` and `C-3-a` lines; at risk = `C-1-a/b`, SS postponed = `J-3-c`,
+  under JESA = other `J-*`, under OCP = `C-*` and PDR). The aggregation reproduces the BU meeting report exactly; the processed AR dashboard (`AR_DASH - COMPARE`) differs only by the `C-3-a` lines it leaves out of unbilled (1.6 MMAD in week 3).
 * **Unrecognized revenue** = `Summary UR` grand total (all columns already include the 6% cost-and-fee markup);
   supplier cost on the slide = revenue ÷ 1.06. WoW and month-start references come from last week's deck
   (`--ur-prev` / `--ur-ms` JSON files by BU, or `--prev-inputs`).
