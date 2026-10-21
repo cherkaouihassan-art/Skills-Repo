@@ -830,7 +830,7 @@ def build(data, meta, out):
     tb(s, 7.3, SH - 0.8, 5.8, 0.35, "AM (gold) is ring-fenced: its PSR collections cover AM PSR costs and are not available to the group.", size=8.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 11. Ongoing payments – October
-    s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved (incl. {f0(appr_lc)} LC maturities) and {f0(pend)} MMAD pending approval")
+    s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved" + (f" (incl. {f0(appr_lc)} LC maturities)" if appr_lc else "") + f" and {f0(pend)} MMAD pending approval")
     tb(s, 0.4, 1.25, 6.2, 0.3, f"{month_name} cash OUT: actual and committed (MMAD)", size=13, bold=True, color=NAVY)
     total_oct = round(paid_oct) + round(appr_lc) + round(appr_sup) + round(pend)
     waterfall(s, 0.3, 1.55, 6.3, 2.45, [f"Paid to {meta['payments_to']}", "Approved – LC maturities", "Approved – supplier invoices", "Pending approval", f"Total {month_name} outflow"],
@@ -853,7 +853,7 @@ def build(data, meta, out):
     tl_tot = [r for r in data["ONGOING"] if str(r["bucket"]).endswith("Total approved supplier payments")]
     tl_tot = tl_tot[0] if tl_tot else {"amount": sum(r["amount"] for r in tl), "lines": sum(r["lines"] or 0 for r in tl)}
     tb(s, 6.95, 1.25, 6.1, 0.3, "Approved supplier invoices – status vs payment tracking log", size=13, bold=True, color=NAVY)
-    tb(s, 6.95, 1.55, 6.1, 0.3, f"{f0(tl_tot['amount'])} MMAD / {int(tl_tot['lines'] or 0)} approved supplier lines by payment status (approved position excl. LC: {f0(appr_sup)} MMAD)", size=9.5, color=SLATE)
+    if tl: tb(s, 6.95, 1.55, 6.1, 0.3, f"{f0(tl_tot['amount'])} MMAD / {int(tl_tot['lines'] or 0)} approved supplier lines by payment status (approved position excl. LC: {f0(appr_sup)} MMAD)", size=9.5, color=SLATE)
     def clean(lbl):
         l = str(lbl).replace("Tracking log – ", "").lower()
         if "pending ap" in l: return "Pending AP (unpaid)"
@@ -866,10 +866,14 @@ def build(data, meta, out):
         if "not in tracking" in l: return "Not in tracking log"
         return str(lbl).replace("Tracking log – ", "")[:40]
     tl_s = sorted(tl, key=lambda r: -(r["amount"] or 0))
-    bar_chart(s, 6.85, 1.85, 6.2, 2.5, [clean(r["bucket"])[:32] for r in tl_s], [("Approved", [r["amount"] for r in tl_s])], [BLUE], horizontal=True, legend=False, gap=35, cat_size=8, label_size=8.5, number_format='#,##0.0')
-    rows = [[clean(r["bucket"])[:60], str(int(r["lines"] or 0)), f1(r["amount"]), f"{(r['amount'] or 0)/(tl_tot['amount'] or 1)*100:.0f}%"] for r in tl_s]
-    rows.append(["Total approved supplier payments", str(int(tl_tot["lines"] or 0)), f1(tl_tot["amount"]), "100%"])
-    table(s, 6.95, 4.45, 6.1, ["Tracking-log status", "Lines", "MMAD", "%"], rows, col_w=[3.6, 0.7, 0.9, 0.7], font_size=8.5, header_size=8, row_h=0.22, header_h=0.3, total_last=True)
+    rows = []
+    if tl_s:
+        bar_chart(s, 6.85, 1.85, 6.2, 2.5, [clean(r["bucket"])[:32] for r in tl_s], [("Approved", [r["amount"] for r in tl_s])], [BLUE], horizontal=True, legend=False, gap=35, cat_size=8, label_size=8.5, number_format='#,##0.0')
+        rows = [[clean(r["bucket"])[:60], str(int(r["lines"] or 0)), f1(r["amount"]), f"{(r['amount'] or 0)/(tl_tot['amount'] or 1)*100:.0f}%"] for r in tl_s]
+        rows.append(["Total approved supplier payments", str(int(tl_tot["lines"] or 0)), f1(tl_tot["amount"]), "100%"])
+        table(s, 6.95, 4.45, 6.1, ["Tracking-log status", "Lines", "MMAD", "%"], rows, col_w=[3.6, 0.7, 0.9, 0.7], font_size=8.5, header_size=8, row_h=0.22, header_h=0.3, total_last=True)
+    else:
+        tb(s, 6.95, 1.9, 6.1, 0.8, "Payment tracking-log status not available this week (sheet 'Approved vs Tracking log' missing from the cash flow workbook).", size=10, italic=True, color=SLATE)
     pri = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Priority list")]
     pri_tot = next((r["amount"] for r in pri if "total approved" in str(r["bucket"])), None)
     pri_cls = [r for r in pri if str(r["bucket"]).startswith("Priority list – P")]

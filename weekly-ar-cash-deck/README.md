@@ -8,45 +8,49 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
                                                  (review / edit by hand)
 ```
 
+## Weekly input files (what to share each week)
+
+| # | File | Sheet(s) read | Notes |
+|---|---|---|---|
+| 1 | `AR_PRE_Week_<n>.xlsx` | `AR` | raw AR line list of the week; drives AR, statuses, aging, non-OCP, JESA responsibility, collections, deposited |
+| 2 | `CASH_flow_W<n>.xlsx` | `EXEC Summary` (+ `REPORT - Cashflow by BU`) | cash position, cash by BU, PSR collections. Optional sheets `Approved vs Tracking log …`, `Priority list …`, `LC Ongoing …` add the tracking-log and priority tables to the October payments backup slide; without `LC Ongoing` the month's LC maturities are taken from the LC situation file |
+| 3 | `AP_information.xlsx` | `4411 - Parked - Downpayment` | supplier payables (downpayments, parked, 4411) – must be the extract of the current week |
+| 4 | `<date> - LC_SITUATION.xlsx` | `LC avec echéance` | bank LC situation – latest version (maturity columns are read from the header) |
+| 5 | `UR_Tracking_Consolidation.xlsx` | `Summary UR`, `Summary PO by BU`, `Sheet1` | unrecognized revenue (columns already include the 6% markup) |
+| 6 | `AR - BU Meeting <date>.pdf` | DSO pages | DSO group and by BU are typed into `inputs/dso_<date>.json` (11 numbers; the Power BI chart cannot be parsed automatically) |
+| 7 | beginning-of-month AR extract | `AR` | once per month: the first AR extract of the month, path and date in `inputs/month_start.txt` |
+
+Previous-week comparatives (AR, unrecognized revenue, AP, LC, collections) come from `inputs/history/weekly_inputs_<date>.xlsx`
+saved by the previous run – nothing else to provide.
+
 ## Weekly run (about 5 minutes)
 
-1. Drop the refreshed files anywhere (names can change, paths are parameters):
-   * **Raw AR extract of the week** – `AR_PRE_Week_<n>.xlsx`, single sheet `AR` (one line per invoice / unbilled line).
-     `ar_engine.py` aggregates it with the dashboard rules; the totals reproduce the BU meeting Power BI report exactly
-     (e.g. week 3: total 12,396.7 MMAD, unbilled 9,479.1, unpaid 2,369.6, advance 548.0).
-   * **Previous week** – last week's `inputs/history/weekly_inputs_<date>.xlsx` (`--prev-inputs`), or last week's raw AR
-     extract (`--ar-prev`, gives per-BU status deltas as well).
-   * **Beginning-of-month AR file** – the raw AR line list saved at the start of the month (`--ar-baseline`). Same file all
-     month; it is the "vs month start" baseline.
-   * **Cash flow workbook** – `CASH_FLOW_ANALYSIS - BUs <month> W<n>.xlsx` (sheets `EXEC Summary`, `Approved vs Tracking log …`,
-     `Priority list …`, `LC Ongoing …`).
-   * **Bank LC situation** – `LCs SITUATION - <date>.xlsx` (sheet `LC avec echéance`).
-   * **Supplier invoices** – `Supplier Invoices - <month> W<n>.xlsx` (sheet `4411 - Parked - Downpayment`).
-   * **UR Tracking Consolidation** – unrecognized revenue (`Summary UR`, `Sheet1` previous BU update, `Summary PO by BU`).
-2. Extract the inputs (dates are the only things to type):
+1. Put files 1–5 in one folder (names can vary, they are matched by pattern: `AR_PRE*`, `CASH*flow*`, `AP*` or `Supplier*`,
+   `*LC*SITUATION*`, `UR*Tracking*`). Update `inputs/dso_<date>.json` from the BU meeting PDF when a new one is published.
+2. Run everything in one command (extract → build → archive the inputs for next week):
+   ```bash
+   ./run_week.sh <folder> 2026-10-28 2026-10-27 2026-10-20 inputs/dso_2026-10-20.json
+   #              sources   as-of      AR date    previous AR date   DSO file
+   ```
+   The deck lands in `output/JESA_AR_Cash_Position_<as-of>.pptx` and `inputs/weekly_inputs.xlsx` is copied to
+   `inputs/history/`.
+3. Review `inputs/weekly_inputs.xlsx` if needed (`KEY_MESSAGES` wording, any manual correction), then rebuild with
+   `python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out output/<name>.pptx`.
+4. New month: save the first AR extract of the month and point `inputs/month_start.txt` to it (path, then date).
+
+Manual equivalent of step 2 (all parameters explicit):
    ```bash
    python3 extract_inputs.py \
      --ar "AR_PRE_Week_4.xlsx" --prev-inputs inputs/history/weekly_inputs_2026-10-21.xlsx \
      --ar-baseline "AR_Beg_of_the_month.xlsx" --ar-baseline-date 2026-10-07 \
-     --cash "CASH_FLOW_ANALYSIS - BUs October W4.xlsx" \
-     --lc "LCs SITUATION - October 26th.xlsx" --ap "Supplier Invoices - Oct W4.xlsx" \
-     --ur "UR Tracking Consolidation.xlsx" \
+     --cash "CASH_flow_W4.xlsx" --lc "2026_10_26 - LC_SITUATION.xlsx" --ap "AP_information.xlsx" \
+     --ur "UR_Tracking_Consolidation.xlsx" --dso inputs/dso_2026-10-20.json \
      --as-of 2026-10-28 --ar-date 2026-10-27 --ar-prev-date 2026-10-20 \
-     --collections-to 26/10 --payments-to 22/10 --lc-date 26/10 --ap-label "Oct W4" \
      --out inputs/weekly_inputs.xlsx
+   python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out output/JESA_AR_Cash_Position_2026-10-28.pptx
    ```
-   After the run, copy `inputs/weekly_inputs.xlsx` to `inputs/history/weekly_inputs_<as-of>.xlsx` so it can serve as
-   next week's previous-week source. (`--ar-dashboard` accepts the old processed AR dashboard as the previous week; it was
-   used once for the transition on 21 Oct 2026.)
-3. Open `inputs/weekly_inputs.xlsx` and review. Everything on the slides comes from this workbook:
-   * `KEY_MESSAGES` – five auto-drafted messages; rewrite the wording freely.
-   * `COLLECTIONS_MONTHLY` – labor / non-labor split per month (the current month total is refreshed from the AR
-     dashboard; overwrite the split if you have the exact figures).
-   * any number can be corrected by hand before building.
-4. Build the deck:
-   ```bash
-   python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out output/JESA_AR_Cash_Position_2026-10-21.pptx
-   ```
+   (`--ar-dashboard` accepts the old processed AR dashboard as the previous week; it was used once for the transition on
+   21 Oct 2026. `--ur-prev` / `--ur-ms` JSON files override the unrecognized references when no history workbook exists.)
 
 ## Deck structure (40 slides)
 

@@ -758,6 +758,12 @@ def main():
     write_sheet(wb, "CASH_BU_OCT", ["bu", "oct_cash_in", "oct_paid_suppliers", "oct_paid_lc", "oct_paid_customs", "oct_ongoing_suppliers", "oct_ongoing_lc"], bu_oct, note="Current month only: collections and payments to date by BU, plus open commitments.", widths=[28])
     cm = {r[0]: r for r in cash["cash_monthly"]}
     tot_appr = sum(r[6] for r in cash["cash_bu"]); tot_pend = sum(r[8] for r in cash["cash_bu"])
+    if not cash.get("lc_oct_maturity_total") and lc.get("months"):
+        # 'LC Ongoing' sheet absent: take the current-month maturities from the bank LC situation instead
+        lc_oct_m = sum(l["months"].get(lc["months"][0], 0) for l in lc["lines"])
+        cash["lc_oct_maturity_total"] = min(lc_oct_m, abs(tot_appr))
+        cash["lc_oct_maturity_bu"] = {}
+        print(f"INFO LC {lc['months'][0]} maturities taken from the LC situation file: {cash['lc_oct_maturity_total']:,.1f} MMAD")
     ongoing = [["Paid in October to date (suppliers + LC + customs)", None, abs(cm["Total cash OUT (procurement)"][4])], ["Approved – October LC maturities", None, cash["lc_oct_maturity_total"]],
                ["Approved – supplier invoices", None, abs(tot_appr) - cash["lc_oct_maturity_total"]], ["Pending payment approval", None, abs(tot_pend)]]
     ongoing += [[f"Tracking log – {r[0]}", r[1], r[2]] for r in cash["approved_status"]]
