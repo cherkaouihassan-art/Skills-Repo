@@ -48,6 +48,17 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
    python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out output/JESA_AR_Cash_Position_2026-10-21.pptx
    ```
 
+## Deck structure (40 slides)
+
+1 Title · 2 Agenda · 3 Key messages · 4 AR executive summary · 5 Unbilled under JESA responsibility · 6 Non-OCP clients ·
+7 Unrecognized revenue & suppliers · 8 Payments received · 9 Cash position · 10 Cash by business unit · 11 Accounts payable ·
+12 Letters of credit · 13 "Business Unit Breakdown" divider · 14–31 two pages per business unit · 32 "Backup" divider ·
+33 AR movement · 34 AR position by BU · 35 Unbilled & unpaid status view · 36 PSR (labor) collections · 37 October payments ·
+38 LC detail · 39 AP detail · 40 Sources & definitions.
+
+Slides are built in code order and re-sorted by section at the end (`Deck.reorder` in `build_deck.py`); to move a slide
+between the main body and the backup, change its `D.section = ...` tag.
+
 ## Input workbook structure (`inputs/weekly_inputs.xlsx`)
 
 | Tab | Content (MMAD) | Feeds slides |

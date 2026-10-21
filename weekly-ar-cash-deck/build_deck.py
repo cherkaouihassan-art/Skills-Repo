@@ -315,6 +315,7 @@ class Deck:
     def __init__(self, meta):
         self.prs = Presentation(); self.prs.slide_width = Inches(SW); self.prs.slide_height = Inches(SH)
         self.blank = self.prs.slide_layouts[6]; self.n = 0; self.meta = meta
+        self.section = "front"; self.entries = []   # (slide, section, page-number box)
 
     def slide(self, title=None, subtitle=None, dark=False):
         s = self.prs.slides.add_slide(self.blank); self.n += 1
@@ -327,8 +328,35 @@ class Deck:
         if subtitle:
             tb(s, 0.52, 0.78, 10.5, 0.35, subtitle, size=12.5, bold=True, color=TEAL)
         tb(s, 4.5, SH - 0.3, 4.3, 0.22, "JESA - INTERNAL USE ONLY", size=7.5, color=GREY, align=PP_ALIGN.CENTER)
-        tb(s, SW - 1.3, SH - 0.3, 0.9, 0.22, f"{self.n}", size=8, color=GREY, align=PP_ALIGN.RIGHT)
+        nb = tb(s, SW - 1.3, SH - 0.3, 0.9, 0.22, f"{self.n}", size=8, color=GREY, align=PP_ALIGN.RIGHT)
+        self.entries.append((s, self.section, nb))
         return s
+
+    def divider(self, number, title, blocks, note=None):
+        """dark section slide: big number + title on the left, grouped bullet blocks on the right."""
+        s = self.slide(dark=True)
+        tb(s, 0.9, 1.6, 5.2, 1.0, number, size=60, bold=True, color=GOLD)
+        tb(s, 0.9, 2.75, 5.4, 1.2, title, size=32, bold=True, color=WHITE)
+        rect(s, 0.95, 4.0, 1.9, 0.05, GOLD)
+        if note: tb(s, 0.9, 4.2, 5.4, 1.4, note, size=11, color=LBLUE, line_spacing=1.15)
+        y = 1.5
+        for head, items in blocks:
+            tb(s, 6.7, y, 6.0, 0.32, head.upper(), size=11, bold=True, color=GOLD); y += 0.34
+            for it in items:
+                nl = max(1, -(-len(it) // 78)); hh = 0.22 * nl + 0.08
+                tb(s, 6.9, y, 5.9, hh, "•  " + it, size=11, color=WHITE, line_spacing=1.0); y += hh
+            y += 0.18
+        return s
+
+    def reorder(self, order):
+        """stable re-sort of the slides by section rank, then renumber the page boxes."""
+        rank = {sec: i for i, sec in enumerate(order)}
+        lst = self.prs.slides._sldIdLst; ids = list(lst)
+        idx = sorted(range(len(ids)), key=lambda i: rank.get(self.entries[i][1], len(order)))
+        for el in ids: lst.remove(el)
+        for i in idx: lst.append(ids[i])
+        for n, i in enumerate(idx, 1):
+            nb = self.entries[i][2]; nb.text_frame.paragraphs[0].runs[0].text = str(n)
 
     def save(self, path): self.prs.save(path)
 
@@ -409,13 +437,13 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 1b. Agenda
     s = D.slide("Agenda", f"Weekly review – {asof}")
     items = [("1", "Key messages", "Headline position: AR, unrecognized revenue, collections, cash, payables and letters of credit"),
-             ("2", "Accounts receivable", "Executive summary, movement vs last week and vs month start, position by business unit, unbilled and unpaid status, non-OCP clients, unbilled under JESA responsibility"),
+             ("2", "Accounts receivable", "Executive summary with week-on-week and month-start comparatives, unbilled under JESA responsibility, non-OCP clients"),
              ("3", "Unrecognized revenue & suppliers", "Executed scope not yet booked as AR, by business unit and status; supplier PO book"),
              ("4", "Payments received", "Invoices paid in the month and year to date, by business unit"),
-             ("5", "Cash position – procurement", "Cash in versus cash out by month and by business unit; paid, approved and pending payments"),
+             ("5", "Cash position – procurement", "Cash in versus cash out by month and by business unit, before and after October commitments"),
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
-             ("7", "Zoom by business unit", "Position, movement, projects and unrecognized revenue for each business unit"),
-             ("8", "Backups & sources", "LC and payables detail; sources and definitions")]
+             ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
+             ("8", "Backup", "AR movement and position by business unit, unbilled & unpaid status view, PSR collections, October payments, LC and AP detail, sources")]
     y0 = 1.3; step = (SH - 0.6 - y0) / len(items)
     for i, (n, t, d_) in enumerate(items):
         y = y0 + i * step
@@ -436,6 +464,7 @@ def build(data, meta, out):
         if i < len(msgs) - 1: rect(s, 1.3, y + step - 0.08, 11.5, 0.012, RGBColor(0xD5, 0xDE, 0xE6))
 
     # ------------------------------------------------------------------ 3. AR executive summary
+    D.section = "ar"
     pct_unb = unb["current"] / tot["current"] * 100
     s = D.slide("AR Executive Summary", f"Unbilled is {pct_unb:.0f}% of total AR; AR {fd(dwow(tot))} MMAD week on week and {fd(dms(tot))} vs the month-start baseline ({ms_s})")
     cw = (SW - 0.6 - 0.12 * 5) / 6
@@ -474,6 +503,7 @@ def build(data, meta, out):
               [NAVY2, LBLUE], stacked=True, gap=80, label_size=9, label_colors=[WHITE, DARK])
 
     # ------------------------------------------------------------------ 4. AR movement (comparatives)
+    D.section = "ar_backup"
     s = D.slide("AR Movement – week on week and vs baseline",
                 f"This week {cur_s} vs last week {prev_s} and vs the month-start baseline ({ms_s} AR position)")
     hdr = ["Component", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ% WoW", "Δ vs\nmonth start", "Δ% vs\nmonth start"]
@@ -580,6 +610,7 @@ def build(data, meta, out):
 
 
     # ------------------------------------------------------------------ 6b. Non-OCP receivables
+    D.section = "ar_nonocp"
     no = {}
     for r in data.get("NONOCP_BU", []): no.setdefault(r["bu"], {})[r["component"]] = r
     def nv(b, c, k): return ((no.get(b, {}).get(c) or {}).get(k)) or 0
@@ -614,6 +645,7 @@ def build(data, meta, out):
           align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.LEFT])
 
     # ------------------------------------------------------------------ 6c. Unbilled under JESA responsibility
+    D.section = "ar_jesa"
     ju = {}
     for r in data.get("JESA_UNBILLED_BU", []): ju.setdefault(r["bu"], {})[r["split"]] = r
     def jv(b, sp, k): return ((ju.get(b, {}).get(sp) or {}).get(k)) or 0
@@ -647,6 +679,7 @@ def build(data, meta, out):
     tb(s, 6.9, 2.85 + 0.28 + 0.25 * len(rows) + 0.1, 6.2, 0.7, [[("J-* statuses are the steps under JESA control (attachment creation, internal reviews, PM approval, service-sheet submission, invoicing); service sheets postponed and at-risk scope are excluded. Negative values are credit lines pending JESA PM approval.", {})]], size=8.5, color=DARK, line_spacing=1.1)
 
     # ------------------------------------------------------------------ 7. Unrecognized revenue & suppliers
+    D.section = "unrec"
     ut = data["UNRECOGNIZED"]
     MK = 1.06  # JESA cost + fee markup: unrecognized revenue = supplier cost x 1.06 (UR consolidation columns already include it)
     ur_rev = unrec["current"] or 0; ur_cost = ur_rev / MK
@@ -687,6 +720,7 @@ def build(data, meta, out):
     tb(s, 6.85, 6.78, 6.2, 0.26, "*** Amounts in HT — executed progress, excluding DP amortization. Status split at cost (= revenue ÷ 1.06).", size=8, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 8. Collections (payments received)
+    D.section = "coll"
     cb = data["COLLECTIONS_BU"]; cm = data["COLLECTIONS_MONTHLY"]
     oct_cur = sum(r["month_current"] or 0 for r in cb); oct_pw = sum(r["month_prev_week"] or 0 for r in cb); prior = sum(r["prior_month"] or 0 for r in cb)
     ytd = sum(r["ytd_current"] or 0 for r in cb); ytd_pw = sum(r["ytd_prev_week"] or 0 for r in cb); ninv = sum(int(r["invoices_ytd"] or 0) for r in cb)
@@ -717,6 +751,7 @@ def build(data, meta, out):
     table(s, 7.85, 2.9, 5.2, ["BU", f"{month_name[:3]} to {prev_s}", f"{month_name[:3]} to {cur_s}", "Δ WoW", f"o/w non-\nOCP {month_name[:3]}", prior_name[:3], "YTD", "% YTD"], rows, col_w=[1.3, 0.75, 0.75, 0.6, 0.75, 0.6, 0.7, 0.55], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
 
     # ------------------------------------------------------------------ 9. Cash position – procurement
+    D.section = "cash"
     cmo = {r["line"]: r for r in data["CASH_MONTHLY"]}
     cin = cmo["Total cash IN (procurement)"]; cout = cmo["Total cash OUT (procurement)"]; net = cmo["NET position (cash IN + cash OUT)"]
     sup = cmo["Cash OUT suppliers (by tier)"]; lcp = cmo["Cash OUT LC payments"]; cus = cmo["Cash OUT customs"]; div = cmo["Dividends / PROC compensable"]; proc = cmo["Procurement collections (OCP payment report)"]
@@ -766,6 +801,7 @@ def build(data, meta, out):
     ch = s.shapes[-1].chart; color_points(ch, 0, [GREEN if (r["net_all_ongoing"] or 0) >= 0 else RED for r in cbu])
 
     # ------------------------------------------------------------------ 10b. PSR (labor) collections
+    D.section = "cash_backup"
     pbu = sorted(data.get("CASH_PSR_BU", []), key=lambda r: -(r["cumulative"] or 0))
     am_p = cmo.get("PSR provision – AM ring-fence"); we_p = cmo.get("PSR provision – W&E reserve"); oh = cmo.get("Overhead payments (FYI, not deducted)")
     s = D.slide("PSR (Labor) Collections", f"Jul–{month_name[:3]} 2026: PSR collections {f0(psr['cumulative'])} MMAD, provisions {f0(-prov['cumulative'])} (AM ring-fence {f0(-(am_p['cumulative'] if am_p else 0))}, W&E reserve {f0(-(we_p['cumulative'] if we_p else 0))}) → {fd(npsr['cumulative'])} MMAD available")
@@ -787,13 +823,11 @@ def build(data, meta, out):
     na = len(rows) - 1
     for j, k in enumerate(("jul", "aug", "sep", "oct_actual", "cumulative"), start=1): colors[(na, j)] = delta_color(npsr[k], good_when_negative=False)
     table(s, 0.4, 2.9, 6.6, ["MMAD", "Jul", "Aug", "Sep", f"Oct to {meta['collections_to']}", "Cumul.", "%"], rows, col_w=[2.1, 0.7, 0.7, 0.7, 0.9, 0.8, 0.6], font_size=8.5, header_size=8, bold_rows=(nt, na), fills={nt: LBLUE, na: LIGHT}, row_h=0.255, header_h=0.34, first_col_bold=True)
-    tb(s, 7.3, 2.6, 5.8, 0.3, "Monthly PSR collections vs provisions (MMAD)", size=13, bold=True, color=NAVY)
-    mk = ["jul", "aug", "sep", "oct_actual"]; mc = ["Jul", "Aug", "Sep", f"Oct to date"]
-    bar_chart(s, 7.2, 2.9, 5.9, 2.1, mc, [("PSR collections", [psr[k] for k in mk]), ("Provisions", [prov[k] for k in mk]), ("Available", [npsr[k] for k in mk])], [TEAL, GOLD, NAVY2], gap=60, label_size=8, number_format='#,##0;−#,##0;0', overlap=-10)
-    tb(s, 7.3, 5.05, 5.8, 0.3, f"Cumulative PSR collections by BU, Jul–{month_name[:3]} (MMAD)", size=13, bold=True, color=NAVY)
-    top_p = [r for r in pbu if (r["cumulative"] or 0) > 0.05][:8]
-    ch = bar_chart(s, 7.2, 5.3, 5.9, SH - 0.45 - 5.3, [short(r["bu"]) for r in top_p], [("Cumulative", [r["cumulative"] for r in top_p])], [TEAL], legend=False, horizontal=True, gap=35, cat_size=8, label_size=8)
+    tb(s, 7.3, 2.6, 5.8, 0.3, f"Cumulative PSR collections by BU, Jul–{month_name[:3]} (MMAD)", size=13, bold=True, color=NAVY)
+    top_p = [r for r in pbu if (r["cumulative"] or 0) > 0.05][:9]
+    ch = bar_chart(s, 7.2, 2.9, 5.9, SH - 0.45 - 2.9 - 0.4, [short(r["bu"]) for r in top_p], [("Cumulative", [r["cumulative"] for r in top_p])], [TEAL], legend=False, horizontal=True, gap=40, cat_size=9, label_size=9)
     color_points(ch, 0, [GOLD if r["bu"] == "AM" else TEAL for r in top_p])
+    tb(s, 7.3, SH - 0.8, 5.8, 0.35, "AM (gold) is ring-fenced: its PSR collections cover AM PSR costs and are not available to the group.", size=8.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 11. Ongoing payments – October
     s = D.slide(f"{month_name} Payments – paid, approved and pending", f"{f0(paid_oct)} MMAD paid to {meta['payments_to']}; {f0(appr_lc+appr_sup)} MMAD approved (incl. {f0(appr_lc)} LC maturities) and {f0(pend)} MMAD pending approval")
@@ -843,6 +877,7 @@ def build(data, meta, out):
         tb(s, 6.95, 4.45 + 0.3 + 0.22 * len(rows) + 0.1, 6.1, 0.7, [[("Priority list (02.10): ", {"bold": True, "color": NAVY}), (f"{f0(pri_tot)} MMAD approved for payment — " + " · ".join(f"{str(r['bucket']).replace('Priority list – ','')} {f0(r['amount'])}" for r in sorted(pri_cls, key=lambda r: str(r['bucket']))), {})]], size=9, line_spacing=1.1)
 
     # ------------------------------------------------------------------ 12. Accounts payable
+    D.section = "ap"
     apb = data["AP_BU"]; bk = data["AP_BUCKETS"]
     s = D.slide("Accounts Payable – supplier payables & LC", f"Payables incl. LC of {f0(ap_tot['current'])} MMAD ({fd(ap_tot['current']-ap_tot['prev_week'])} WoW): parked {f0(ap_pk['current'])}, 4411 {f0(ap_44['current'])}, downpayments {f0(ap_dp['current'])}, LC {f0(ap_lc['current'])}")
     cw = (SW - 0.6 - 0.12 * 4) / 5
@@ -880,6 +915,7 @@ def build(data, meta, out):
     tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
 
     # ------------------------------------------------------------------ 13. Letters of credit
+    D.section = "lc"
     lcl = data["LC_LINES"]; months = [k for k in lcl[0].keys() if str(k).startswith("202")]
     lc_all = sum(r["encours_mad"] or 0 for r in lcl); lc_open = sum((r["encours_mad"] or 0) for r in lcl if r["opened"] == "Yes"); lc_noo = lc_all - lc_open
     mt = {m: sum((r[m] or 0) for r in lcl) for m in months}
@@ -913,6 +949,7 @@ def build(data, meta, out):
     bar_chart(s, 8.1, 2.75, 5.0, 4.2, [k for k, _ in acts], [("Encours", [v for _, v in acts])], [TEAL], horizontal=True, legend=False, gap=30, cat_size=7.5, label_size=8)
 
     # ------------------------------------------------------------------ 7b. Zoom per business unit
+    D.section = "bu"
     det = {}
     for r in data.get("AR_BU_DETAIL", []): det.setdefault(r["bu"], {}).setdefault(r["section"], []).append(r)
     projs = {}
@@ -921,6 +958,11 @@ def build(data, meta, out):
     att = {r["bu"]: r for r in data.get("UR_ATTACHMENT_STATUS", [])}
     has_prev_detail = any(r["prev_week"] is not None for r in data.get("AR_BU_DETAIL", []) if r["section"] != "owner")
     zoom_bus = [b for b in BU_ORDER if b in arbu and (arbu[b]["Total AR"]["current"] or 0) >= 20]
+    D.divider("07", "Business Unit Breakdown",
+              [("Two pages per business unit", ["Position: AR components with week-on-week and month-start comparatives, DSO, unbilled ownership and statuses, unpaid split and phases, aging, payments received",
+                                                "Projects & unrecognized: largest unbilled and unpaid projects, unrecognized supplier scope by status, JESA attachments to client"]),
+               ("Business units covered", [", ".join(short(b) for b in zoom_bus[:6]), ", ".join(short(b) for b in zoom_bus[6:]) or "–"])],
+              note=f"Ordered by size of the receivable book; business units below 20 MMAD of AR are summarised on the group slides only.")
     for b in zoom_bus:
         t_, u_, p_, a_ = arbu[b]["Total AR"], arbu[b]["Unbilled"], arbu[b]["Unpaid"], arbu[b]["Advance"]
         unr = arbu[b].get("Unrecognized") or {"current": 0, "prev_week": None, "month_start": None}
@@ -1023,6 +1065,14 @@ def build(data, meta, out):
             tb(s, 0.4, 4.3, 12, 0.4, "No unrecognized supplier scope reported for this business unit.", size=10, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 14. Backup: LC detail
+    D.section = "backup_divider"
+    D.divider("08", "Backup",
+              [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "Unbilled & unpaid status view"]),
+               ("Cash position", ["PSR (labor) collections by business unit and provisions", f"{month_name} payments – paid, approved and pending"]),
+               ("Payables & letters of credit", ["LC detail by letter of credit", "Supplier payables detail (tiers, top suppliers)"]),
+               ("Reference", ["Sources & definitions"])],
+              note="Supporting detail for the main sections, in the same order as the agenda.")
+    D.section = "backup"
     s = D.slide("Backup – Letters of Credit detail", f"Largest LC lines by outstanding amount (bank LC situation {meta['lc_date']}, MMAD)")
     top = sorted(lcl, key=lambda r: -(r["encours_mad"] or 0))[:18]
     rows = [[r["project"], (r["supplier"] or "")[:34], r["lc_ref"] or "not opened", datef(r["expiry"], "%d-%b-%y") if r["expiry"] and str(r["expiry"])[:2] == "20" else (r["expiry"] or "n/a"), r["ccy"], f1(r["encours_mad"]), r["opened"], f0(r["part_2026"]), f0(r["part_2027"]), short_action(r["action"])] for r in top]
@@ -1046,6 +1096,7 @@ def build(data, meta, out):
     bar_chart(s, 0.3, 1.55 + 0.3 + 0.26 * len(m) + 0.5, 6.2, SH - 0.5 - (1.55 + 0.3 + 0.26 * len(m) + 0.5), [b for b in buckets], [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=False, gap=60, cat_size=8, label_size=7.5, title="Due-date buckets by origin (MMAD)", legend_pos=XL_LEGEND_POSITION.BOTTOM)
 
     # ------------------------------------------------------------------ 16. Sources & definitions
+    D.section = "sources"
     s = D.slide("Sources & definitions", "Where each figure comes from and how it is defined")
     rows = [
         ["Accounts receivable (advance, unbilled, unpaid), statuses, aging, non-OCP, JESA responsibility, collections", "AR extract of the week", f"{cur_d}; previous week {prev_d}; month start {ms_d}"],
@@ -1067,6 +1118,7 @@ def build(data, meta, out):
             ("DSO", "days sales outstanding excluding advances, as reported in the BU meeting report.")]
     tb(s, 0.4, 4.15, 12.5, 2.9, [[(t + ": ", {"bold": True, "color": NAVY}), (d_, {})] for t, d_ in defs], size=9, color=DARK, line_spacing=1.1)
 
+    D.reorder(["front", "ar", "ar_jesa", "ar_nonocp", "unrec", "coll", "cash", "ap", "lc", "bu", "backup_divider", "ar_backup", "cash_backup", "backup", "sources"])
     D.save(out)
     print("saved", out, "slides:", D.n)
 
