@@ -529,6 +529,13 @@ def prev_from_inputs(path):
         P["detail"] = {(r["bu"], r["section"], r["item"]): r["current"] or 0 for r in recs("AR_BU_DETAIL")}
     if "UNRECOGNIZED" in wb.sheetnames:
         P["ur_prev"] = {r["bu"]: r["grand_total"] or 0 for r in recs("UNRECOGNIZED")}
+        P["ur_ms"] = {r["bu"]: r["month_start_total"] for r in recs("UNRECOGNIZED") if r.get("month_start_total") is not None}
+    if "DSO" in wb.sheetnames:
+        P["dso"] = {r["bu"]: {"current": r["dso_current"], "prior": r["dso_prior_month"]} for r in recs("DSO")}
+    if "NONOCP_BU" in wb.sheetnames:
+        P["nonocp"] = {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")}
+    if "JESA_UNBILLED_BU" in wb.sheetnames:
+        P["jesa_unbilled"] = {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")}
     return P
 
 PHASES = ["Rejected", "Treasury", "OCP subs", "Ordonnancement", "Missing reception", "Other"]
@@ -549,6 +556,8 @@ def main():
     ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", required=True); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
+    ap_.add_argument("--ur-ms", default=None, help="JSON {bu: MMAD} with month-start unrecognized revenue by BU")
+    ap_.add_argument("--dso", default=None, help="JSON {bu: {current, prior}} DSO in days (from the BU meeting report)")
     ap_.add_argument("--ur-prev", default=None, help="JSON {bu: MMAD} with last week's unrecognized revenue by BU (overrides the UR file's 'previous BU update' and the prev inputs)")
     ap_.add_argument("--as-of", required=True, help="deck date YYYY-MM-DD")
     ap_.add_argument("--ar-date", required=True, help="AR snapshot date YYYY-MM-DD")
@@ -579,11 +588,18 @@ def main():
     elif ur and P.get("ur_prev"):
         ur["prev"] = P["ur_prev"]; ur["prev_source"] = "last week's inputs"
     elif ur: ur["prev_source"] = "UR file previous BU update (incl. markup)"
+    ur_ms = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_ms)).items()} if a.ur_ms else (P.get("ur_ms") or {})
+    dso = {}
+    if a.dso:
+        for k, v in json.load(open(a.dso)).items():
+            if k.startswith("_"): continue
+            dso[canon_bu(k) or k] = v
+    elif P.get("dso"): dso = P["dso"]
     ms_date = dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else None
 
     # ------------------------------------------------------------------ assemble the 'ar' structure used by the writers
     def msv(d, k): return (d.get(k, 0.0) if MS else 0.0)
-    ur_cur = sum(r[13] for r in ur["table"]) if ur else 0.0; ur_prev = sum(ur["prev"].values()) if (ur and ur["prev"]) else 0.0
+    ur_cur = sum(r[13] for r in ur["table"]) if ur else 0.0; ur_prev = sum(ur["prev"].values()) if (ur and ur["prev"]) else 0.0; ur_ms_tot = sum(ur_ms.values()) if ur_ms else 0.0
     ap_cur_bu = collections.defaultdict(lambda: {"downpayment": 0.0, "parked": 0.0, "inv4411": 0.0, "lc": 0.0})
     for k, v in ap["by_bu_origin"].items():
         b, o = k.split("|"); key = {"Downpayment": "downpayment", "Parked Invoice": "parked", "Invoices - 4411": "inv4411"}.get(o)
@@ -596,8 +612,8 @@ def main():
            ["Unbilled", msv(MS["kpi"] if MS else {}, "Unbilled"), P["kpi"]["Unbilled"], cur["kpi"]["Unbilled"]],
            ["Unpaid", msv(MS["kpi"] if MS else {}, "Unpaid"), P["kpi"]["Unpaid"], cur["kpi"]["Unpaid"]],
            ["Total AR", msv(MS["kpi"] if MS else {}, "Total AR"), P["kpi"]["Total AR"], cur["kpi"]["Total AR"]],
-           ["Unrecognized Revenue (incl. markup)", 0, ur_prev, ur_cur],
-           ["Total NEW AR", 0, P["kpi"]["Total AR"] + ur_prev, cur["kpi"]["Total AR"] + ur_cur],
+           ["Unrecognized Revenue (incl. markup)", ur_ms_tot, ur_prev, ur_cur],
+           ["Total NEW AR", (msv(MS["kpi"] if MS else {}, "Total AR") + ur_ms_tot) if (MS and ur_ms) else 0, P["kpi"]["Total AR"] + ur_prev, cur["kpi"]["Total AR"] + ur_cur],
            ["AP Downpayment", 0, ap_tot(ap_prev_bu, "downpayment"), ap_tot(ap_cur_bu, "downpayment")],
            ["AP Parked Invoices", 0, ap_tot(ap_prev_bu, "parked"), ap_tot(ap_cur_bu, "parked")],
            ["AP Invoices 4411", 0, ap_tot(ap_prev_bu, "inv4411"), ap_tot(ap_cur_bu, "inv4411")],
@@ -672,18 +688,33 @@ def main():
     write_sheet(wb, "AR_KPI", ["metric", "month_start", "prev_week", "current"], ar["kpi"], note="Key figures (MMAD): AR from the raw AR extract (dashboard rules), unrecognized from the UR consolidation, AP from the supplier invoice file, LC from the bank LC situation.", widths=[44])
     ls = ar["labor_split"]
     write_sheet(wb, "AR_SPLITS", ["metric", "value"], [["Total AR labor", ls["total_labor"]], ["Total AR non-labor", ls["total_nonlabor"]], ["Unbilled labor", ls["unbilled_labor"]], ["Unbilled non-labor", ls["unbilled_nonlabor"]], ["Unpaid labor", ls["unpaid_labor"]], ["Unpaid non-labor", ls["unpaid_nonlabor"]]] + [[f"AR {k}", v] for k, v in ar["ocp_split"].items()], note="Current week only (labor = PSR/PROC column; OCP = Client 1).", widths=[30])
-    write_sheet(wb, "AR_BU", ["bu", "component", "month_start", "prev_week", "current"], ar["ar_bu"] + [[b, "Unrecognized", None, (ur["prev"].get(b) if ur else None), v] for b, v in ar["unrecognized_bu"].items()], note="AR by business unit and component (MMAD).", widths=[28, 16])
+    write_sheet(wb, "AR_BU", ["bu", "component", "month_start", "prev_week", "current"], ar["ar_bu"] + [[b, "Unrecognized", (ur_ms.get(b) if ur_ms else None), (ur["prev"].get(b) if ur else None), v] for b, v in ar["unrecognized_bu"].items()], note="AR by business unit and component (MMAD).", widths=[28, 16])
     write_sheet(wb, "AR_UNBILLED_OWNER", ["bu", "category", "month_start", "prev_week", "current"], ar["unbilled_owner"], note="Unbilled split by ownership: At risk / Under JESA / Under OCP / Service sheets postponed.", widths=[28, 16])
     write_sheet(wb, "AR_UNBILLED_STATUS", ["group", "status", "month_start", "prev_week", "current"], ar["unbilled_status"], note="Unbilled by coded status (all BUs).", widths=[10, 50])
     write_sheet(wb, "AR_UNPAID_STATUS", ["status", "month_start", "prev_week", "current"], ar["unpaid_status"], note="Unpaid by OCP processing phase (from the 'OCP Comments' column).", widths=[28])
     write_sheet(wb, "AR_AGING", ["year", "month_start", "prev_week", "current"], ar["aging"], note="Total AR by year of origin.", widths=[24])
     write_sheet(wb, "AR_BU_DETAIL", ["bu", "section", "item", "month_start", "prev_week", "current"], detail, note="Per-BU detail for the zoom slides: owner, unbilled_status, unpaid_group, unpaid_phase, aging_unbilled, aging_unpaid, advance_status (MMAD). prev_week filled when last week's raw AR file or inputs workbook with detail is available.", widths=[28, 18, 50])
     write_sheet(wb, "AR_BU_PROJECTS", ["bu", "type", "wbs", "project", "amount", "status"], projects, note="Top 8 unbilled and unpaid projects per BU (MMAD, current week).", widths=[28, 10, 14, 50, 10, 44])
-    write_sheet(wb, "UNRECOGNIZED", ["bu", "eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk", "sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk", "total_suppliers", "lines_to_adjust", "grand_total", "prev_week_total"],
-                [r[:14] + [(ur["prev"].get(r[0]) if ur else None)] for r in ar["unrecognized_table"]], note=f"Unrecognized suppliers by status, MMAD incl. markup; prev_week_total = {(ur or {}).get('prev_source', 'n/a')}.", widths=[28] + [14] * 14)
+    write_sheet(wb, "UNRECOGNIZED", ["bu", "eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk", "sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk", "total_suppliers", "lines_to_adjust", "grand_total", "prev_week_total", "month_start_total"],
+                [r[:14] + [(ur["prev"].get(r[0]) if ur else None), (ur_ms.get(r[0]) if ur_ms else None)] for r in ar["unrecognized_table"]], note=f"Unrecognized suppliers by status, MMAD incl. markup; prev_week_total = {(ur or {}).get('prev_source', 'n/a')}.", widths=[28] + [14] * 14)
     if ur:
         write_sheet(wb, "UR_ATTACHMENT_STATUS", ["bu", "eq_under_jesa_approval", "eq_under_jesa_preparation", "eq_under_client_approval", "eq_signed_by_client", "eq_accrual_posted", "sub_under_jesa_approval", "sub_under_jesa_preparation", "sub_under_client_approval", "sub_signed_by_client", "sub_accrual_posted", "total"], ur["attachment"], note="Status of JESA attachments to client (UR consolidation, MMAD incl. markup).", widths=[28] + [14] * 11)
         write_sheet(wb, "UR_PO_SUMMARY", ["bu", "contract_value", "recognized", "unrecognized", "remaining"], ur["po"], note="Supplier PO consolidation by BU (MMAD).", widths=[28, 16, 16, 16, 16])
+    Pn = P.get("nonocp", {}); Pj = P.get("jesa_unbilled", {})
+    write_sheet(wb, "NONOCP_BU", ["bu", "component", "month_start", "prev_week", "current"],
+                [[b, c, (MS["nonocp"].get((b, c), 0.0) if MS else None), Pn.get((b, c)), cur["nonocp"].get((b, c), 0.0)] for b in bus for c in ("Unbilled", "Unpaid")],
+                note="Non-OCP clients (Client 1 = NON OCP): unbilled and unpaid by BU (MMAD).", widths=[28, 12])
+    write_sheet(wb, "NONOCP_PROJECTS", ["bu", "client", "wbs", "project", "unbilled", "unpaid", "status"], cur["nonocp_projects"][:40],
+                note="Non-OCP projects driving unbilled and unpaid (top 40 by total, MMAD, current week).", widths=[26, 30, 14, 44, 10, 10, 40])
+    write_sheet(wb, "JESA_UNBILLED_BU", ["bu", "split", "month_start", "prev_week", "current"],
+                [[b, sp, (MS["jesa_unbilled"].get((b, sp), 0.0) if MS else None), Pj.get((b, sp)), cur["jesa_unbilled"].get((b, sp), 0.0)] for b in bus for sp in ("labor", "non_labor")],
+                note="Unbilled where the action sits with JESA (J-* statuses except SS postponed), by BU and PSR (labor) / Procurement (non-labor), MMAD.", widths=[28, 12])
+    from ar_engine import status_label as _sl
+    jcodes = sorted({c for (c, l) in cur["jesa_unbilled_status"]}, key=lambda c: -(cur["jesa_unbilled_status"].get((c, "labor"), 0) + cur["jesa_unbilled_status"].get((c, "non_labor"), 0)))
+    write_sheet(wb, "JESA_UNBILLED_STATUS", ["status", "labor", "non_labor"], [[_sl(c), cur["jesa_unbilled_status"].get((c, "labor"), 0.0), cur["jesa_unbilled_status"].get((c, "non_labor"), 0.0)] for c in jcodes],
+                note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
+    write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month"], [[b, v.get("current"), v.get("prior")] for b, v in dso.items()],
+                note="DSO excluding advances (days), from the BU meeting Power BI report. Update monthly; 'JESA Group' row = group DSO.", widths=[28, 12, 14])
     write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
                 note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT.", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]

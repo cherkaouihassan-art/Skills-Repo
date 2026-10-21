@@ -108,6 +108,7 @@ def aggregate(path, as_of, prev_cutoff=None):
     D = lambda: collections.defaultdict(float)
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
+    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D()
     coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
     cur_m = (as_of.year, as_of.month)
     prior_m = ((as_of.replace(day=1) - dt.timedelta(days=1)).year, (as_of.replace(day=1) - dt.timedelta(days=1)).month)
@@ -141,8 +142,14 @@ def aggregate(path, as_of, prev_cutoff=None):
         kpi[comp] += amt; bu[(b, comp)] += amt
         y = str(g(r, "Year") or "").strip(); year[y if y[:2] == "20" else "No year (advance lines)"] += amt
         labor[(comp, "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor")] += amt
-        c1 = str(g(r, "Client 1") or "").strip().upper(); ocp["NON OCP" if c1.startswith("NON OCP") else "OCP"] += amt
+        c1 = str(g(r, "Client 1") or "").strip().upper(); is_non = c1.startswith("NON OCP"); ocp["NON OCP" if is_non else "OCP"] += amt
         pname = str(g(r, "Project Name") or "").strip(); wbs = str(g(r, "New WBS") or g(r, "Project") or "").strip()
+        lab = "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor"
+        if is_non and comp in ("Unbilled", "Unpaid"):
+            nonocp[(b, comp)] += amt; key = (b, wbs, pname)
+            nonocp_proj[(key, comp)] += amt; nonocp_meta.setdefault(key, (str(g(r, "Project Client") or "").strip(), status_label(code)))
+        if comp == "Unbilled" and owner_of(code) == "Under JESA":
+            jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
             owner[(b, owner_of(code))] += amt; st_tot[code] += amt; st_bu[(b, code)] += amt
             agu[(b, bucket(g(r, "Category Unbilled")))] += amt
@@ -159,9 +166,14 @@ def aggregate(path, as_of, prev_cutoff=None):
     for (b, t, wbs, pname), v in proj.items():
         top[(b, t)].append((wbs, pname, v, status_label(st_proj[(b, t, wbs, pname)])))
     top = {k: sorted(v, key=lambda x: -x[2])[:8] for k, v in top.items()}
+    nproj = []
+    for key, (client, st) in nonocp_meta.items():
+        nproj.append([key[0], client, key[1], key[2], nonocp_proj.get((key, "Unbilled"), 0.0), nonocp_proj.get((key, "Unpaid"), 0.0), st])
+    nproj.sort(key=lambda r: -(r[4] + r[5]))
     return {"kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
+            "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st),
             "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
 
 def bus_in(agg):

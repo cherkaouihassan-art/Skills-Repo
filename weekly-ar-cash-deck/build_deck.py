@@ -362,6 +362,12 @@ def build(data, meta, out):
     ms_label = "vs month start"
     asof = datef(meta["as_of_date"])
     splits = {r["metric"]: r["value"] for r in data["AR_SPLITS"]}
+    dso = {r["bu"]: r for r in data.get("DSO", [])}
+    def dso_txt(b):
+        r = dso.get(b)
+        if not r or r.get("dso_current") in (None, ""): return None
+        cur_ = int(float(r["dso_current"])); pr = r.get("dso_prior_month")
+        return f"{cur_} days" + (f" (prior {int(float(pr))})" if pr not in (None, "") else "")
     arbu = {}
     for r in data["AR_BU"]: arbu.setdefault(r["bu"], {})[r["component"]] = r
     def dwow(r): return round(r["current"] or 0) - round(r["prev_week"] or 0)
@@ -413,7 +419,7 @@ def build(data, meta, out):
     rect(s, 5.3, 2.75, 7.7, 1.1, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, 5.3, 2.75, 0.08, 1.1, NAVY2)
     tb(s, 5.55, 2.8, 2.2, 0.9, f"{ocp/(ocp+nocp)*100:.0f}%", size=36, bold=True, color=BLUE, anchor=MSO_ANCHOR.MIDDLE)
     tb(s, 7.7, 2.85, 5.2, 0.95, [[("of AR is OCP-related", {"size": 15, "bold": True, "color": NAVY})], [(f"OCP {f0(ocp)}  ·  Non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", {"size": 11, "color": SLATE})],
-                                  [("Receivables remain almost entirely concentrated with OCP", {"size": 10, "color": SLATE})]], anchor=MSO_ANCHOR.MIDDLE)
+                                  [((("DSO excl. advances, JESA Group: " + dso_txt("JESA Group") + "  ·  ") if dso_txt("JESA Group") else "") + "Receivables remain almost entirely concentrated with OCP", {"size": 10, "color": SLATE})]], anchor=MSO_ANCHOR.MIDDLE)
     # labor vs non-labor
     tb(s, 5.4, 4.0, 7, 0.35, "Labor vs non-labor split", size=14, bold=True, color=NAVY)
     nl_pct = splits.get("Total AR non-labor", 0) / tot["current"] * 100
@@ -466,22 +472,24 @@ def build(data, meta, out):
               [BLUE, GOLD], gap=80, number_format='+#,##0;−#,##0;0', title="Movement by component (MMAD)", label_size=8)
 
     # ------------------------------------------------------------------ 5. AR by BU
-    s = D.slide("AR Position by Business Unit", f"Total AR by BU: this week vs last week and vs the month-start baseline ({ms_s}) (MMAD)")
-    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure"]
+    s = D.slide("AR Position by Business Unit", f"This week vs last week and vs the month-start baseline ({ms_s}), MMAD; DSO excl. advances in days (BU meeting report)")
+    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", "DSO\n(days)"]
     rows, colors = [], {}
     bus = [b for b in BU_ORDER if b in arbu]
     sums = {k: 0.0 for k in ("ms", "pw", "cu", "ub", "ubp", "up", "upp", "ad", "un")}
     for i, b in enumerate(bus):
         t_, u_, p_, a_ = arbu[b]["Total AR"], arbu[b]["Unbilled"], arbu[b]["Unpaid"], arbu[b]["Advance"]
         un = (arbu[b].get("Unrecognized") or {}).get("current") or 0
-        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un)])
+        dr = dso.get(b, {}); dsv = (str(int(float(dr["dso_current"]))) if dr.get("dso_current") not in (None, "") else "–")
+        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un), dsv])
         colors[(i, 4)] = delta_color(dwow(t_)); colors[(i, 5)] = delta_color(dms(t_)); colors[(i, 7)] = delta_color(dwow(u_)); colors[(i, 9)] = delta_color(dwow(p_))
         sums["ms"] += t_["month_start"] or 0; sums["pw"] += t_["prev_week"] or 0; sums["cu"] += t_["current"] or 0; sums["ub"] += u_["current"] or 0; sums["ubp"] += u_["prev_week"] or 0
         sums["up"] += p_["current"] or 0; sums["upp"] += p_["prev_week"] or 0; sums["ad"] += a_["current"] or 0; sums["un"] += un
-    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"])])
+    gd = dso.get("JESA Group", {}); gdv = (str(int(float(gd["dso_current"]))) if gd.get("dso_current") not in (None, "") else "–")
+    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"]), gdv])
     n = len(rows) - 1
     colors[(n, 4)] = delta_color(sums["cu"] - sums["pw"]); colors[(n, 5)] = delta_color(sums["cu"] - sums["ms"]); colors[(n, 7)] = delta_color(sums["ub"] - sums["ubp"]); colors[(n, 9)] = delta_color(sums["up"] - sums["upp"])
-    table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.7, 1, 1, 1, 0.85, 0.95, 0.95, 0.85, 0.9, 0.85, 0.85, 0.95, 1.0], font_size=9, header_size=8.5, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
+    table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.6, 0.95, 0.95, 0.95, 0.8, 0.9, 0.9, 0.8, 0.85, 0.8, 0.8, 0.9, 0.95, 0.7], font_size=9, header_size=8.5, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
     yb = 1.25 + 0.5 + 0.265 * len(rows) + 0.2
     hb = SH - 0.45 - yb
     bar_chart(s, 0.3, yb, 6.3, hb, [short(b) for b in bus[:9]], [("Δ WoW", [dwow(arbu[b]["Total AR"]) for b in bus[:9]])], [BLUE], legend=False, number_format='+#,##0;−#,##0;0', title="Total AR – Δ week on week by BU (MMAD)", cat_size=8, gap=50)
@@ -517,6 +525,72 @@ def build(data, meta, out):
     rows.append(["Unpaid total", f0(unp["month_start"]), f0(unp["prev_week"]), f0(unp["current"]), "100%", fd(dwow(unp)), fd(dms(unp))])
     table(s, 6.95, 1.6, 6.05, ["Status", f"M. start\n{ms_s}", prev_s, cur_s, "% unpaid", "Δ WoW", "Δ vs\nm. start"], rows, col_w=[1.7, 0.8, 0.8, 0.8, 0.75, 0.75, 0.85], font_size=9.5, colors=colors, total_last=True, row_h=0.3)
     bar_chart(s, 6.9, 4.05, 6.15, 3.05, [r["status"] for r in ups], [(prev_s, [r["prev_week"] for r in ups]), (cur_s, [r["current"] for r in ups])], [LBLUE, NAVY2], gap=60, title="Unpaid by status – last week vs this week", cat_size=8, label_size=8)
+
+
+    # ------------------------------------------------------------------ 6b. Non-OCP receivables
+    no = {}
+    for r in data.get("NONOCP_BU", []): no.setdefault(r["bu"], {})[r["component"]] = r
+    def nv(b, c, k): return ((no.get(b, {}).get(c) or {}).get(k)) or 0
+    n_unb = sum(nv(b, "Unbilled", "current") for b in no); n_unp = sum(nv(b, "Unpaid", "current") for b in no)
+    n_unb_ms = sum(nv(b, "Unbilled", "month_start") for b in no); n_unp_ms = sum(nv(b, "Unpaid", "month_start") for b in no)
+    s = D.slide("Non-OCP Clients – unbilled & unpaid", f"Non-OCP receivables of {f0(n_unb + n_unp)} MMAD ({(n_unb+n_unp)/tot['current']*100:.1f}% of AR): unbilled {f0(n_unb)}, unpaid {f0(n_unp)}; {fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))} vs month start")
+    cw = (SW - 0.6 - 0.12 * 3) / 4
+    kpi_card(s, 0.3, 1.2, cw, 1.1, "Non-OCP AR (unbilled + unpaid)", n_unb + n_unp, delta_ms=round(n_unb + n_unp) - round(n_unb_ms + n_unp_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.1, "Non-OCP unbilled", n_unb, delta_ms=round(n_unb) - round(n_unb_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.2, cw, 1.1, "Non-OCP unpaid", n_unp, delta_ms=round(n_unp) - round(n_unp_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.2, cw, 1.1, "Share of total AR", None, value_size=20)
+    tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.5, cw - 0.2, 0.5, f"{(n_unb+n_unp)/tot['current']*100:.1f}%", size=20, bold=True, color=NAVY)
+    tb(s, 0.4, 2.45, 5.6, 0.3, "By business unit (MMAD)", size=12, bold=True, color=NAVY)
+    rows, colors = [], {}
+    nb = sorted([b for b in no if nv(b, "Unbilled", "current") + nv(b, "Unpaid", "current") > 0.5], key=lambda b: -(nv(b, "Unbilled", "current") + nv(b, "Unpaid", "current")))
+    for i, b in enumerate(nb):
+        ub_, up_ = nv(b, "Unbilled", "current"), nv(b, "Unpaid", "current"); tot_ = ub_ + up_
+        d_ = round(tot_) - round(nv(b, "Unbilled", "month_start") + nv(b, "Unpaid", "month_start"))
+        rows.append([short(b), f0(ub_), f0(up_), f0(tot_), f"{tot_/(n_unb+n_unp)*100:.0f}%", fd(d_)]); colors[(i, 5)] = delta_color(d_)
+    rows.append(["Total non-OCP", f0(n_unb), f0(n_unp), f0(n_unb + n_unp), "100%", fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))])
+    table(s, 0.4, 2.75, 5.6, ["BU", "Unbilled", "Unpaid", "Total", "%", "Δ vs MS"], rows, col_w=[1.7, 0.8, 0.8, 0.8, 0.6, 0.8], font_size=9, header_size=8.5, row_h=0.3, header_h=0.32, colors=colors, total_last=True)
+    tb(s, 0.4, 2.75 + 0.32 + 0.3 * len(rows) + 0.15, 5.6, 1.0, [[("Reading: ", {"bold": True, "color": NAVY}), (f"non-OCP clients (Client 1 = NON OCP) carry {f0(n_unb + n_unp)} MMAD, of which Global Mining (Ma'aden) accounts for {nv('Global Mining', 'Unbilled', 'current') + nv('Global Mining', 'Unpaid', 'current'):,.0f} MMAD. The right-hand table lists the projects driving the balance; statuses follow the AR coding (C-* with the client, J-* with JESA).", {})]], size=9, color=DARK, line_spacing=1.1)
+    npr = data.get("NONOCP_PROJECTS", [])[:14]
+    tb(s, 6.3, 2.45, 6.8, 0.3, "Projects driving non-OCP receivables (MMAD)", size=12, bold=True, color=NAVY)
+    def clean_txt(v, n):
+        v = str(v or "").replace("\xa0", " ").strip(); return (v[:n - 1] + "…") if len(v) > n else v
+    rows = [[short(r["bu"]), clean_txt(r["client"], 24), clean_txt(r["project"], 30), f1(r["unbilled"]), f1(r["unpaid"]), clean_txt(r["status"], 27)] for r in npr]
+    rows.append([f"Top {len(npr)} total", "", "", f1(sum((r["unbilled"] or 0) for r in npr)), f1(sum((r["unpaid"] or 0) for r in npr)), f"{sum((r['unbilled'] or 0)+(r['unpaid'] or 0) for r in npr)/(n_unb+n_unp)*100:.0f}% of non-OCP"])
+    table(s, 6.3, 2.75, 6.8, ["BU", "Client", "Project", "Unbilled", "Unpaid", "Status"], rows, col_w=[0.95, 1.5, 1.85, 0.6, 0.6, 1.55], font_size=7.5, header_size=7.5, row_h=0.255, header_h=0.28, total_last=True,
+          align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.LEFT])
+
+    # ------------------------------------------------------------------ 6c. Unbilled under JESA responsibility
+    ju = {}
+    for r in data.get("JESA_UNBILLED_BU", []): ju.setdefault(r["bu"], {})[r["split"]] = r
+    def jv(b, sp, k): return ((ju.get(b, {}).get(sp) or {}).get(k)) or 0
+    j_lab = sum(jv(b, "labor", "current") for b in ju); j_nl = sum(jv(b, "non_labor", "current") for b in ju); j_tot = j_lab + j_nl
+    j_lab_ms = sum(jv(b, "labor", "month_start") for b in ju); j_nl_ms = sum(jv(b, "non_labor", "month_start") for b in ju)
+    owner_rows = [r for r in data["AR_UNBILLED_OWNER"] if r["category"] == "Under JESA"]
+    j_prev = sum((r["prev_week"] or 0) for r in owner_rows) if owner_rows else None
+    s = D.slide("Unbilled under JESA responsibility", f"{f0(j_tot)} MMAD of unbilled sits with JESA ({j_tot/unb['current']*100:.0f}% of unbilled): PSR {f0(j_lab)} / Procurement {f0(j_nl)}; {fd(round(j_tot)-round(j_lab_ms+j_nl_ms))} vs month start" + (f", {fd(round(j_tot)-round(j_prev))} WoW" if j_prev is not None else ""))
+    cw = (SW - 0.6 - 0.12 * 3) / 4
+    kpi_card(s, 0.3, 1.2, cw, 1.2, "Unbilled under JESA", j_tot, delta_wow=(round(j_tot) - round(j_prev)) if j_prev is not None else None, delta_ms=round(j_tot) - round(j_lab_ms + j_nl_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.2, "PSR (labor)", j_lab, delta_ms=round(j_lab) - round(j_lab_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.2, cw, 1.2, "Procurement (non-labor)", j_nl, delta_ms=round(j_nl) - round(j_nl_ms), value_size=20, ms_label="vs month start")
+    kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.2, cw, 1.2, "Share of total unbilled", None, value_size=20)
+    tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.5, cw - 0.2, 0.5, f"{j_tot/unb['current']*100:.0f}%", size=20, bold=True, color=NAVY)
+    tb(s, 0.4, 2.55, 6.2, 0.3, "By business unit – PSR vs Procurement (MMAD)", size=12, bold=True, color=NAVY)
+    rows, colors = [], {}
+    jb = sorted([b for b in ju if abs(jv(b, "labor", "current")) + abs(jv(b, "non_labor", "current")) > 0.05], key=lambda b: -(jv(b, "labor", "current") + jv(b, "non_labor", "current")))
+    for i, b in enumerate(jb):
+        l_, n_ = jv(b, "labor", "current"), jv(b, "non_labor", "current"); t_ = l_ + n_
+        d_ = round(t_) - round(jv(b, "labor", "month_start") + jv(b, "non_labor", "month_start"))
+        ub_b = (arbu[b]["Unbilled"]["current"] or 0) if b in arbu else 0
+        rows.append([short(b), f0(l_), f0(n_), f0(t_), f"{t_/ub_b*100:.0f}%" if ub_b else "–", fd(d_)]); colors[(i, 5)] = delta_color(d_)
+    rows.append(["Total JESA", f0(j_lab), f0(j_nl), f0(j_tot), f"{j_tot/unb['current']*100:.0f}%", fd(round(j_tot)-round(j_lab_ms+j_nl_ms))])
+    table(s, 0.4, 2.85, 6.2, ["BU", "PSR", "Procurement", "Total", "% of BU unbilled", "Δ vs MS"], rows, col_w=[1.6, 0.8, 1.0, 0.8, 1.1, 0.8], font_size=9, header_size=8.5, row_h=0.3, header_h=0.34, colors=colors, total_last=True)
+    tb(s, 0.4, 2.85 + 0.34 + 0.3 * len(rows) + 0.1, 6.2, 0.5, "PSR = labor lines (PSR/PROC = PSR); Procurement = non-labor lines. Negative procurement amounts are credit lines pending JESA PM approval (AM, Global Mining).", size=8, italic=True, color=GREY)
+    js = data.get("JESA_UNBILLED_STATUS", [])
+    tb(s, 6.9, 2.55, 6.2, 0.3, "By status – what JESA still has to do (MMAD)", size=12, bold=True, color=NAVY)
+    rows = [[(str(r["status"])[:44] + "…") if len(str(r["status"])) > 45 else str(r["status"]), f0(r["labor"]), f0(r["non_labor"]), f0((r["labor"] or 0) + (r["non_labor"] or 0)), f"{((r['labor'] or 0)+(r['non_labor'] or 0))/j_tot*100:.0f}%" if j_tot else "–"] for r in js]
+    rows.append(["Total under JESA", f0(j_lab), f0(j_nl), f0(j_tot), "100%"])
+    table(s, 6.9, 2.85, 6.2, ["Status", "PSR", "Procurement", "Total", "%"], rows, col_w=[3.1, 0.75, 0.95, 0.75, 0.65], font_size=8, header_size=8, row_h=0.25, header_h=0.28, total_last=True, align=[PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
+    tb(s, 6.9, 2.85 + 0.28 + 0.25 * len(rows) + 0.1, 6.2, 0.7, [[("Reading: ", {"bold": True, "color": NAVY}), ("J-* statuses are the steps JESA controls (attachment creation, internal reviews, PM approval, service-sheet submission, invoicing); service sheets postponed and at-risk scope are excluded. Negative values are credit lines pending JESA PM approval.", {})]], size=8.5, color=DARK, line_spacing=1.1)
 
     # ------------------------------------------------------------------ 7. Unrecognized revenue & suppliers
     ut = data["UNRECOGNIZED"]
@@ -556,12 +630,12 @@ def build(data, meta, out):
     for b in zoom_bus:
         t_, u_, p_, a_ = arbu[b]["Total AR"], arbu[b]["Unbilled"], arbu[b]["Unpaid"], arbu[b]["Advance"]
         unr = arbu[b].get("Unrecognized") or {"current": 0, "prev_week": None, "month_start": None}
-        unr_c = unr["current"] or 0; unr_p = unr["prev_week"]
+        unr_c = unr["current"] or 0; unr_p = unr["prev_week"]; unr_m = unr.get("month_start")
         tc = t_["current"] or 1
-        s = D.slide(f"Zoom – {b}", f"Total AR {f0(t_['current'])} MMAD ({fd(dwow(t_))} WoW, {fd(dms(t_))} vs month start); unbilled {u_['current']/tc*100:.0f}%, unpaid {p_['current']/tc*100:.0f}%, advance {a_['current']/tc*100:.0f}% of AR")
+        s = D.slide(f"Zoom – {b}", f"Total AR {f0(t_['current'])} MMAD ({fd(dwow(t_))} WoW, {fd(dms(t_))} vs month start); unbilled {u_['current']/tc*100:.0f}% / unpaid {p_['current']/tc*100:.0f}% / advance {a_['current']/tc*100:.0f}%" + (f" · DSO {dso_txt(b)}" if dso_txt(b) else ""))
         cw = (SW - 0.6 - 0.12 * 5) / 6
         kpi_card(s, 0.3, 1.2, cw, 1.15, "Gross exposure", t_["current"] + unr_c, delta_wow=(dwow(t_) + (unr_c - unr_p)) if unr_p is not None else None, value_size=20)
-        kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.15, "Unrecognized revenue", unr_c, delta_wow=(unr_c - unr_p) if unr_p is not None else None, value_size=20)
+        kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.15, "Unrecognized revenue", unr_c, delta_wow=(round(unr_c) - round(unr_p)) if unr_p is not None else None, delta_ms=(round(unr_c) - round(unr_m)) if unr_m is not None else None, value_size=20, ms_label="vs month start")
         for i, (lab, r) in enumerate([("Total AR", t_), ("Unbilled", u_), ("Unpaid", p_), ("Advance", a_)], start=2):
             kpi_card(s, 0.3 + i * (cw + 0.12), 1.2, cw, 1.15, lab, r["current"], delta_wow=dwow(r), delta_ms=dms(r), value_size=20, ms_label="vs month start")
         # unbilled by ownership (doughnut + legend)
@@ -615,8 +689,8 @@ def build(data, meta, out):
         comps = [("Advance", a_), ("Unbilled", u_), ("Unpaid", p_), ("Total AR", t_)]
         for i, (lab, r) in enumerate(comps):
             rows.append([lab, f0(r["month_start"]), f0(r["prev_week"]), f0(r["current"]), fd(dwow(r)), fd(dms(r))]); colors[(i, 4)] = delta_color(dwow(r)); colors[(i, 5)] = delta_color(dms(r))
-        rows.append(["Unrecognized", "n/a", f0(unr_p) if unr_p is not None else "n/a", f0(unr_c), fd(unr_c - unr_p) if unr_p is not None else "n/a", "n/a"])
-        colors[(4, 4)] = delta_color((unr_c - unr_p) if unr_p is not None else None)
+        rows.append(["Unrecognized", f0(unr_m) if unr_m is not None else "n/a", f0(unr_p) if unr_p is not None else "n/a", f0(unr_c), fd(round(unr_c) - round(unr_p)) if unr_p is not None else "n/a", fd(round(unr_c) - round(unr_m)) if unr_m is not None else "n/a"])
+        colors[(4, 4)] = delta_color((unr_c - unr_p) if unr_p is not None else None); colors[(4, 5)] = delta_color((unr_c - unr_m) if unr_m is not None else None)
         table(s, 0.4, 5.45, 4.5, ["", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs MS"], rows, col_w=[1.1, 0.75, 0.65, 0.65, 0.65, 0.7], font_size=8, header_size=7.5, row_h=0.235, header_h=0.3, colors=colors, bold_rows=(3,))
         # aging buckets (bottom middle)
         agu = {r["item"]: (r["current"] or 0) for r in det.get(b, {}).get("aging_unbilled", [])}; agp = {r["item"]: (r["current"] or 0) for r in det.get(b, {}).get("aging_unpaid", [])}
@@ -878,14 +952,16 @@ def build(data, meta, out):
         ["Cash position (group & by BU), October paid / approved / pending, tracking-log status, priority list", "Cash flow workbook (CASH_FLOW_ANALYSIS – BUs) – 'EXEC Summary', 'Approved vs Tracking log', 'Priority list', 'LC Ongoing'", f"Data as of {datef(meta['cash_data_as_of'])}; collections to {meta['collections_to']}; payments to {meta['payments_to']}", "CASH_MONTHLY, CASH_BU, CASH_BU_OCT, ONGOING"],
         ["Month-start baseline (AR by component, BU, status, aging)", "Beginning-of-month AR line list (AR_Beg_of_the_month.xlsx) aggregated with the dashboard rules", f"AR position {ms_d}", "AR_KPI / AR_BU / AR_* month_start columns"],
         ["Unrecognized revenue by BU and status, PO book (previous week = last week's deck / inputs)", "UR Tracking Consolidation – 'Summary UR', 'Summary PO by BU'", asof, "UNRECOGNIZED, UR_ATTACHMENT_STATUS, UR_PO_SUMMARY"],
+        ["DSO (group and by BU)", "BU meeting Power BI report (DSO excl. advances), entered monthly", "October 2026 (prior: September)", "DSO"],
+        ["Non-OCP receivables and JESA-responsibility unbilled (PSR / Procurement)", "Weekly raw AR extract (Client 1 = NON OCP; J-* statuses; PSR/PROC column)", f"Snapshot {cur_d}", "NONOCP_BU, NONOCP_PROJECTS, JESA_UNBILLED_*"],
         ["LC commitments, opened vs to be opened, maturity schedule, action status", "Bank LC situation (LCs SITUATION) – 'LC avec echéance'", f"LC situation {meta['lc_date']}", "LC_LINES"],
         ["Open supplier invoices by due date, tier, BU/origin, top suppliers", "Supplier invoice extract (4411 – Parked – Downpayment)", f"AP file {meta['ap_label']}", "AP_BUCKETS, AP_BU_ORIGIN, AP_TIERS, AP_TOP_SUPPLIERS"],
         ["Payments received (amount invoiced by payment date, labor / non-labor), invoices deposited", "Paid lines of the raw AR extract", f"Payments to {cur_d}", "COLLECTIONS_BU, COLLECTIONS_MONTHLY"],
         ["Key messages", "Auto-drafted from the figures, then edited", asof, "KEY_MESSAGES"],
     ]
-    table(s, 0.4, 1.25, 12.5, ["Deck section", "Source file / sheet", "As-of", "Input tab (weekly_inputs.xlsx)"], rows, col_w=[3.4, 4.0, 2.4, 2.7], font_size=8, header_size=8.5, row_h=0.42, header_h=0.3,
+    table(s, 0.4, 1.25, 12.5, ["Deck section", "Source file / sheet", "As-of", "Input tab (weekly_inputs.xlsx)"], rows, col_w=[3.4, 4.0, 2.4, 2.7], font_size=8, header_size=8.5, row_h=0.38, header_h=0.3,
           align=[PP_ALIGN.LEFT] * 4)
-    tb(s, 0.4, 5.75, 12.5, 1.35, [[("Weekly run: ", {"bold": True, "color": NAVY}), ("1) drop the refreshed source files (raw AR extract, cash flow workbook, LC situation, supplier invoices, UR consolidation; month-start AR file once a month)  →  2) run extract_inputs.py with last week's inputs workbook as the previous-week source  →  3) review / edit weekly_inputs.xlsx (key messages)  →  4) run build_deck.py.", {})],
+    tb(s, 0.4, 5.85, 12.5, 1.25, [[("Weekly run: ", {"bold": True, "color": NAVY}), ("1) drop the refreshed source files (raw AR extract, cash flow workbook, LC situation, supplier invoices, UR consolidation; month-start AR file once a month)  →  2) run extract_inputs.py with last week's inputs workbook as the previous-week source  →  3) review / edit weekly_inputs.xlsx (key messages)  →  4) run build_deck.py.", {})],
                                   [("Comparatives: ", {"bold": True, "color": NAVY}), (f"week-on-week compares the {cur_d} extract with the {prev_d} position; 'vs month start' uses the beginning-of-month AR file ({ms_d} position). All three are aggregated with the same rules (unearned-on-LS and negative advance lines excluded), which reproduce the BU meeting report totals.", {})],
                                   [("Scope notes: ", {"bold": True, "color": NAVY}), ("cash position covers procurement (non-labor) flows for the JESA Group including AM; PSR (labor) collections are shown net of the AM ring-fence and the W&E reserve provision. AR figures are in MMAD HT as per the AR dashboard.", {})]],
        size=9.5, line_spacing=1.15)
