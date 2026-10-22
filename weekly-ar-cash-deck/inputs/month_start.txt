@@ -1,2 +1,2 @@
-/root/.claude/uploads/47ac7bb1-272a-575a-a1ff-5f25916e6a0d/cd27dedd-AR_Beg_of_the_month.xlsx
+inputs/baseline/AR_Beg_of_the_month_2026-10.xlsx
 2026-10-07

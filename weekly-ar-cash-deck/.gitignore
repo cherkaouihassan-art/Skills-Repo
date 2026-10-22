@@ -1,3 +1,6 @@
 output/*.pdf
 output/slide-*.jpg
 __pycache__/
+incoming/*
+!incoming/.gitkeep
+inputs/baseline/*.xlsx
