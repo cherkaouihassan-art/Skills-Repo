@@ -15,7 +15,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION, XL_TICK_LABEL_POSITION
+from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION, XL_TICK_LABEL_POSITION, XL_MARKER_STYLE
 from pptx.oxml.ns import qn
 from lxml import etree
 
@@ -256,6 +256,33 @@ def color_points(ch, series_idx, colors):
     for i, c in enumerate(colors):
         pt = s.points[i]; pt.format.fill.solid(); pt.format.fill.fore_color.rgb = c; pt.format.line.fill.background()
 
+def line_chart(slide, x, y, w, h, cats, series, colors, title=None, legend_pos=XL_LEGEND_POSITION.BOTTOM, cat_size=8, labels_last=True, label_size=8, number_format='#,##0'):
+    """multi-series line chart; None values leave gaps. labels_last: data label on the last point of each series only."""
+    cd = CategoryChartData(); cd.categories = cats
+    for name, vals in series: cd.add_series(name, [float(v) if v is not None else None for v in vals])
+    gf = slide.shapes.add_chart(XL_CHART_TYPE.LINE_MARKERS, Inches(x), Inches(y), Inches(w), Inches(h), cd); ch = gf.chart
+    ch.font.name = FONT; ch.font.size = Pt(9); ch.has_title = bool(title)
+    if title:
+        ch.chart_title.text_frame.text = title
+        p = ch.chart_title.text_frame.paragraphs[0]; p.runs[0].font.size = Pt(11); p.runs[0].font.bold = True; p.runs[0].font.color.rgb = NAVY
+    ch.has_legend = len(series) > 1
+    if ch.has_legend:
+        ch.legend.position = legend_pos; ch.legend.include_in_layout = False; ch.legend.font.size = Pt(8); ch.legend.font.name = FONT
+    for i, ser in enumerate(ch.plots[0].series):
+        col = colors[i % len(colors)]
+        ser.format.line.color.rgb = col; ser.format.line.width = Pt(2); ser.smooth = False
+        ser.marker.style = XL_MARKER_STYLE.CIRCLE; ser.marker.size = 5
+        ser.marker.format.fill.solid(); ser.marker.format.fill.fore_color.rgb = col; ser.marker.format.line.color.rgb = col
+        if labels_last:
+            vals = series[i][1]; last = max((k for k, v in enumerate(vals) if v is not None), default=None)
+            if last is not None:
+                dl = ser.points[last].data_label; dl.has_text_frame = False; dl.position = XL_LABEL_POSITION.RIGHT
+                dl.font.size = Pt(label_size); dl.font.bold = True; dl.font.color.rgb = col
+                tf = dl.text_frame; tf.text = f"{vals[last]:,.0f}"
+                for r_ in tf.paragraphs[0].runs: r_.font.size = Pt(label_size); r_.font.bold = True; r_.font.color.rgb = col
+    _style_axes(ch, cat_size=cat_size, val_visible=True)
+    return ch
+
 def doughnut(slide, x, y, w, h, cats, vals, colors, labels=False, legend=False, hole=55, label_size=9, number_format='#,##0'):
     cd = CategoryChartData(); cd.categories = cats; cd.add_series("s", [float(v) for v in vals])
     gf = slide.shapes.add_chart(XL_CHART_TYPE.DOUGHNUT, Inches(x), Inches(y), Inches(w), Inches(h), cd); ch = gf.chart
@@ -443,7 +470,7 @@ def build(data, meta, out):
              ("5", "Cash position – procurement", "Cash in versus cash out by month and by business unit, before and after October commitments"),
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
              ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
-             ("8", "Backup", "AR movement and position by business unit, unbilled & unpaid status view, PSR collections, October payments, LC and AP detail, sources")]
+             ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled & unpaid status view, PSR collections, October payments, LC and AP detail, sources")]
     y0 = 1.3; step = (SH - 0.6 - y0) / len(items)
     for i, (n, t, d_) in enumerate(items):
         y = y0 + i * step
@@ -576,6 +603,29 @@ def build(data, meta, out):
     hb = SH - 0.45 - yb
     bar_chart(s, 0.3, yb, 6.3, hb, [short(b) for b in bus[:9]], [("Δ WoW", [dwow(arbu[b]["Total AR"]) for b in bus[:9]])], [BLUE], legend=False, number_format='+#,##0;−#,##0;0', title="Total AR – Δ week on week by BU (MMAD)", cat_size=8, gap=50)
     bar_chart(s, 6.75, yb, 6.3, hb, [short(b) for b in bus[:9]], [(f"Δ vs {ms_s}", [dms(arbu[b]["Total AR"]) for b in bus[:9]])], [GOLD], legend=False, number_format='+#,##0;−#,##0;0', title=f"Total AR – Δ vs month start ({ms_s}) by BU (MMAD)", cat_size=8, gap=50)
+
+    # ------------------------------------------------------------------ 5b. DSO trend (backup)
+    dtr = data.get("DSO_TREND", [])
+    if dtr and dso:
+        mcols = [k for k in dtr[0].keys() if k not in ("bu", "current")]
+        cats = mcols + [f"Oct-26 ({cur_s})" if False else f"{datef(meta['ar_current_date'], '%b-%y')} ({cur_s})"]
+        g = dso.get("JESA Group", {})
+        s = D.slide("DSO – trend by business unit", f"DSO = total AR ÷ 12-month trailing revenue × 365 days; JESA Group {int(float(g['dso_current']))} days at {cur_s}" if g.get("dso_current") not in (None, "") else "DSO = total AR ÷ 12-month trailing revenue × 365 days")
+        top = sorted([r for r in dtr if (arbu.get(r["bu"], {}).get("Total AR") or {}).get("current")], key=lambda r: -(arbu[r["bu"]]["Total AR"]["current"] or 0))[:7]
+        BU_COL = {"SP2M Ad Hoc Program": GOLD, "Water & Environment": NAVY2, "Fertilizers & Chemicals": TEAL, "Energy Operations": GREEN, "JESA Technologies": BLUE,
+                  "Global Mining": GREY, "Building & Infrastructure": RED, "AM": ORANGE, "Advisory": PURPLE, "Building & Capabilities": SLATE}
+        tb(s, 0.4, 1.25, 7.4, 0.3, "DSO by business unit – last 12 months (days)", size=13, bold=True, color=NAVY)
+        line_chart(s, 0.3, 1.55, 7.5, 5.4, cats, [(short(r["bu"]), [r.get(m) for m in mcols] + [r.get("current")]) for r in top], [BU_COL.get(r["bu"], BLUE) for r in top], cat_size=7.5)
+        tb(s, 8.0, 1.25, 5.1, 0.3, "DSO, AR and trailing revenue (MMAD, days)", size=13, bold=True, color=NAVY)
+        rows, colors = [], {}
+        drows = sorted([r for r in data["DSO"] if r["bu"] != "JESA Group" and r.get("dso_current") not in (None, "")], key=lambda r: -float(r["dso_current"]))
+        for i, r in enumerate(drows):
+            cur_ = float(r["dso_current"]); pr = r.get("dso_prior_month"); d_ = (cur_ - float(pr)) if pr not in (None, "") else None
+            rows.append([short(r["bu"]), f0(r.get("total_ar")), f0(r.get("revenue_12m")), f"{cur_:.0f}", (f"{float(pr):.0f}" if pr not in (None, "") else "–"), (fd(d_) if d_ is not None else "–")])
+            colors[(i, 5)] = delta_color(d_)
+        if g: rows.append(["JESA Group", f0(g.get("total_ar")), f0(g.get("revenue_12m")), f"{float(g['dso_current']):.0f}", "–", "–"])
+        table(s, 8.0, 1.55, 5.1, ["BU", "Total AR", "Revenue 12m", "DSO", "Prior month", "Δ days"], rows, col_w=[1.5, 0.8, 0.9, 0.6, 0.75, 0.6], font_size=8.5, header_size=8, row_h=0.27, header_h=0.34, colors=colors, total_last=bool(g), first_col_bold=True)
+        tb(s, 8.0, 1.55 + 0.34 + 0.27 * len(rows) + 0.15, 5.1, 1.2, [[("Reading: ", {"bold": True, "color": NAVY}), ("a DSO of 365 means the receivable book equals one year of revenue. The AR side is refreshed weekly from the AR extract; the revenue side (12-month trailing, per project) is refreshed monthly from the DSO calculation workbook. Prior month = DSO published for the previous month.", {})]], size=8.5, color=DARK, line_spacing=1.1)
 
     # ------------------------------------------------------------------ 6. Unbilled & unpaid status
     s = D.slide("Unbilled & Unpaid – status view", "Where the receivable book sits in the process, with week-on-week movement")
@@ -1071,7 +1121,7 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 14. Backup: LC detail
     D.section = "backup_divider"
     D.divider("08", "Backup",
-              [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "Unbilled & unpaid status view"]),
+              [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "DSO trend by business unit", "Unbilled & unpaid status view"]),
                ("Cash position", ["PSR (labor) collections by business unit and provisions", f"{month_name} payments – paid, approved and pending"]),
                ("Payables & letters of credit", ["LC detail by letter of credit", "Supplier payables detail (tiers, top suppliers)"]),
                ("Reference", ["Sources & definitions"])],

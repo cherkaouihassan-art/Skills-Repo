@@ -4,3 +4,4 @@ __pycache__/
 incoming/*
 !incoming/.gitkeep
 inputs/baseline/*.xlsx
+inputs/dso_calc/*.xlsx

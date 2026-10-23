@@ -26,9 +26,10 @@ Required (matched by name pattern, case-insensitive):
 | `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` |
 | `*LC*SITUATION*.xlsx` | bank LC situation, sheet `LC avec echéance` |
 | `UR*Tracking*.xlsx` | unrecognized revenue consolidation |
-| `*BU*Meeting*.pdf` (optional) | DSO pages |
+| `*DSO*.xlsx` (monthly) | DSO calculation workbook: 12-month trailing revenue per project, DSO trend |
+| `*BU*Meeting*.pdf` (optional) | reconciliation reference (total AR, unbilled, unpaid, invoices paid) |
 
-Download them into one scratch folder. Do not run Python from inside that folder. If one of the five is missing,
+Download them into one scratch folder (the DSO workbook too when a new one is there). Do not run Python from inside that folder. If one of the five is missing,
 stop and report which one; do not build a deck with stale data in its place.
 
 Sanity checks before running: the AR file must be newer than the one archived in the last `inputs/history/` workbook
@@ -49,16 +50,19 @@ week's `AP_KPI` values, and the LC file date in its name must be the latest avai
 
 ## 3. DSO
 
-The BU meeting PDF cannot be parsed automatically. If a new PDF is in the drop, open its "DSO KPIs" / "DSO by BU"
-pages with the Read tool (pages parameter) and write `inputs/dso_<AR date>.json` with the same keys as the previous
-file (`JESA Group` plus each BU, `dso_current` and `dso_prior_month`). If no new PDF, reuse the latest `inputs/dso_*.json`
-and say so in the summary.
+DSO is computed, not typed: total AR of the BU (from this week's AR extract) ÷ 12-month trailing revenue × 365.
+The revenue side comes from the DSO calculation workbook (`WIP_DSO_calc.xlsx`, sheets `12 Months Trailing` and
+`Trend`). If a refreshed workbook is in the drop (pattern `*DSO*.xlsx`), `run_week.sh` copies it to
+`inputs/dso_calc/`; otherwise the latest one there is reused, which is correct until a new month of revenue is closed.
+If the workbook is older than two months, say so in the summary. The extractor prints a NOTE when a computed DSO
+differs from the workbook's own table by 2 days or more (the table may carry a manual override, e.g. JESA
+Technologies 95 vs computed 106 in October); report it, do not change the calculation.
 
 ## 4. Run
 
 ```bash
 cd weekly-ar-cash-deck
-./run_week.sh <scratch folder> <as-of> <AR date> <previous AR date> inputs/dso_<date>.json
+./run_week.sh <scratch folder> <as-of> <AR date> <previous AR date>
 ```
 
 Read the console output: `current AR`, `previous AR` and `month-start AR` lines, plus any `WARN` lines. A `WARN` on

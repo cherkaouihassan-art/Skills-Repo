@@ -17,7 +17,7 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 | 3 | `AP_information.xlsx` | `4411 - Parked - Downpayment` | supplier payables (downpayments, parked, 4411) – must be the extract of the current week |
 | 4 | `<date> - LC_SITUATION.xlsx` | `LC avec echéance` | bank LC situation – latest version (maturity columns are read from the header) |
 | 5 | `UR_Tracking_Consolidation.xlsx` | `Summary UR`, `Summary PO by BU`, `Sheet1` | unrecognized revenue (columns already include the 6% markup) |
-| 6 | `AR - BU Meeting <date>.pdf` | DSO pages | DSO group and by BU are typed into `inputs/dso_<date>.json` (11 numbers; the Power BI chart cannot be parsed automatically) |
+| 6 | `WIP_DSO_calc.xlsx` | `12 Months Trailing`, `Trend`, `DSO Table` | DSO = total AR of the BU ÷ 12-month trailing revenue × 365. The AR side is recomputed every week from the AR extract; the revenue side (per project, trailing 12 months) only changes when a month closes, so a refreshed workbook is needed once a month (the last one is kept in `inputs/dso_calc/`). `Trend` gives the monthly DSO history for the trend slide. The BU meeting PDF is no longer needed for DSO |
 | 7 | beginning-of-month AR extract | `AR` | once per month: the first AR extract of the month, path and date in `inputs/month_start.txt` |
 
 Previous-week comparatives (AR, unrecognized revenue, AP, LC, collections) come from `inputs/history/weekly_inputs_<date>.xlsx`
@@ -25,12 +25,12 @@ saved by the previous run – nothing else to provide.
 
 ## Weekly run (about 5 minutes)
 
-1. Put files 1–5 in one folder (names can vary, they are matched by pattern: `AR_PRE*`, `CASH*flow*`, `AP*` or `Supplier*`,
-   `*LC*SITUATION*`, `UR*Tracking*`). Update `inputs/dso_<date>.json` from the BU meeting PDF when a new one is published.
+1. Put files 1–5 (and the DSO workbook when refreshed) in one folder (names can vary, they are matched by pattern:
+   `AR_PRE*`, `CASH*flow*`, `AP*` or `Supplier*`, `*LC*SITUATION*`, `UR*Tracking*`, `*DSO*`).
 2. Run everything in one command (extract → build → archive the inputs for next week):
    ```bash
-   ./run_week.sh <folder> 2026-10-28 2026-10-27 2026-10-20 inputs/dso_2026-10-20.json
-   #              sources   as-of      AR date    previous AR date   DSO file
+   ./run_week.sh <folder> 2026-10-28 2026-10-27 2026-10-20
+   #              sources   as-of      AR date    previous AR date
    ```
    The deck lands in `output/JESA_AR_Cash_Position_<as-of>.pptx` and `inputs/weekly_inputs.xlsx` is copied to
    `inputs/history/`.
@@ -52,13 +52,13 @@ Manual equivalent of step 2 (all parameters explicit):
    (`--ar-dashboard` accepts the old processed AR dashboard as the previous week; it was used once for the transition on
    21 Oct 2026. `--ur-prev` / `--ur-ms` JSON files override the unrecognized references when no history workbook exists.)
 
-## Deck structure (40 slides)
+## Deck structure (41 slides)
 
 1 Title · 2 Agenda · 3 Key messages · 4 AR executive summary · 5 Unbilled under JESA responsibility · 6 Non-OCP clients ·
 7 Unrecognized revenue & suppliers · 8 Payments received · 9 Cash position · 10 Cash by business unit · 11 Accounts payable ·
 12 Letters of credit · 13 "Business Unit Breakdown" divider · 14–31 two pages per business unit · 32 "Backup" divider ·
-33 AR movement · 34 AR position by BU · 35 Unbilled & unpaid status view · 36 PSR (labor) collections · 37 October payments ·
-38 LC detail · 39 AP detail · 40 Sources & definitions.
+33 AR movement · 34 AR position by BU · 35 DSO trend · 36 Unbilled & unpaid status view · 37 PSR (labor) collections ·
+38 October payments · 39 LC detail · 40 AP detail · 41 Sources & definitions.
 
 Slides are built in code order and re-sorted by section at the end (`Deck.reorder` in `build_deck.py`); to move a slide
 between the main body and the backup, change its `D.section = ...` tag.

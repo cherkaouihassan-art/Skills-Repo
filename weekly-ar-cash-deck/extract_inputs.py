@@ -406,6 +406,60 @@ def apply_baseline(ar, base):
     for r in ar["aging"]: r[1] = base["aging"].get(r[0], 0.0)
     return ar
 
+# ----------------------------------------------------------------------------- DSO calculation workbook (WIP_DSO_calc.xlsx)
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+def extract_dso_calc(path, as_of):
+    """12-month trailing revenue per BU ('12 Months Trailing' sheet) + DSO history ('Trend' sheet) + the workbook's own DSO table."""
+    out = {"rev12": {}, "window": [], "trend": {}, "trend_months": [], "table": {}}
+    wbk = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    def load(_, sheet): return [list(r) for r in wbk[sheet].iter_rows(values_only=True)]
+    tr = load(path, "12 Months Trailing")
+    hdr = [str(h).replace("\n", " ").strip().lower() if h else "" for h in tr[0]]
+    i_sum = next((i for i, h in enumerate(hdr) if h.startswith("12 month")), None)
+    i_bu = next((i for i, h in enumerate(hdr) if h == "ar bu"), None)
+    if i_sum is None or i_bu is None: raise ValueError("'12 Months Trailing': columns '12 Month trailing' / 'AR BU' not found")
+    out["window"] = [v.strftime("%b-%y") for v in tr[1] if isinstance(v, (dt.datetime, dt.date))]
+    rev = collections.defaultdict(float)
+    for r in tr[2:]:
+        b = canon_bu(r[i_bu]) if r[i_bu] else None
+        if b: rev[b] += num(r[i_sum], 1e6)
+    out["rev12"] = dict(rev)
+    try:
+        td = load(path, "Trend"); months = [str(m).strip() for m in td[0][1:] if m]
+        cur_name = months[0]
+        # history columns: all months after the first (current) one; year inferred backwards from the as-of month
+        y = as_of.year; labels = []
+        for m in months[1:]:
+            mi = MONTHS.index(m) + 1
+            yy = as_of.year if mi < as_of.month else as_of.year - 1
+            labels.append(f"{m[:3]}-{str(yy)[2:]}")
+        out["trend_months"] = labels
+        for r in td[1:]:
+            b = canon_bu(r[0]) if r[0] else None
+            if b: out["trend"][b] = [num(v, 1.0) if isinstance(v, (int, float)) else None for v in r[2:2 + len(labels)]]
+    except Exception as e:
+        print("WARN DSO trend:", e)
+    try:
+        tb_ = load(path, "DSO Table")
+        for r in tb_[1:]:
+            b = canon_bu(r[0]) if r[0] else ("JESA Group" if r[0] and str(r[0]).strip().lower() == "total" else None)
+            if b and isinstance(r[3], (int, float)): out["table"][b] = float(r[3])
+    except Exception as e:
+        print("WARN DSO table:", e)
+    return out
+
+def compute_dso(dc, ar_bu_total):
+    """DSO (days) = total AR of the BU / 12-month trailing revenue x 365; group = totals over the BUs with revenue."""
+    dso = {}; tot_ar = 0.0; tot_rev = 0.0
+    for b, rev in dc["rev12"].items():
+        ar_v = ar_bu_total.get(b, 0.0)
+        if rev > 0.05:
+            dso[b] = {"current": round(ar_v / rev * 365), "prior": None, "ar": ar_v, "rev12": rev}; tot_ar += ar_v; tot_rev += rev
+    if tot_rev: dso["JESA Group"] = {"current": round(tot_ar / tot_rev * 365), "prior": None, "ar": tot_ar, "rev12": tot_rev}
+    for b, hist in dc["trend"].items():
+        if b in dso and hist: dso[b]["prior"] = hist[-1]
+    return dso
+
 # ----------------------------------------------------------------------------- Unrecognized revenue tracking (UR consolidation)
 def extract_ur(path):
     out = {}
@@ -582,7 +636,8 @@ def main():
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", required=True); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
     ap_.add_argument("--ur-ms", default=None, help="JSON {bu: MMAD} with month-start unrecognized revenue by BU")
-    ap_.add_argument("--dso", default=None, help="JSON {bu: {current, prior}} DSO in days (from the BU meeting report)")
+    ap_.add_argument("--dso", default=None, help="JSON {bu: {current, prior}} DSO in days (manual override, e.g. from the BU meeting report)")
+    ap_.add_argument("--dso-calc", default=None, help="WIP_DSO_calc.xlsx: 12-month trailing revenue per BU and DSO trend; DSO is then computed from the AR extract")
     ap_.add_argument("--ur-prev", default=None, help="JSON {bu: MMAD} with last week's unrecognized revenue by BU (overrides the UR file's 'previous BU update' and the prev inputs)")
     ap_.add_argument("--as-of", required=True, help="deck date YYYY-MM-DD")
     ap_.add_argument("--ar-date", required=True, help="AR snapshot date YYYY-MM-DD")
@@ -614,8 +669,17 @@ def main():
         ur["prev"] = P["ur_prev"]; ur["prev_source"] = "last week's inputs"
     elif ur: ur["prev_source"] = "UR file previous BU update (incl. markup)"
     ur_ms = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_ms)).items()} if a.ur_ms else (P.get("ur_ms") or {})
-    dso = {}
-    if a.dso:
+    dso = {}; dso_trend = None
+    if a.dso_calc:
+        dc = extract_dso_calc(a.dso_calc, as_of)
+        ar_bu_total = collections.defaultdict(float)
+        for (b, comp), v in cur["bu"].items(): ar_bu_total[b] += v
+        dso = compute_dso(dc, ar_bu_total); dso_trend = dc
+        for b, v in dso.items():
+            ref = dc["table"].get(b)
+            if ref is not None and abs(ref - v["current"]) >= 2: print(f"NOTE DSO {b}: computed {v['current']} days vs {ref:.0f} in the DSO workbook table")
+        print("DSO (days):", {b: v["current"] for b, v in dso.items()})
+    elif a.dso:
         for k, v in json.load(open(a.dso)).items():
             if k.startswith("_"): continue
             dso[canon_bu(k) or k] = v
@@ -740,8 +804,11 @@ def main():
     jcodes = sorted({c for (c, l) in cur["jesa_unbilled_status"]}, key=lambda c: -(cur["jesa_unbilled_status"].get((c, "labor"), 0) + cur["jesa_unbilled_status"].get((c, "non_labor"), 0)))
     write_sheet(wb, "JESA_UNBILLED_STATUS", ["status", "labor", "non_labor"], [[_sl(c), cur["jesa_unbilled_status"].get((c, "labor"), 0.0), cur["jesa_unbilled_status"].get((c, "non_labor"), 0.0)] for c in jcodes],
                 note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
-    write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month"], [[b, v.get("current"), v.get("prior")] for b, v in dso.items()],
-                note="DSO excluding advances (days), from the BU meeting Power BI report. Update monthly; 'JESA Group' row = group DSO.", widths=[28, 12, 14])
+    write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month", "total_ar", "revenue_12m"], [[b, v.get("current"), v.get("prior"), v.get("ar"), v.get("rev12")] for b, v in dso.items()],
+                note="DSO (days) = total AR of the BU / 12-month trailing revenue x 365 (DSO calc workbook); 'JESA Group' row = group DSO; prior month from the Trend sheet.", widths=[28, 12, 14, 12, 12])
+    if dso_trend:
+        write_sheet(wb, "DSO_TREND", ["bu"] + dso_trend["trend_months"] + ["current"], [[b] + (dso_trend["trend"].get(b) or [None] * len(dso_trend["trend_months"])) + [dso[b]["current"]] for b in dso if b != "JESA Group"],
+                    note=f"DSO history by BU (days) from the DSO calc workbook 'Trend' sheet; 12-month revenue window {dso_trend['window'][0]} to {dso_trend['window'][-1]}.", widths=[28] + [9] * (len(dso_trend["trend_months"]) + 1))
     write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
                 note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT; nonocp_* = same measures for non-OCP clients (Client 1).", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
