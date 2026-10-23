@@ -57,7 +57,7 @@ been assigned AM / Procurement by the user. Claude still does not auto-assign: l
 | Sep-26 | 257 inv / 407,774,514.59 | −70000859 (408,659.37) | 256 / 407,365,855.22 | 64 / 66,510,198 | 192 / 340,855,657 |
 | Oct-26 | 149 inv / 174,915,937.60 | +72000109 (42,140,330.41) | 150 / 217,056,268.01 | 28 / 66,066,239 | 122 / 150,990,029 |
 
-Grand total N16 = 7,464,017,093 in the 19/10 file; **7,464,425,752 after the §F correction.** The first
+Grand total N16 = 7,464,017,093 in the 19/10 file; **7,464,425,753 after the §F correction.** The first
 run must reproduce the Sep-26 and Oct-26 rows above from the same extract before computing anything
 new, then report deltas.
 

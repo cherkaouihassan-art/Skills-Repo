@@ -1,5 +1,9 @@
 # Slim workbook spec — `OCP Payments Weekly.xlsx`
 
+Built 23/10/2026 from `OCP_Payments_report.xlsx` (extract of 19/10/2026): 1.4 MB, 7 tabs, no
+external links. Live cells were verified to reproduce from the `Payments Key` tab with zero
+differences, and the Aug-26 correction of standing-exceptions.md §F is applied.
+
 Target size: 2–3 MB (the full report is 28 MB because `Sheet3` is a 37k × 60 AR extract
 and `JESA OCP File 26` is an 11k × 42 paste). The slim file keeps only what the Summary
 needs. The weekly SAP/OCP payment extract is supplied as a **separate file** every week
@@ -99,8 +103,9 @@ Precedence: Overrides → Mapping → fallback rules. Seed rows: see standing-ex
 
 Built from the Power BI AR extract (`AR` tab): A Invoice Number (col P) · B Business Unit
 (col O) · C Invoice Type (col AL) · D Type 2 (col AW) · E PSR/PROC (col BH). Trim and strip
-NBSP from invoice numbers; dedupe on invoice; if two rows disagree on BU or flag, keep the
-row with the latest Payment Date (col AD) and list the conflict in the run report. Today's
+NBSP from invoice numbers; dedupe on invoice keeping the **first occurrence** (the same result as
+the former `MATCH()` lookups); if two rows disagree on BU or flag, list the conflict in the run report.
+Where the BH flag is blank, fill it from the old `PSR-PROC Map` (merged into col E). Today's
 source is `Sheet3` (37,081 rows, max Payment Date 01/10/2026) → about 27–37k unique rows.
 Rebuild only when a new AR extract is supplied; never hand-edit (decisions go to Overrides).
 
