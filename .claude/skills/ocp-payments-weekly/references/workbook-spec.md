@@ -48,8 +48,8 @@ adding a column.
   `Config!FrozenThrough` (today: Aug-26). In the current file these are
   `D4:K16`, `C22:H31`, `C38:J49`, `C54:J65`, `C71:H82`, `C88:H99`. Their values currently come
   from the external workbook (`JESA OCP File 19/20`, `File 14` ratios) and from cached cells —
-  once frozen they are the audited history. Jul-26 = 810,844,430 and Aug-26 = 855,789,161
-  (see standing-exceptions.md for what those two numbers contain).
+  once frozen they are the audited history. Jul-26 = 810,844,430 and Aug-26 = 856,197,821 after the
+  one-time 70000859 correction (standing-exceptions.md §F explains both numbers).
 * **Live**: Sep-26 and Oct-26 today (`L4:M16`, `K38:L49`, `K54:L65`, `I71:N82`, `I88:N99`),
   recomputed from the extract every week. Totals (`N`, `M`, `SUM` rows) and `%` columns stay as
   formulas.

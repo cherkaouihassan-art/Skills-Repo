@@ -10,15 +10,15 @@ extract and over `Mapping`. Nothing is added here without an explicit user instr
 |---------|--------------|---------------|----------------------|
 | 91000988 (OCP SA, acompte recovery) | 110,500,000 at AR value | Aug-26, frozen | Live extracts carry it at net 10,203,878 (EUR). **EXCLUDE** from every live month, whatever date the extract shows. |
 | 7X000855 (JFC4, acompte, paid 31/08/2026) | 48,802,662.81 | Aug-26, frozen, as Fertilizers & Chemicals / Procurement | EXCLUDE from live months. Hardcoded today on File 26 `AJ784:AK784`. |
-| 7X000851 (JFC2, acompte, pièce 1700000164, réf 2000001446, SAP date 2025) | 52,345,059.84 | Aug-26, frozen, as F&C / Procurement | EXCLUDE from live months. Found hardcoded on File 20 `AJ108:AL108` on 28/09 (not by Claude); user has **not yet confirmed** it is intended. Aug-26 = 855,789,161 includes it. |
-| 90021244 | 268,221 | Jul-26, frozen, as F&C | EXCLUDE from live months. Found hardcoded on File 19 `AJ448` on 28/09; same confirmation pending. Jul-26 = 810,844,430 includes it. |
+| 7X000851 (JFC2, acompte, pièce 1700000164, réf 2000001446, SAP date 2025) | 52,345,059.84 | Aug-26, frozen, as F&C / Procurement | EXCLUDE from live months. Hardcoded on File 20 `AJ108:AL108`; **confirmed by the user 23/10/2026** ("keep as is"). Aug-26 includes it. |
+| 90021244 | 268,221 | Jul-26, frozen, as F&C | EXCLUDE from live months. Hardcoded on File 19 `AJ448`; **confirmed by the user 23/10/2026**. Jul-26 = 810,844,430 includes it. |
+| 70000859 (ID DOC 221389, JESA, F&C / Procurement, advance; réf 2000001463, pièce 1700000068) | 408,659.37 | **Aug-26, frozen** (paid 24/08/2026) | **User decision 23/10/2026: paid 24 August → Aug-26.** The extract re-dated it to 08/09/2026, so every live extract shows it in Sep: EXCLUDE from live months. In the 19/10 file it was counted in neither month (File 20 `AL1920` and File 26 `AL2521` both blank); the frozen Aug-26 values must be corrected once when the slim workbook is built — see §F. |
 
 ## B. Pay Month forced (Scope = LIVE)
 
 | Invoice | Amount | Extract date | Pay Month | Reason |
 |---------|--------|--------------|-----------|--------|
 | 72000109 (JESA Buildings & Infrastructures advance, Water & Environement / Procurement) | 42,140,330.41 | 18/04/2025 | **26/10/2026** | Actually paid 01/10/2026; user instruction 12/10/2026. Today hardcoded on File 26 `AL5461`. |
-| 70000859 (ID DOC 221389, F&C, acompte; réf 2000001463, pièce 1700000068) | 408,659.37 | 24/08 → re-dated 08/09/2026 | **DECISION NEEDED** | User decided on 06/10/2026 "go with the File 24 date" → Sep-26, and File 20 `AL1920` was blanked (so Aug-26 = 855,789,161 excludes it). File 25/26 then blanked it again "held in Aug" (`AL2521`). Result today: counted in **neither** month. Sep-26 = 407,365,855 excludes it; with it Sep-26 = 407,774,515. Default until the user answers: keep excluded and show it in every run report. |
 | 70000649 (ID DOC 162944) | 2,254,861.76 | 07/09/2026 | extract date (Sep-26) | Mirror case, no override needed; counted once. |
 
 ## C. BU / Class assignments by the user (Scope = LIVE)
@@ -57,5 +57,26 @@ been assigned AM / Procurement by the user. Claude still does not auto-assign: l
 | Sep-26 | 257 inv / 407,774,514.59 | −70000859 (408,659.37) | 256 / 407,365,855.22 | 64 / 66,510,198 | 192 / 340,855,657 |
 | Oct-26 | 149 inv / 174,915,937.60 | +72000109 (42,140,330.41) | 150 / 217,056,268.01 | 28 / 66,066,239 | 122 / 150,990,029 |
 
-Grand total N16 = 7,464,017,093. Next run must reproduce these before computing anything new
-(same extract → same numbers), then report deltas.
+Grand total N16 = 7,464,017,093 in the 19/10 file; **7,464,425,752 after the §F correction.** The first
+run must reproduce the Sep-26 and Oct-26 rows above from the same extract before computing anything
+new, then report deltas.
+
+## F. One-time correction to the frozen Aug-26 values (decision of 23/10/2026)
+
+Add invoice 70000859 (408,659.37, Fertilizers & Chemicals, Procurement, 1 invoice) to Aug-26
+when the slim workbook is built. Cells and resulting values:
+
+| Cell | Content | 19/10 value | Corrected value |
+|------|---------|-------------|-----------------|
+| `K6` | Block A, F&C, Aug-26 | 246,268,477 | 246,677,136 |
+| `K16` | Block A TOTAL Aug-26 | 855,789,161 | 856,197,821 |
+| `J56` | Block D (PROC), F&C, Aug-26 | 239,959,708 | 240,368,367 |
+| `J65` | Block D TOTAL Aug-26 | 719,484,723 | 719,893,382 |
+| `F90` / `G90` | Block F, F&C, Aug-26 # / MAD | 57 / 239,959,708 | 58 / 240,368,367 |
+| `F99` / `G99` | Block F TOTAL Aug-26 # / MAD | 268 / 719,484,723 | 269 / 719,893,382 |
+| `C6` | # invoices F&C (all months) | 388 | 389 |
+| `C16` | # invoices TOTAL | 2928 | 2929 |
+
+Row totals (`N6`, `N16`, `M56`, `M65`) and `%` columns follow by formula. Block C (PSR) is
+unchanged. Log the correction in `Data Sources`.
+

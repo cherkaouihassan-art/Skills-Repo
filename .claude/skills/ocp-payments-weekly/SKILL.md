@@ -23,7 +23,7 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
 3. **Pay Month.** `DATE(year, month, 26)` of `Date Paiement`. Then apply `Overrides` col D:
    a date replaces it, `EXCLUDE` drops the row from every live month.
 4. **Frozen guard.** Drop every row whose Pay Month ≤ `Config!FrozenThrough`. Frozen cells are
-   never recomputed. Additionally drop the four frozen-month invoices listed in
+   never recomputed. Additionally drop the five frozen-month invoices listed in
    standing-exceptions.md §A whatever their date.
 5. **BU and Class.** Precedence: `Overrides` (B, C) → `Mapping` (B = BU; E = PSR/PROC flag →
    Proservices / Procurement) → fallback on Type 2 / Invoice Type (standing-exceptions.md §D).
