@@ -594,7 +594,7 @@ if rows:
 # ================================================================== cover + save
 if not A.dry_run:
     ex = wb[SHEETS['exec']]
-    if not any(str(H(d, 'Input') or '').lower().startswith('data as of') for d in pack_rows('7_Standing')[1]):
+    if not any(str(H(d, 'Input') or '').lower().startswith('data as of') and H(d, 'Value') not in (None, '') for d in pack_rows('7_Standing')[1]):
         set_as_of(AS_OF)
     wb.calculation.fullCalcOnLoad = True
     print(f"Saving {A.out} …"); wb.save(A.out)
