@@ -1,0 +1,106 @@
+{
+ "report": "CASH FLOW ANALYSIS - BUs",
+ "master_file": "cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx",
+ "version_label": "October W3",
+ "received_from_user": "2026-11-02 (upload CASH_FLOW_ANALYSIS_-_BUs_October_W3.xlsx)",
+ "data_as_of_cover": "2026-10-15",
+ "include_ongoing_in_cumulative": true,
+ "basis": "Jul–Aug–Sep actuals + Oct actuals (collections to 19/10, payments to 15/10) + October LC maturities per bank LC situation 19/10 v003 (156.4M, counted as approved) + open October commitments (approved + pending)",
+ "streams": {
+  "1_cash_in_ocp": {
+   "tab": "SRC - Cash In (AX Jul-Aug)",
+   "source": "OCP Payments August.xlsx — JESA OCP File 26",
+   "loaded_to": "2026-10-19",
+   "last_load": "2026-10-20",
+   "october_rows": 150,
+   "october_amount": 217056268.01,
+   "next_expected": "OCP File 27+ (paid after 19/10)"
+  },
+  "2_sap_payments": {
+   "tab": "October Actual Payments",
+   "source": "Suppliers Payments by BU OCT W3 (22.10.26)",
+   "loaded_to": "2026-10-15 (included lines; file 22/10)",
+   "last_load": "2026-10-23",
+   "included_rows": 141,
+   "included_amount": 238363391.39,
+   "next_expected": "payments cleared after 15/10 and 22/10"
+  },
+  "3_approved": {
+   "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = Yes)",
+   "source": "Payment tracking log W3 (20/10) + Priority list 02.10 + AM approved list W1 (12/10) + Energy Ops list (14/10, 22/10)",
+   "loaded_to": "2026-10-23",
+   "open_lines": 151,
+   "amount": -70298381.97,
+   "next_expected": "tracking log W4 export + new approval emails/lists"
+  },
+  "4_pending": {
+   "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = No)",
+   "source": "WEN Batch 5 (19/10), AM list, BU lists",
+   "loaded_to": "2026-10-23",
+   "open_lines": 168,
+   "amount": -183606632.23,
+   "next_expected": "new BU lists / invoices sent for approval"
+  },
+  "5a_lc_paid": {
+   "tab": "SRC - LC Payments",
+   "source": "2026 10 21 - LC PAYMENT OCTOBRE 2026 (8 lines)",
+   "loaded_to": "2026-10-16",
+   "last_load": "2026-10-22",
+   "october_amount": 35254361.07,
+   "next_expected": "next PAIEMENTS PAR LC file"
+  },
+  "5b_lc_situation": {
+   "tab": "LC Ongoing (19-10)",
+   "source": "LCs SITUATION - October 19th (003).xlsx",
+   "situation_date": "2026-10-19",
+   "october_maturities": 156443580.22,
+   "counted_as_ongoing": -143866630.22,
+   "next_expected": "next LC situation (new dated tab + repoint formulas)"
+  },
+  "6_customs": {
+   "tab": "DD",
+   "source": "Treasury customs detail by BU and date (user tab DD)",
+   "loaded_to": "2026-10-02",
+   "last_load": "2026-10-12",
+   "rows": 122,
+   "cumulative_amount": 200784404.0,
+   "next_expected": "customs paid after 02/10"
+  },
+  "7_standing": {
+   "psr_reserve": 100000000,
+   "psr_months": 3,
+   "proc_compensable_total": 185098380.28,
+   "monthly_revenue_loaded": [
+    "July",
+    "August",
+    "September"
+   ],
+   "master_switch": true,
+   "next_expected": "October P&L revenue when closed; November roll-forward"
+  }
+ },
+ "headline_mad": {
+  "collections_ocp": 1919249480.9600008,
+  "dividends": 185098380.28,
+  "cash_out_jul_sep": -1734096676.8150268,
+  "cash_out_oct_actual": -276005347.02,
+  "approved_pmts": -213148189.62917733,
+  "net_after_approved": -118902352.22420311,
+  "pending_pmts": -183606632.22680798,
+  "net_all_ongoing": -302508984.45101106
+ },
+ "psr_mad": {
+  "psr_collections": 372214892.74000007,
+  "psr_reserve": -100000000,
+  "am_psr_excluded": -199393842.55,
+  "net_psr": 72821050.19000006
+ },
+ "integrity_checks": "18/18 OK (cached values from Excel, W3)",
+ "data_sources_rows": 100,
+ "open_questions": [
+  "Payments in SAP (01–22/10) not on any ongoing list still need a BU: see tab 'Oct Pmts - Not BU-mapped' (283 lines flagged (unmapped) on 'October Actual Payments').",
+  "6 suppliers on the 22/10 AM list are Unclassified tier (AZO NV, FIVES PILLARD, HASLER, KOCH …) — tier needed.",
+  "Tracking log says PAID but no SAP payment to 15/10: 26 lines / 11.37 MMAD (+4 reversed, 4 undated) — chase Treasury or confirm (tab 'Approved vs Tracking log 20.10').",
+  "60 OctOngoing lines carry tier 'Unclassified' — tiering check pending."
+ ]
+}
