@@ -108,6 +108,9 @@ the former `MATCH()` lookups); if two rows disagree on BU or flag, list the conf
 Where the BH flag is blank, fill it from the old `PSR-PROC Map` (merged into col E). Today's
 source is `Sheet3` (37,081 rows, max Payment Date 01/10/2026) → about 27–37k unique rows.
 Rebuild only when a new AR extract is supplied; never hand-edit (decisions go to Overrides).
+On a rebuild, invoices present in the old `Mapping` but absent from the new AR file are carried over
+(col F note), and a blank new flag keeps the old one, so no invoice loses its BU. Report BU and flag
+changes on live-month invoices before writing the Summary. Last rebuilt 02/11/2026 from `AR weekly.xlsx`.
 
 ## Tab 5 — `Payments Key`
 
