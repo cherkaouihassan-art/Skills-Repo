@@ -95,12 +95,50 @@ def num(v):
     """MAD -> MMAD"""
     return float(v) / 1e6 if isinstance(v, (int, float)) else 0.0
 
+_DATE_FMTS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d/%m/%Y %H:%M", "%d/%m/%Y", "%m/%d/%Y %H:%M", "%m/%d/%Y", "%d/%m/%y", "%m/%d/%y", "%d-%m-%Y", "%d.%m.%Y")
+def _csv_cell(v, date_col):
+    """typed value for a CSV cell: dates in date columns, numbers where the text is numeric, else the stripped text."""
+    if v is None: return None
+    t = str(v).strip()
+    if t == "": return None
+    if date_col:
+        for f in _DATE_FMTS:
+            try: return dt.datetime.strptime(t, f)
+            except ValueError: pass
+        return t
+    u = t.replace("\u202f", "").replace("\xa0", "").replace(" ", "")
+    if u.count(",") == 1 and "." not in u: u = u.replace(",", ".")   # 1234,56 -> 1234.56
+    else: u = u.replace(",", "")                                      # 1,234.56 -> 1234.56
+    try: return float(u)
+    except ValueError: return t
+
+def iter_ar_rows(path):
+    """rows of the AR line list: .xlsx (sheet 'AR'), .csv, or a .zip holding one .csv. Dates and numbers are typed."""
+    p = str(path).lower()
+    if p.endswith(".xlsx") or p.endswith(".xlsm"):
+        wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
+        ws = wb["AR"] if "AR" in wb.sheetnames else wb.worksheets[0]
+        yield from ws.iter_rows(values_only=True); return
+    import csv, io, zipfile
+    if p.endswith(".zip"):
+        zf = zipfile.ZipFile(path); name = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
+        raw = zf.read(name)
+    else:
+        raw = open(path, "rb").read()
+    text = raw.decode("utf-8-sig", errors="replace")
+    sample = text[:5000]; delim = ";" if sample.count(";") > sample.count(",") else ","
+    rd = csv.reader(io.StringIO(text), delimiter=delim)
+    hdr = next(rd); hl = [str(h).strip().lower() for h in hdr]
+    date_cols = [("date" in h) or h in ("period",) for h in hl]
+    yield hdr
+    for row in rd:
+        if not any(c.strip() for c in row): continue
+        yield [_csv_cell(v, date_cols[i] if i < len(date_cols) else False) for i, v in enumerate(row)]
+
 def aggregate(path, as_of, prev_cutoff=None):
     """Aggregate a raw AR line list. as_of: date of the snapshot (for the current month). prev_cutoff: date (payments up to
     that date count as 'previous week' collections). Returns a dict of plain-python structures (MMAD)."""
-    wb = openpyxl.load_workbook(path, data_only=True, read_only=True)
-    ws = wb["AR"] if "AR" in wb.sheetnames else wb.worksheets[0]
-    it = ws.iter_rows(values_only=True)
+    it = iter_ar_rows(path)
     hdr = [str(h).strip() if h else "" for h in next(it)]
     I = {h: i for i, h in enumerate(hdr)}
     def g(r, name):

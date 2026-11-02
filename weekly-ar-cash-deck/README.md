@@ -12,7 +12,7 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 
 | # | File | Sheet(s) read | Notes |
 |---|---|---|---|
-| 1 | `AR_PRE_Week_<n>.xlsx` | `AR` | raw AR line list of the week; drives AR, statuses, aging, non-OCP, JESA responsibility, collections, deposited |
+| 1 | `AR_PRE_Week_<n>.xlsx`, or the `AR` sheet saved as CSV and zipped (`AR weekly.zip`, about 2 MB) | `AR` | raw AR line list of the week; drives AR, statuses, aging, non-OCP, JESA responsibility, collections, deposited, DSO numerator. The zipped CSV is required when the file goes through Google Drive (the Claude Drive connector refuses files above 10 MB) |
 | 2 | `CASH_flow_W<n>.xlsx` | `EXEC Summary` (+ `REPORT - Cashflow by BU`) | cash position, cash by BU, PSR collections. Optional sheets `Approved vs Tracking log …`, `Priority list …`, `LC Ongoing …` add the tracking-log and priority tables to the October payments backup slide; without `LC Ongoing` the month's LC maturities are taken from the LC situation file |
 | 3 | `AP_information.xlsx` | `4411 - Parked - Downpayment` | supplier payables (downpayments, parked, 4411) – must be the extract of the current week |
 | 4 | `<date> - LC_SITUATION.xlsx` | `LC avec echéance` | bank LC situation – latest version (maturity columns are read from the header) |
@@ -22,6 +22,18 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 
 Previous-week comparatives (AR, unrecognized revenue, AP, LC, collections) come from `inputs/history/weekly_inputs_<date>.xlsx`
 saved by the previous run – nothing else to provide.
+
+### Google Drive drop folder (automated run)
+
+The agent reads `AR CASH DECK/Inbox` on the connected Google Drive. The Drive connector cannot download files above
+10 MB, so the two large workbooks must be reduced before the drop:
+
+* **AR extract** – in Excel, with the `AR` sheet active: File → Save As → *CSV UTF-8 (comma delimited)*, then right-click
+  the CSV → Send to → Compressed (zipped) folder. Drop the `.zip` (about 2 MB). Dates may be in any usual format.
+* **DSO workbook** – delete the `AR Previous week` sheet before saving a copy for the drop (the pipeline does not read
+  it); the file shrinks to under 1 MB. Only needed when a month of revenue has been closed.
+
+Everything else (cash flow EXEC Summary, AP extract, LC situation, UR consolidation) is well under the limit.
 
 ## Weekly run (about 5 minutes)
 

@@ -2,7 +2,7 @@
 # Weekly run: put the 5 source files in a folder and call
 #   ./run_week.sh <folder> <as-of YYYY-MM-DD> <ar-date YYYY-MM-DD> <prev-ar-date YYYY-MM-DD>
 # Files are found by name pattern inside <folder> (case-insensitive):
-#   AR_PRE*.xlsx            raw AR line list of the week (sheet 'AR')
+#   AR*.xlsx | AR*.zip | AR*.csv   raw AR line list of the week (sheet 'AR', or the sheet saved as CSV, optionally zipped)
 #   CASH*flow*.xlsx         cash flow workbook ('EXEC Summary' + 'REPORT - Cashflow by BU'; tracking log / priority / LC ongoing optional)
 #   AP*.xlsx | Supplier*    supplier invoice extract (sheet '4411 - Parked - Downpayment')
 #   *LC*SITUATION*.xlsx     bank LC situation (sheet 'LC avec echéance')
@@ -14,7 +14,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 SRC="$1"; ASOF="$2"; ARDATE="$3"; PREVDATE="$4"
 find1() { find "$SRC" -maxdepth 1 -iname "$1" | head -1; }
-AR=$(find1 'AR_PRE*.xlsx'); CASH=$(find1 'CASH*flow*.xlsx'); AP=$(find1 'AP*.xlsx'); [ -z "$AP" ] && AP=$(find1 'Supplier*.xlsx')
+AR=$(find1 'AR_PRE*.xlsx'); [ -z "$AR" ] && AR=$(find1 'AR*.zip'); [ -z "$AR" ] && AR=$(find1 'AR*.csv'); [ -z "$AR" ] && AR=$(find1 'AR*.xlsx'); CASH=$(find1 'CASH*flow*.xlsx'); AP=$(find1 'AP*.xlsx'); [ -z "$AP" ] && AP=$(find1 'Supplier*.xlsx')
 LC=$(find1 '*LC*SITUATION*.xlsx'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx')
 for v in AR CASH AP LC UR; do [ -n "${!v}" ] || { echo "missing source file for $v in $SRC"; exit 1; }; done
 mkdir -p inputs/dso_calc

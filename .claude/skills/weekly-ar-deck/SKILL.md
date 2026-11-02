@@ -21,7 +21,7 @@ Required (matched by name pattern, case-insensitive):
 
 | Pattern | Content |
 |---|---|
-| `AR_PRE*.xlsx` | raw AR line list, sheet `AR` |
+| `AR*.zip`, `AR*.csv` or `AR*.xlsx` | raw AR line list (sheet `AR`, or that sheet as CSV, zipped). On Google Drive it is the zipped CSV: the connector refuses files above 10 MB |
 | `CASH*flow*.xlsx` | cash flow workbook, sheet `EXEC Summary` |
 | `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` |
 | `*LC*SITUATION*.xlsx` | bank LC situation, sheet `LC avec echéance` |
@@ -29,7 +29,7 @@ Required (matched by name pattern, case-insensitive):
 | `*DSO*.xlsx` (monthly) | DSO calculation workbook: 12-month trailing revenue per project, DSO trend |
 | `*BU*Meeting*.pdf` (optional) | reconciliation reference (total AR, unbilled, unpaid, invoices paid) |
 
-Download them into one scratch folder (the DSO workbook too when a new one is there). Do not run Python from inside that folder. If one of the five is missing,
+Download them into one scratch folder (the DSO workbook too when a new one is there). Drive downloads arrive as base64 JSON saved under the tool-results folder: decode the `content` field to the file named in `title`. A file above 10 MB cannot be fetched through the connector: stop and ask for the zipped-CSV version (AR) or the trimmed workbook (DSO), do not try to work around it. Do not run Python from inside that folder. If one of the five is missing,
 stop and report which one; do not build a deck with stale data in its place.
 
 Sanity checks before running: the AR file must be newer than the one archived in the last `inputs/history/` workbook
