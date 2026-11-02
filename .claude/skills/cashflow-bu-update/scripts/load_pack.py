@@ -17,7 +17,7 @@ Streams handled (pack tab -> workbook tab):
 Every load appends a 'Data Sources' row. The output is saved with fullCalcOnLoad so Excel recalculates on open.
 Never saves with data_only; never deletes rows."""
 import sys, os, re, json, copy, datetime as dt, argparse
-from collections import defaultdict
+from collections import defaultdict, Counter
 from openpyxl import load_workbook
 from openpyxl.utils import get_column_letter as L, column_index_from_string as CI
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -200,34 +200,48 @@ if rows:
             key = (norm_ref(doc), norm_ref(clr), round(amt, 2))
             if key in seen: skipped += 1; continue
             name = H(d, 'Name') or ''; ref = H(d, 'Reference'); typ = str(H(d, 'Type') or ''); pos = str(H(d, 'Paiement positive') or '')
-            bu = canon_bu(H(d, 'BU')); tier = lookup_tier(name, H(d, 'Tier')); oh = is_oh(name); match = None; src = 'pack: user BU on line' if bu else ''
-            # match an open ongoing line on the normalised reference
-            cands = [r for r in OG_INDEX.get(norm_ref(ref), []) if og_status(r).startswith('Open')] if ref else []
-            if cands:
-                match = cands[0]; obu = og.cell(match, C_BU).value; oamt = num(og.cell(match, C_AMT).value)
-                if not bu: bu = obu; src = f'Ongoing row {match} (reference match)'
-                if abs(abs(oamt) - abs(amt)) <= max(1.0, 0.005 * abs(oamt)):
-                    closed.append((match, ref, amt))
-                    if not A.dry_run:
-                        og.cell(match, C_OVR, 'Paid in Oct' if m.month == 10 else f'Paid in {m:%b}')
-                        og.cell(match, C_COM, f"{og.cell(match, C_COM).value or ''} | Paid {to_date(H(d,'Clearing Date'))} SAP doc {doc} clearing {clr} (pack {PACK})".strip(' |'))
-                else:
-                    REPORT['needs_ruling'].append(f"2_CashOut_SAP: payment {fmt(amt)} for ref '{ref}' ({name}) matches ongoing row {match} with amount {fmt(oamt)} — partial/short payment: confirm closing and balance row")
+            given = H(d, 'BU'); bu = 'Overhead (corporate)' if str(given or '').lower().startswith('overhead') else canon_bu(given)
+            tier = lookup_tier(name, H(d, 'Tier')); oh = is_oh(name); match = None; src = 'invoice lines / pack BU' if bu else ''
+            # references to test: the payment's own reference plus the invoice lines of its clearing document
+            inv_refs = [x.strip() for x in str(H(d, 'Invoice refs') or '').split(';') if x.strip()]
+            inv_amts = [num(x) for x in str(H(d, 'Invoice amounts') or '').split(';') if x.strip()]
+            pairs = list(zip(inv_refs, inv_amts)) if len(inv_refs) == len(inv_amts) else [(x, None) for x in inv_refs]
+            if ref not in (None, '') and str(ref) not in inv_refs: pairs.append((str(ref), abs(amt) if not pairs else None))
+            matches = []
+            for rf, ia in pairs:
+                for r0 in OG_INDEX.get(norm_ref(rf), []):
+                    if not og_status(r0).startswith('Open'): continue
+                    oamt = abs(num(og.cell(r0, C_AMT).value)); target = ia if ia is not None else abs(amt)
+                    ok = abs(oamt - target) <= max(1.0, 0.01 * oamt)
+                    matches.append((r0, rf, oamt, target, ok))
+            if matches:
+                match = ','.join(str(x[0]) for x in matches)
+                if not bu: bu = og.cell(matches[0][0], C_BU).value; src = f'Ongoing row(s) {match} (reference match)'
+                for r0, rf, oamt, target, ok in matches:
+                    if ok:
+                        closed.append((r0, rf, target))
+                        if not A.dry_run:
+                            og.cell(r0, C_OVR, 'Paid in Oct' if m.month == 10 else f'Paid in {m:%b}')
+                            og.cell(r0, C_COM, f"{og.cell(r0, C_COM).value or ''} | Paid {to_date(H(d,'Clearing Date'))} SAP doc {doc} clearing {clr} (pack {PACK})".strip(' |'))
+                    else:
+                        REPORT['needs_ruling'].append(f"2_CashOut_SAP: invoice '{rf}' ({name}) paid {fmt(target)} on doc {doc} vs ongoing row {r0} amount {fmt(oamt)} — partial/short payment: confirm closing and balance row")
             if tier in EXCLUDED_TIERS: inc = 'No - excluded tier'
             elif not typ.lower().startswith('paiement'): inc = 'No - invoice line'
             elif pos and not pos.lower().startswith('oui'): inc = 'No - payment reversal line'
-            elif bu == 'Overhead (corporate)': inc = 'No - corporate OH'
+            elif bu == 'Overhead (corporate)': inc = 'No - corporate OH'; oh = 'OH'
             else: inc = 'Yes'
             if not bu:
                 bu = '(unmapped)'; src = 'No match in ongoing position or payment history'
-                if inc == 'Yes': REPORT['needs_ruling'].append(f"2_CashOut_SAP: payment {fmt(amt)} {name} ref '{ref}' doc {doc} — no BU found: give a BU (counted in consolidated Unclassified until then)")
+                if inc == 'Yes': REPORT['needs_ruling'].append(f"2_CashOut_SAP: payment {fmt(amt)} {name} doc {doc} (invoices {', '.join(inv_refs[:3]) or 'n/a'}) — no BU found: give a BU (counted in consolidated Unclassified until then)")
+            note = str(H(d, 'Source') or '')
+            if 'mixed BUs' in note and inc == 'Yes': REPORT['needs_ruling'].append(f"2_CashOut_SAP: payment {fmt(amt)} {name} doc {doc} — {note.split(';')[-2].strip() if ';' in note else note}")
             if tier == 'Unclassified' and inc == 'Yes': REPORT['needs_ruling'].append(f"2_CashOut_SAP: supplier '{name}' has no tier on Tiering Master — tier needed")
             lr += 1; r = lr
             if not A.dry_run:
                 style_like(ws, r - 1, r, ws.max_column)
                 for c, v in [(c_type, typ), (c_amt, amt), (c_pos, pos or None), (c_sup, H(d, 'Supplier')), (c_name, name), (c_doc, doc), (c_dtype, H(d, 'Document Type')),
                              (c_ref, ref), (c_clr, clr), (c_clrd, dt.datetime.combine(to_date(H(d, 'Clearing Date')), dt.time())), (c_post, to_date(H(d, 'Posting Date')) and dt.datetime.combine(to_date(H(d, 'Posting Date')), dt.time())),
-                             (c_po, H(d, 'Purchasing Document')), (c_inc, inc), (c_tier, tier), (c_bu, bu), (c_src, f"{src} — pack {PACK}"), (c_oh, oh), (c_match, match)]:
+                             (c_po, H(d, 'Purchasing Document')), (c_inc, inc), (c_tier, tier), (c_bu, bu), (c_src, f"{src} — {str(H(d, 'Source') or '')[:150]}"), (c_oh, oh), (c_match, match)]:
                     if c: ws.cell(r, c, v)
             seen.add(key); added += 1
             if inc == 'Yes': tot += amt
@@ -283,7 +297,7 @@ def load_ongoing(tab, approved):
             # status (N), ref key (O), OH? (P), approved (AA) and position (AB) are table formulas: copy them down
             fill_rest(og, r, og.max_column, set(vals))
         OG_INDEX[key].append(r); added += 1; tot += amt
-    if not A.dry_run and added: tbl.ref = f"A1:{L(og.max_column) if og.max_column <= CI('AH') else 'AH'}{og_last}"
+    if not A.dry_run and added: tbl.ref = f"A1:{L(og.max_column)}{og_last}"
     REPORT['streams'][tab] = {'added': added, 'promoted_pending_to_approved': promoted, 'skipped_duplicates': skipped, 'amount_added': round(tot, 2), 'rows': f'{first}:{og_last}' if added else ''}
     log(f"{tab}: +{added} lines ({fmt(tot)} MAD), {promoted} promoted to approved, {skipped} duplicates")
     if (added or promoted) and not A.dry_run:
@@ -293,6 +307,37 @@ def load_ongoing(tab, approved):
                        f"{promoted} existing pending lines promoted to approved", f"{'Approved' if approved else 'Pending'} ongoing added {fmt(tot)} MAD; as-of {AS_OF}")
 load_ongoing('3_Approved', True)
 load_ongoing('4_Pending', False)
+
+# ================================================================== 3b. Tracking-log check on open ongoing lines
+hdr, rows = pack_rows('3b_LogCheck')
+if rows:
+    stamp = f"{AS_OF:%d/%m}"; c_st = og.max_column + 1; c_dt = og.max_column + 2
+    if not A.dry_run:
+        og.cell(1, c_st, f"Tracking log check {stamp} — status"); og.cell(1, c_dt, f"Tracking log check {stamp} — detail")
+        for c in (c_st, c_dt): og.cell(1, c)._style = copy.copy(og.cell(1, og.max_column - 2)._style)
+        from openpyxl.worksheet.table import TableColumn
+        ids = [tc.id for tc in tbl.tableColumns]
+        tbl.tableColumns.append(TableColumn(id=max(ids) + 1, name=f"Tracking log check {stamp} — status"))
+        tbl.tableColumns.append(TableColumn(id=max(ids) + 2, name=f"Tracking log check {stamp} — detail"))
+        tbl.ref = f"A1:{L(c_dt)}{og_last}"
+    flagged = promoted = 0; paid_in_log = 0; st_count = Counter()
+    for d in rows:
+        r = int(num(H(d, 'Ongoing row'))); inlog = str(H(d, 'In log') or '').lower().startswith('y'); status = H(d, 'Overall status'); st_count[str(status)] += 1 if inlog else 0
+        detail = ' | '.join(str(x) for x in [H(d, 'AP blocage'), H(d, 'Treasury comment'), H(d, 'Treasury blocage'), f"paid {to_date(H(d, 'Payment date'))}" if H(d, 'Payment date') else None, f"log amt {H(d, 'Log amount')}" if H(d, 'Log amount') else None, H(d, 'Match basis')] if x not in (None, '', 'None'))
+        if not A.dry_run:
+            og.cell(r, c_st, (f"In log — {status}" if inlog else "Not in log") + (" — kept Open (await SAP)" if inlog and str(status).upper() == 'PAID' else ''))
+            og.cell(r, c_dt, detail or None)
+            if inlog:
+                if og.cell(r, C_INLOG).value != 'Yes': promoted += 1
+                og.cell(r, C_INLOG, 'Yes'); og.cell(r, ogc('Tracking log — Overall'), status); og.cell(r, ogc('Tracking log — detail'), detail or None)
+        if inlog: flagged += 1
+        if inlog and str(status).upper() == 'PAID': paid_in_log += 1
+    REPORT['streams']['3b_LogCheck'] = {'open_lines_checked': len(rows), 'in_log': flagged, 'newly_approved_via_log': promoted, 'paid_in_log_kept_open': paid_in_log, 'log_status_counts': dict(st_count)}
+    log(f"3b_LogCheck: {len(rows)} open lines checked, {flagged} in log ({promoted} newly approved), {paid_in_log} PAID in log kept Open")
+    if not A.dry_run:
+        add_source_row(f"'{SHEETS['ongoing']}'!{L(c_st)}1:{L(c_dt)}{og_last} (new check columns) + U/V/W on {flagged} rows", f"Intake pack {PACK} (3b_LogCheck from Payment tracking log)", '3b_LogCheck',
+                       'Tracking-log status refreshed for every open ongoing line', 'match on normalised reference, then supplier/amount; PAID lines kept Open (standing rule)', len(rows),
+                       f"{promoted} lines moved pending -> approved (now in log)", f"as-of {AS_OF}")
 
 # ================================================================== 5a. LC paid
 hdr, rows = pack_rows('5a_LC_Paid')

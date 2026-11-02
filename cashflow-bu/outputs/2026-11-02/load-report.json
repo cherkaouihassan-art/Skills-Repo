@@ -1,0 +1,57 @@
+{
+ "streams": {
+  "1_CashIn_OCP": {
+   "added": 37,
+   "skipped_duplicates": 0,
+   "amount_added": 76022819.54,
+   "rows": "11097:11133"
+  },
+  "2_CashOut_SAP (October Actual Payments)": {
+   "added": 81,
+   "skipped_duplicates": 284,
+   "included_amount_added": 33561035.78,
+   "ongoing_lines_closed": 24,
+   "rows": "1331:1411"
+  },
+  "3b_LogCheck": {
+   "open_lines_checked": 319,
+   "in_log": 208,
+   "newly_approved_via_log": 69,
+   "paid_in_log_kept_open": 83,
+   "log_status_counts": {
+    "None": 0,
+    "PENDING TRESO": 61,
+    "PAID": 83,
+    "PENDING AP": 39,
+    "PAID,": 25
+   }
+  },
+  "7_Standing": {
+   "applied": []
+  }
+ },
+ "needs_ruling": [
+  "2_CashOut_SAP: invoice 'F180-2026' (XY CONCEPT) paid 273,110 on doc 2000012418 vs ongoing row 1353 amount 327,732 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice 'FA22556' (RESELEC) paid 74,150 on doc 2000012416 vs ongoing row 1092 amount 82,389 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice '037/2026' (CRIP) paid 76,328 on doc 2000012415 vs ongoing row 1085 amount 87,232 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice '026/2026' (CRIP) paid 44,553 on doc 2000012414 vs ongoing row 1108 amount 50,918 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice 'FE263324' (CARREFOUR INDUSTRIEL ET) paid 627,297 on doc 2000012412 vs ongoing row 160 amount 696,997 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice 'CT046/26' (C.TRAV) paid 109,936 on doc 2000012341 vs ongoing row 1012 amount 119,930 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: payment 154,169 PROTECOR doc 1500039282 — mixed BUs on invoice lines: AM 219,263, Water & Environement 30,834 — dominant AM used",
+  "2_CashOut_SAP: payment 4,668,675 ARVAL MAROC doc 1500039276 — mixed BUs on invoice lines: AM 3,658,079, Overhead (corporate) 1,861,512, Global Mining 43,105, Fertilizers & Chemicals 19,764 — dominant AM used",
+  "2_CashOut_SAP: invoice 'FA009/2026' (PIM PERFECT INSTALLATION) paid 186,226 on doc 1500039217 vs ongoing row 809 amount 170,445 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice '16/2026' (PROTECOR) paid 20,476 on doc 1500039216 vs ongoing row 1147 amount 17,063 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: invoice '15/2026' (PROTECOR) paid 57,549 on doc 1500039216 vs ongoing row 1109 amount 47,957 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: payment 65,020 PROTECOR doc 1500039216 — mixed BUs on invoice lines: AM 92,473, Water & Environement 13,004 — dominant AM used",
+  "2_CashOut_SAP: invoice 'FA2600157' (ISODEL SARL) paid 12,153 on doc 1500039215 vs ongoing row 1132 amount 23,040 — partial/short payment: confirm closing and balance row",
+  "2_CashOut_SAP: payment 7,878 ARVAL MAROC doc 1500002660 — mixed BUs on invoice lines: Building & Infrastructure 9,462, Water & Environement 5,244 — dominant Building & Infrastructure used",
+  "2_CashOut_SAP: supplier 'REPUBLIC SERVICES, INC' has no tier on Tiering Master — tier needed",
+  "2_CashOut_SAP: payment 61,098 CITY OF LAKELAND, FLORIDA doc 1500001534 (invoices 3637783 09/26) — no BU found: give a BU (counted in consolidated Unclassified until then)",
+  "2_CashOut_SAP: supplier 'DBS BUILDING SOLUTIONS, I' has no tier on Tiering Master — tier needed",
+  "2_CashOut_SAP: payment 100,480 CITY OF LAKELAND, FLORIDA doc 1500001524 (invoices 3637783  01/26, 3637783 08/26, 3637774 07/26) — no BU found: give a BU (counted in consolidated Unclassified until then)"
+ ],
+ "warnings": [],
+ "as_of": "2026-10-29",
+ "pack": "CF_INPUT_PACK_2026-11-02.xlsx (built from OCP Payments Weekly.xlsx, PAYMENTS OCTOBER W4 _ 29.10.26.xlsx, Payment tracking log.xlsx)",
+ "dry_run": false
+}

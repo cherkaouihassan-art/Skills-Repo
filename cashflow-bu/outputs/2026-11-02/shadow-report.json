@@ -1,0 +1,34 @@
+{
+ "compared_cells": 1243,
+ "differences": [],
+ "headline_shadow": {
+  "collections_ocp": 1986364321.58,
+  "dividends": 185098380.28,
+  "cash_out_jul_sep": -1734096676.8150268,
+  "cash_out_oct_actual": -304871031.1112279,
+  "approved_pmts": -294208879.78598535,
+  "net_after_approved": -161713885.85224012,
+  "pending_pmts": -95690967.30999999,
+  "net_all_ongoing": -257404853.1622401
+ },
+ "headline_cached": {
+  "collections_ocp": 1919249480.9600008,
+  "dividends": 185098380.28,
+  "cash_out_jul_sep": -1734096676.8150268,
+  "cash_out_oct_actual": -276005347.02,
+  "approved_pmts": -213148189.62917733,
+  "net_after_approved": -118902352.22420311,
+  "pending_pmts": -183606632.22680798,
+  "net_all_ongoing": -302508984.45101106
+ },
+ "headline_diff": {
+  "collections_ocp": 67114840.61999917,
+  "dividends": 0.0,
+  "cash_out_jul_sep": 0.0,
+  "cash_out_oct_actual": -28865684.09122795,
+  "approved_pmts": -81060690.15680802,
+  "net_after_approved": -42811533.628037006,
+  "pending_pmts": 87915664.916808,
+  "net_all_ongoing": 45104131.28877097
+ }
+}

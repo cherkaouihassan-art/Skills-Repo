@@ -1,0 +1,428 @@
+{
+ "ocp": {
+  "invoices_in_file_from": 187,
+  "already_in_master": 150,
+  "new_rows": 37,
+  "new_amount": 76022819.54,
+  "new_by_bu": {
+   "AM / Labor": 8771632.37,
+   "AM / Non-Labor": 46794983.79,
+   "Water & Environement / Non-Labor": 20319856.83,
+   "JESA Technologies / Labor": 136346.55
+  },
+  "unmapped_new": 0,
+  "in_master_not_in_file": [],
+  "in_master_not_in_file_count": 0
+ },
+ "sap": {
+  "payment_lines": 365,
+  "max_clearing_date": "2026-10-29",
+  "types_in_file": {
+   "paiement avance": 5,
+   "paiement": 360,
+   "facture": 1247
+  },
+  "paiement_oui_amount_gross": 376982983.45,
+  "bu_source": {
+   "invoice lines": 251,
+   "invoice lines (mixed, dominant)": 21,
+   "none": 73,
+   "supplier history": 20
+  }
+ },
+ "log": {
+  "log_lines": 1370,
+  "open_ongoing_lines_checked": 319,
+  "found_in_log": 208,
+  "newly_flagged_in_log": 69,
+  "status_of_matched": {
+   "PENDING TRESO": 61,
+   "PAID": 83,
+   "PENDING AP": 39,
+   "PAID,": 25
+  },
+  "log_open_not_on_position": {
+   "lines": 447,
+   "amount": 86273466.02,
+   "by_bu_status": {
+    "AM | PAID,": [
+     1,
+     109544.4
+    ],
+    "AM | PENDING AP": [
+     218,
+     59802634.68
+    ],
+    "AM | PENDING TRESO": [
+     49,
+     10724797.77
+    ],
+    "Building & Infrastructure | PENDING AP": [
+     2,
+     79080.0
+    ],
+    "Corporate | ": [
+     8,
+     0.0
+    ],
+    "Corporate | PAID,": [
+     16,
+     88824.85
+    ],
+    "Corporate | PENDING AP": [
+     126,
+     4268229.64
+    ],
+    "Corporate | PENDING TRESO": [
+     7,
+     1177169.2
+    ],
+    "Fertilizers & Chemicals | PAID,": [
+     4,
+     8078057.36
+    ],
+    "Fertilizers & Chemicals | PENDING AP": [
+     10,
+     1300550.63
+    ],
+    "Fertilizers & Chemicals | PENDING TRESO": [
+     4,
+     610329.0
+    ],
+    "SP2M Ad Hoc Program | PENDING AP": [
+     1,
+     18078.5
+    ],
+    "Water & Environement | PAID,": [
+     1,
+     16170.0
+    ]
+   }
+  },
+  "log_open_lines_sample": [
+   [
+    "FEC",
+    "SCIF",
+    20260153,
+    7855567.42,
+    "PAID,",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "FUTURA EXPERTISE",
+    "2026_07",
+    23707.25,
+    "PAID,",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "FUTURA EXPERTISE",
+    "2026_08",
+    37145.0,
+    "PAID,",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "KGM",
+    "2019.29-17",
+    161637.69,
+    "PAID,",
+    "2026-09-15"
+   ],
+   [
+    "AMT",
+    "FIMEL",
+    "F405/26 (F507/26)",
+    1180936.8,
+    "PENDING TRESO",
+    "2026-10-12"
+   ],
+   [
+    "WEN",
+    "MAYA ASSISTANCE",
+    "6,975",
+    16170.0,
+    "PAID,",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "EMERSON",
+    "3361602-1",
+    631501.58,
+    "PENDING AP",
+    "2026-09-15"
+   ],
+   [
+    "Corporate",
+    "JURILEX",
+    "FA-26-0559",
+    4164.0,
+    "PENDING TRESO",
+    "2026-10-08"
+   ],
+   [
+    "Corporate",
+    "JURILEX",
+    "FA-26-0643",
+    15570.0,
+    "PENDING TRESO",
+    "2026-10-08"
+   ],
+   [
+    "Corporate",
+    "JURILEX",
+    "FA-26-0755",
+    4164.0,
+    "PENDING TRESO",
+    "2026-10-08"
+   ],
+   [
+    "AMT",
+    "Jorf Convoyeurs Sarl",
+    "020/2026 (032/2026)",
+    411180.3,
+    "PENDING TRESO",
+    "2026-10-12"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0175",
+    330756.0,
+    "PENDING TRESO",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0092",
+    258693.0,
+    "PENDING AP",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0176",
+    183904.0,
+    "PENDING TRESO",
+    "2026-09-15"
+   ],
+   [
+    "AMT",
+    "FIMEL",
+    "F406/26 (F607/26)",
+    150012.0,
+    "PENDING TRESO",
+    "2026-10-12"
+   ],
+   [
+    "AMT",
+    "SSE MENA",
+    "0001926",
+    109544.4,
+    "PAID,",
+    "2026-10-12"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0093",
+    78833.0,
+    "PENDING AP",
+    "2026-09-15"
+   ],
+   [
+    "BIN",
+    "3S MOROCCO",
+    "FA253115",
+    71880.0,
+    "PENDING AP",
+    "2026-09-18"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0177",
+    71753.0,
+    "PENDING TRESO",
+    "2026-09-15"
+   ],
+   [
+    "FEC",
+    "Power Integration",
+    "25PIFA0178",
+    23916.0,
+    "PENDING TRESO",
+    "2026-09-15"
+   ],
+   [
+    "BIN",
+    "3S MOROCCO",
+    "FA253124",
+    7200.0,
+    "PENDING AP",
+    "2026-09-18"
+   ],
+   [
+    "Corporate",
+    "IGE XAO MAROC (ETAP)",
+    "MA0726IN00000037",
+    124349.63,
+    "PENDING AP",
+    "2026-10-15"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "344/2026",
+    15862.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "359/2026",
+    119570.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "FEC",
+    "VEMATRA SARL",
+    "363/2026",
+    4840.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "349/2026",
+    52800.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "FEC",
+    "VEMATRA SARL",
+    "347/2026",
+    22399.98,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "358/2026",
+    75350.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "357/2026",
+    146080.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "354/2026",
+    208670.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "355/2026",
+    37180.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "FEC",
+    "VEMATRA SARL",
+    "360/2026",
+    16000.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "346/2026",
+    117315.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "356/2026",
+    56100.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "351/2026",
+    18260.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "694/2025",
+    18407.2,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "AMT",
+    "VEMATRA SARL",
+    "402/2025",
+    18407.2,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "FEC",
+    "VEMATRA SARL",
+    "352/2026",
+    113350.0,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "SP2M",
+    "VEMATRA SARL",
+    "345/2026",
+    18078.5,
+    "PENDING AP",
+    "2026-10-16"
+   ],
+   [
+    "FEC",
+    "VEMATRA SARL",
+    "348/2026",
+    8783.07,
+    "PENDING AP",
+    "2026-10-16"
+   ]
+  ]
+ },
+ "needs_ruling": [
+  "Tracking log: 447 unpaid log lines (86,273,466 MAD) are not on the ongoing position — add as approved? (listed in the report)"
+ ]
+}
