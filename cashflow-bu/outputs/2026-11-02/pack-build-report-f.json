@@ -1,0 +1,24 @@
+{
+ "ocp": {
+  "invoices_in_file_from": 240,
+  "already_in_master": 187,
+  "new_rows": 53,
+  "new_amount": 178799459.67,
+  "new_by_bu": {
+   "AM / Labor": 8931142.26,
+   "AM / Non-Labor": 43216639.37,
+   "Fertilizers & Chemicals / Non-Labor": 53286115.66,
+   "Water & Environement / Labor": 44092955.96,
+   "Global Mining / Non-Labor": 4047466.08,
+   "Energy Operations / Non-Labor": 2668649.05,
+   "Water & Environement / Non-Labor": 19483637.59,
+   "Energy Operations / Labor": 3072853.7
+  },
+  "unmapped_new": 0,
+  "in_master_not_in_file": [],
+  "in_master_not_in_file_count": 0
+ },
+ "sap": {},
+ "log": {},
+ "needs_ruling": []
+}

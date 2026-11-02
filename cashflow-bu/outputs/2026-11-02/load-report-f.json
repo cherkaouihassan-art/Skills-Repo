@@ -1,0 +1,18 @@
+{
+ "streams": {
+  "1_CashIn_OCP": {
+   "added": 53,
+   "skipped_duplicates": 0,
+   "amount_added": 178799459.67,
+   "rows": "11134:11186"
+  },
+  "7_Standing": {
+   "applied": []
+  }
+ },
+ "needs_ruling": [],
+ "warnings": [],
+ "as_of": "2026-11-02",
+ "pack": "CF_INPUT_PACK_2026-11-02f_ocp.xlsx (from OCP Payments Weekly 2.xlsx, extract JESA-11.02.2026)",
+ "dry_run": false
+}

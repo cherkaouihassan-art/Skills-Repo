@@ -147,3 +147,14 @@ Tier moves between tier rows only; the headline does not change.
 ## Still outstanding
 - LC payments after 21/10 and an LC situation newer than 19/10 (export under 10 MB); customs after 02/10.
 - November roll-forward before November clearings are loaded.
+
+
+---
+# Cash IN update — OCP file of 02/11/2026
++53 invoices, 178.8 M: procurement 122.7 M (F&C 53.3 M, AM 43.2 M, Water 19.5 M, Global Mining 4.0 M, Energy 2.7 M) and PSR 56.1 M (Water 44.1 M, AM 8.9 M, Energy 3.1 M). October collections per OCP are now 468.8 M on 239 invoices. The single November invoice (Energy PSR 3.07 M, paid 02/11) is on the source tab and will show once the November column exists.
+
+| Line | before | after | move |
+|---|---|---|---|
+| Collections — OCP report | 1,986,364,322 | 2,109,066,829 | +122,702,508 |
+| Net balance after approved | -145,233,341 | -22,530,833 | +122,702,508 |
+| Net position after all ongoing | -319,294,886 | -196,592,378 | +122,702,508 |

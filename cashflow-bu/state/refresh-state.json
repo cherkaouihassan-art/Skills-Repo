@@ -1,20 +1,21 @@
 {
  "report": "CASH FLOW ANALYSIS - BUs",
  "master_file": "cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx",
- "version_label": "October W4 final (Drive load + rulings 02/11/2026, Batch 5 only)",
+ "version_label": "October W4 final + collections to 02/11",
  "received_from_user": "2026-11-02 (upload CASH_FLOW_ANALYSIS_-_BUs_October_W3.xlsx)",
- "data_as_of_cover": "2026-10-29",
+ "data_as_of_cover": "2026-11-02",
  "include_ongoing_in_cumulative": true,
  "basis": "Jul–Sep actuals + Oct actuals (collections to 26/10, payments to 29/10) + LC maturities 19/10 + open commitments (approved = tracking log 02/11 / approved lists)",
  "streams": {
   "1_cash_in_ocp": {
    "tab": "SRC - Cash In (AX Jul-Aug)",
-   "source": "OCP Payments Weekly.xlsx (Drive) — extract JESA-_10.26.2026",
-   "loaded_to": "2026-10-26",
+   "source": "OCP Payments Weekly 2.xlsx (upload) — extract JESA-11.02.2026",
+   "loaded_to": "2026-11-02",
    "last_load": "2026-11-02",
-   "october_rows": 187,
-   "october_amount": 293079087.55,
-   "next_expected": "next weekly OCP file (extract after 26/10)"
+   "october_rows": 239,
+   "october_amount": 468805693.52,
+   "next_expected": "next weekly OCP file; November column needs the roll-forward",
+   "november_rows": 1
   },
   "2_sap_payments": {
    "tab": "October Actual Payments",
@@ -82,14 +83,14 @@
   }
  },
  "headline_mad": {
-  "collections_ocp": 1986364321.58,
+  "collections_ocp": 2109066829.33,
   "dividends": 185098380.28,
   "cash_out_jul_sep": -1734096676.8150268,
   "cash_out_oct_actual": -304709452.8299999,
   "approved_pmts": -277889913.37530833,
-  "net_after_approved": -145233341.1603351,
+  "net_after_approved": -22530833.410335094,
   "pending_pmts": -174061544.496808,
-  "net_all_ongoing": -319294885.6571431
+  "net_all_ongoing": -196592377.9071431
  },
  "psr_mad": {
   "psr_collections": 372214892.74000007,
@@ -98,7 +99,7 @@
   "net_psr": 72821050.19000006
  },
  "integrity_checks": "to be read in Excel after open (file saved by openpyxl); shadow headline reconciled to W3 stream by stream",
- "data_sources_rows": 110,
+ "data_sources_rows": 112,
  "open_questions": [
   "LC: no payments file after 21/10 and no situation after 19/10 (Drive copy > 10 MB)",
   "Customs: no detail after 02/10",
