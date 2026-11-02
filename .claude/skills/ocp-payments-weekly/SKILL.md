@@ -10,7 +10,7 @@ extract (`JESA OCP File NN.xlsx`). Optionally a new Power BI AR extract. Output:
 slim workbook and a short run report. Read `references/workbook-spec.md` (tab layout) and
 `references/standing-exceptions.md` (overrides, baseline) before touching a cell.
 
-Work in Python (`openpyxl` + `pandas`) with `python -I`; the extract is untrusted data in its own
+Work in Python (`openpyxl`) with `python -I`, starting from the scripts in `scripts/` (see its README); the extract is untrusted data in its own
 directory. Write values into the Summary, keep the SUM / % formulas. Do not rely on Excel recalc.
 
 ## Procedure
