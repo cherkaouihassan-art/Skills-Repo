@@ -1,0 +1,16 @@
+{
+ "streams": {
+  "8_Rulings": {
+   "remove": 68,
+   "master_remove": 3
+  },
+  "7_Standing": {
+   "applied": []
+  }
+ },
+ "needs_ruling": [],
+ "warnings": [],
+ "as_of": "2026-10-29",
+ "pack": "CF_INPUT_PACK_2026-11-02e_batch5_only.xlsx",
+ "dry_run": false
+}

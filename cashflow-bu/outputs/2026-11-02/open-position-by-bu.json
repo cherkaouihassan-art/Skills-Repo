@@ -1,0 +1,54 @@
+{
+ "AM | approved": [
+  252,
+  -78724102.25
+ ],
+ "Advisory | approved": [
+  1,
+  0.0
+ ],
+ "Building & Infrastructure | approved": [
+  15,
+  -2355076.06
+ ],
+ "Energy Operations | approved": [
+  2,
+  -15767.96
+ ],
+ "Energy Operations | pending": [
+  61,
+  -7065320.35
+ ],
+ "Fertilizers & Chemicals | approved": [
+  47,
+  -9744378.74
+ ],
+ "Fertilizers & Chemicals | pending": [
+  27,
+  -34525258.13
+ ],
+ "Global Mining | approved": [
+  5,
+  -7251401.5
+ ],
+ "Global Mining | pending": [
+  4,
+  -10692041.12
+ ],
+ "SP2M Ad Hoc Program | approved": [
+  5,
+  -1820583.08
+ ],
+ "SP2M Ad Hoc Program | pending": [
+  7,
+  -43408347.71
+ ],
+ "Water & Environement | approved": [
+  49,
+  -31804840.11
+ ],
+ "Water & Environement | pending": [
+  24,
+  -78370577.19
+ ]
+}

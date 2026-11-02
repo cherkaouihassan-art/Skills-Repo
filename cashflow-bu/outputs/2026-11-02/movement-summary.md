@@ -97,3 +97,53 @@ Corporate lines are outside the procurement scope anyway; the AM PENDING AP bloc
 - Suppliers without a tier (loaded as Unclassified): HASLER GROUP, CONVEYOR PRODUCTS AND SOL (AM); ARDAMAN & ASSOCIATES, HANGZHOU WATER TREATMENT, FLUYTEC, TELSTAR MAROC (Water); REPUBLIC SERVICES, DBS BUILDING SOLUTIONS (SAP payments).
 - Tracking-log lines not on the position: the AM block is now largely covered by the 26/10 list; corporate lines are out of scope.
 - Still missing: LC payments after 21/10, LC situation after 19/10 (export under 10 MB), customs after 02/10.
+
+
+---
+# FINAL October W4 — after all rulings of 02/11/2026 (supersedes the two sections above where they differ)
+
+| Line | W3 | W4 Drive load | **W4 final** |
+|---|---|---|---|
+| Collections — OCP report (procurement) | 1,919,249,481 | 1,986,364,322 | 1,986,364,322 |
+| Dividends (PROC compensable) | 185,098,380 | 185,098,380 | 185,098,380 |
+| Cash OUT Jul–Sep actuals | -1,734,096,677 | -1,734,096,677 | -1,734,096,677 |
+| Cash OUT Oct actuals | -276,005,347 | -304,871,031 | -304,709,453 |
+| Approved payments (Oct ongoing, incl. LC maturities) | -213,148,190 | -294,208,880 | -277,889,913 |
+| Net balance after approved | -118,902,352 | -161,713,886 | -145,233,341 |
+| Pending payment approval | -183,606,632 | -95,690,967 | -174,061,544 |
+| Net position after all ongoing | -302,508,984 | -257,404,853 | -319,294,886 |
+
+Corrections versus the first rulings pass: the WEN parked-invoice list captures **Batch 5 only**, so the 68 non-Batch-5 lines (195.0 M, incl. the 12 *Future* lines) were removed again (status `Removed - per user 02/11`). Water pending is the 24 Batch 5 lines not previously approved (78.4 M).
+
+## Open commitments by BU (open lines, MAD; approved excludes the 143.9 M LC maturities shown separately on the report)
+| BU | Status | Lines | Amount |
+|---|---|---|---|
+| AM | approved | 252 | -78,724,102 |
+| Advisory | approved | 1 | 0 |
+| Building & Infrastructure | approved | 15 | -2,355,076 |
+| Energy Operations | approved | 2 | -15,768 |
+| Energy Operations | pending | 61 | -7,065,320 |
+| Fertilizers & Chemicals | approved | 47 | -9,744,379 |
+| Fertilizers & Chemicals | pending | 27 | -34,525,258 |
+| Global Mining | approved | 5 | -7,251,402 |
+| Global Mining | pending | 4 | -10,692,041 |
+| SP2M Ad Hoc Program | approved | 5 | -1,820,583 |
+| SP2M Ad Hoc Program | pending | 7 | -43,408,348 |
+| Water & Environement | approved | 49 | -31,804,840 |
+| Water & Environement | pending | 24 | -78,370,577 |
+
+## Tiering of the unclassified suppliers (applied; Tiering Master rows added, base "Research")
+| Supplier | Tier applied | Basis |
+|---|---|---|
+| HASLER GROUP (AM, 3 lines) | Intl 1 | Tiering Master has HASLER France = OCP tier 1 and HASLER MAGHREB = tier 2; HASLER GROUP was paid as Intl 1 in July; French group |
+| CONVEYOR PRODUCTS AND SOL (AM) | Not on OCP Tier | Master already lists "CONVEYOR PRODUCTS AND SOLUTIONS — Not on OCP Tier" (JESA base); Australian maker of conveyor rollers, Fenner/Michelin group. CPSM on the master is a different, Moroccan company |
+| ARDAMAN & ASSOCIATES, INC (Water) | Intl 2 | Master: "ARDAMAN & ASSOCIATES INC" = OCP tier 2; US geotechnical firm (Orlando HQ, 14 branches) — international |
+| HANGZHOU WATER TREATMENT (Water, 3 lines) | Intl 1 | Master: full name "Hangzhou Water Treatment Technology Development Center Co., Ltd." = OCP tier 1; paid as Intl 1 on LC payments |
+| FLUYTEC, S.A. (Water) | Intl 3 | Master: "Fluytec; SA" = OCP tier 3; Spanish; paid as Intl 3 on LC payments |
+| TELSTAR MAROC (Water) | 3 (estimate) | Not on the master. Kerix directory: Mohammedia, subsidiary of the Telstar group, under 10 staff, turnover 10–50 MDH → small national supplier |
+| REPUBLIC SERVICES, INC · DBS BUILDING SOLUTIONS, INC (SAP payments) | corporate, out of cash out | US office running costs in Florida (waste collection in Lakeland; commercial cleaning in Tampa) — same treatment as CITY OF LAKELAND. Already flagged corporate by the invoice-line BU; no tier needed |
+Tier moves between tier rows only; the headline does not change.
+
+## Still outstanding
+- LC payments after 21/10 and an LC situation newer than 19/10 (export under 10 MB); customs after 02/10.
+- November roll-forward before November clearings are loaded.

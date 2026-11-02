@@ -1,7 +1,7 @@
 {
  "report": "CASH FLOW ANALYSIS - BUs",
  "master_file": "cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx",
- "version_label": "October W4 final (Drive load + rulings 02/11/2026)",
+ "version_label": "October W4 final (Drive load + rulings 02/11/2026, Batch 5 only)",
  "received_from_user": "2026-11-02 (upload CASH_FLOW_ANALYSIS_-_BUs_October_W3.xlsx)",
  "data_as_of_cover": "2026-10-29",
  "include_ongoing_in_cumulative": true,
@@ -29,8 +29,8 @@
    "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = Yes)",
    "source": "Payment tracking log.xlsx (Drive, 02/11) + approved lists",
    "loaded_to": "2026-11-02",
-   "open_lines": 317,
-   "amount": -101808812,
+   "open_lines": 376,
+   "amount": -131716149.7,
    "next_expected": "next tracking log export + approval emails/lists",
    "note": "AM list 26/10 added as approved (207 lines); Marine Maroc approved per email; Water log-promoted lines reverted to pending"
   },
@@ -38,10 +38,10 @@
    "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = No)",
    "source": "WEN Batch 5 (19/10), AM list, BU lists",
    "loaded_to": "2026-11-02",
-   "open_lines": 122,
-   "amount": -369072775.752096,
+   "open_lines": 123,
+   "amount": -174061544.496808,
    "next_expected": "new BU lists / invoices sent for approval",
-   "note": "WEN parked-invoice list 19/10 loaded as pending (68 lines incl. 12 Future)"
+   "note": "Water pending = Batch 5 lines not previously approved (WEN list is Batch 5 only)"
   },
   "5a_lc_paid": {
    "tab": "SRC - LC Payments",
@@ -88,8 +88,8 @@
   "cash_out_oct_actual": -304709452.8299999,
   "approved_pmts": -277889913.37530833,
   "net_after_approved": -145233341.1603351,
-  "pending_pmts": -369072775.752096,
-  "net_all_ongoing": -514306116.9124311
+  "pending_pmts": -174061544.496808,
+  "net_all_ongoing": -319294885.6571431
  },
  "psr_mad": {
   "psr_collections": 372214892.74000007,
@@ -98,13 +98,12 @@
   "net_psr": 72821050.19000006
  },
  "integrity_checks": "to be read in Excel after open (file saved by openpyxl); shadow headline reconciled to W3 stream by stream",
- "data_sources_rows": 109,
+ "data_sources_rows": 110,
  "open_questions": [
-  "Water 'Future' lines (12, 42.7 M) counted as pending — exclude?",
-  "Tiers needed: HASLER GROUP, CONVEYOR PRODUCTS AND SOL, ARDAMAN & ASSOCIATES, HANGZHOU WATER TREATMENT, FLUYTEC, TELSTAR MAROC, REPUBLIC SERVICES, DBS BUILDING SOLUTIONS",
   "LC: no payments file after 21/10 and no situation after 19/10 (Drive copy > 10 MB)",
   "Customs: no detail after 02/10",
-  "November roll-forward (new SAP tab + report column) needed before November clearings are loaded"
+  "November roll-forward (new SAP tab + report column) needed before November clearings are loaded",
+  "TELSTAR MAROC tier 3 is an estimate (not in OCP DB)"
  ],
  "drive_sources": {
   "note": "Google Drive of cherkaouihassan@gmail.com (connected). Fetch with the Drive connector: search_files by parentId, download_file_content, then scripts/decode_drive_result.py on the persisted result. Prefer the newest file in each folder.",
@@ -200,5 +199,59 @@
   "net_after_approved": -161713885.85224012,
   "pending_pmts": -95690967.30999999,
   "net_all_ongoing": -257404853.1622401
+ },
+ "open_position_by_bu": {
+  "AM | approved": [
+   252,
+   -78724102.25
+  ],
+  "Advisory | approved": [
+   1,
+   0.0
+  ],
+  "Building & Infrastructure | approved": [
+   15,
+   -2355076.06
+  ],
+  "Energy Operations | approved": [
+   2,
+   -15767.96
+  ],
+  "Energy Operations | pending": [
+   61,
+   -7065320.35
+  ],
+  "Fertilizers & Chemicals | approved": [
+   47,
+   -9744378.74
+  ],
+  "Fertilizers & Chemicals | pending": [
+   27,
+   -34525258.13
+  ],
+  "Global Mining | approved": [
+   5,
+   -7251401.5
+  ],
+  "Global Mining | pending": [
+   4,
+   -10692041.12
+  ],
+  "SP2M Ad Hoc Program | approved": [
+   5,
+   -1820583.08
+  ],
+  "SP2M Ad Hoc Program | pending": [
+   7,
+   -43408347.71
+  ],
+  "Water & Environement | approved": [
+   49,
+   -31804840.11
+  ],
+  "Water & Environement | pending": [
+   24,
+   -78370577.19
+  ]
  }
 }

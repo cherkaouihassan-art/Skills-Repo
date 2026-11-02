@@ -355,6 +355,7 @@ if rows:
         for k, c in oh_ws.items():
             if k.lower().startswith(prefix.lower()): return c
     c_doc, c_inc, c_bu, c_oh, c_src = occ('Document Number'), occ('Include in'), occ('BU (mapped)'), occ('OH?'), occ('BU mapping source')
+    if 'C_TIER' not in globals(): C_TIER = ogc('Tier')
     done = Counter(); bal_rows = []
     for d in rows:
         act = str(H(d, 'Action') or '').strip().lower(); tgt = H(d, 'Target'); val = H(d, 'Value'); why = H(d, 'Reason') or ''
@@ -381,6 +382,36 @@ if rows:
                 og.cell(r, C_INLOG, 'No'); og.cell(r, ogc('Check vs tracking log'), f"Pending payment approval — user ruling {AS_OF}: {why}")
                 og.cell(r, C_COM, f"{og.cell(r, C_COM).value or ''} | Set to pending per user ruling {AS_OF}".strip(' |'))
             done['pending'] += 1
+        elif act == 'tier':          # Target = ongoing row (number) or SAP document number (string starting with 'doc:')
+            if str(tgt).startswith('doc:'):
+                docno = str(tgt)[4:].strip(); c_tier = occ('Tier (report)')
+                hit = [rr for rr in range(2, oct_ws.max_row + 1) if str(oct_ws.cell(rr, c_doc).value) == docno]
+                if not A.dry_run:
+                    for rr in hit: oct_ws.cell(rr, c_tier, val); oct_ws.cell(rr, c_src, f"{oct_ws.cell(rr, c_src).value or ''} | tier {val} per user ruling {AS_OF}: {why}".strip(' |'))
+                done['tier'] += len(hit)
+            else:
+                r = int(num(tgt))
+                if not A.dry_run:
+                    og.cell(r, C_TIER, val); og.cell(r, C_COM, f"{og.cell(r, C_COM).value or ''} | tier {val} per user ruling {AS_OF}: {why}".strip(' |'))
+                done['tier'] += 1
+        elif act == 'master':        # Target = supplier name as written on the lines; Value = 'National|International|<tier>'
+            tmw = wb[SHEETS['tiering']]; nat, tier = [x.strip() for x in str(val).split('|')][:2]
+            rr = tmw.max_row + 1
+            while tmw.cell(rr - 1, 1).value in (None, '') and rr > 6: rr -= 1
+            if not A.dry_run:
+                tmw.cell(rr, 1, str(tgt)); tmw.cell(rr, 2, nat); tmw.cell(rr, 3, int(tier) if tier.isdigit() else tier); tmw.cell(rr, 4, 'Research'); tmw.cell(rr, 5, f"{why} (user ruling {AS_OF})")
+            done['master'] += 1
+        elif act == 'remove':        # Target = ongoing row; Value = status text (e.g. 'Removed - per user dd/mm (...)')
+            r = int(num(tgt))
+            if not A.dry_run:
+                og.cell(r, C_OVR, str(val) or f'Removed - per user {AS_OF:%d/%m}'); og.cell(r, C_COM, f"{og.cell(r, C_COM).value or ''} | {why}".strip(' |'))
+            done['remove'] += 1
+        elif act == 'master_remove':  # Target = supplier name exactly as on the Tiering Master
+            tmw = wb[SHEETS['tiering']]; hit = [rr for rr in range(5, tmw.max_row + 1) if str(tmw.cell(rr, 1).value).strip().upper() == str(tgt).strip().upper()]
+            if not A.dry_run:
+                for rr in hit:
+                    for c in range(1, 6): tmw.cell(rr, c).value = None
+            done['master_remove'] += len(hit)
         elif act in ('include', 'bu'):
             hit = [rr for rr in range(2, oct_ws.max_row + 1) if str(oct_ws.cell(rr, c_doc).value) == str(tgt).strip() and str(oct_ws.cell(rr, c_inc).value) != 'No - invoice line']
             for rr in hit:

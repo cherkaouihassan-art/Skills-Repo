@@ -2,6 +2,11 @@
 
 Newest first. One entry per refresh: inputs received, loads, headline movement, open questions.
 
+## 2026-11-02 (final) — Batch 5 only + tiering
+- **Rulings:** WEN parked-invoice list captures Batch 5 only → the 68 non-Batch-5 Water lines removed (195.0 M). Unclassified suppliers tiered from master variants / web research (HASLER GROUP Intl 1, CONVEYOR PRODUCTS Not on OCP Tier, ARDAMAN Intl 2, HANGZHOU Intl 1, FLUYTEC Intl 3, TELSTAR MAROC 3 est.); REPUBLIC SERVICES and DBS BUILDING SOLUTIONS corporate.
+- **Headline (MAD):** approved -277,889,913 · pending -174,061,544 · net after approved -145,233,341 · net all ongoing -319,294,886.
+- **Delivered:** `outputs/2026-11-02/CASH FLOW ANALYSIS - BUs October W4 final.xlsx`; master replaced. Data Sources rows up to 110.
+
 ## 2026-11-02 (later) — rulings on the W4 refresh → W4 final
 - **Rulings (chat):** close lines when payment ≥ outstanding; short payments closed with balance rows; mixed-BU payments on dominant BU; CITY OF LAKELAND corporate (out); AM list of 26/10 approved (207 lines −64.3 M, credit lines kept positive); Marine Maroc Batch 5 approved per email (4.1 M open); Water: everything not previously approved is pending — 24 log-promoted Batch 5 lines reverted (78.6 M) and WEN parked list 19/10 loaded as pending (68 lines −195.0 M).
 - **Headline (MAD):** approved -277,889,913 · pending -369,072,776 · net after approved -145,233,341 · net all ongoing -514,306,117 (W4 before rulings: -257,404,853).
