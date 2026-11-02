@@ -162,6 +162,7 @@ def aggregate(path, as_of, prev_cutoff=None):
                 pdd = pd.date() if isinstance(pd, dt.datetime) else pd
                 inv = num(g(r, "Amount Invoiced")); lab = "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor"
                 nonp = str(g(r, "Client 1") or "").strip().upper().startswith("NON OCP")
+                if pdd > as_of: continue   # payments booked after the snapshot date belong to next week's view
                 if pdd.year == as_of.year:
                     coll_month[(pdd.month, lab)] += inv; coll_bu[(b, "ytd")] += inv; coll_cnt[b] += 1
                     if nonp: coll_bu[(b, "ytd_nonocp")] += inv
@@ -176,7 +177,7 @@ def aggregate(path, as_of, prev_cutoff=None):
                         coll_bu[(b, "prior")] += inv
                         if nonp: coll_bu[(b, "prior_nonocp")] += inv
             rd = g(r, "Reception date")
-            if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt
+            if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m and (rd.date() if isinstance(rd, dt.datetime) else rd) <= as_of: dep_bu[b] += amt; dep_tot += amt
             continue
         comp = "Advance" if s1.startswith("advance") else ("Unbilled" if s1.startswith("unbilled") else ("Unpaid" if s1.startswith("unpaid") else None))
         rd = g(r, "Reception date")
