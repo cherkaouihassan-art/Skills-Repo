@@ -15,7 +15,8 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
 
 ## Procedure
 
-1. **Layout check.** Read extract row 1. Compare the 35 header names `A1:AI1` with the list
+1. **Layout check.** Use the tab named `JESA` (the extract file may also carry `JESATCD` and
+   `Feuil1`; ignore them). Read row 1. Compare the 35 header names `A1:AI1` with the list
    in workbook-spec.md (and `Config!ExtractLayoutHash`). Any difference → stop, report, do nothing.
 2. **Load the extract.** Keep rows with `Net à payer` ≠ 0 and a `Date Paiement`. Normalise the
    invoice key: `str(Réference)`, trimmed, NBSP removed, leading zeros kept. Note the extract
