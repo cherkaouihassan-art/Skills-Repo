@@ -102,5 +102,80 @@
   "6 suppliers on the 22/10 AM list are Unclassified tier (AZO NV, FIVES PILLARD, HASLER, KOCH …) — tier needed.",
   "Tracking log says PAID but no SAP payment to 15/10: 26 lines / 11.37 MMAD (+4 reversed, 4 undated) — chase Treasury or confirm (tab 'Approved vs Tracking log 20.10').",
   "60 OctOngoing lines carry tier 'Unclassified' — tiering check pending."
- ]
+ ],
+ "drive_sources": {
+  "note": "Google Drive of cherkaouihassan@gmail.com (connected). Fetch with the Drive connector: search_files by parentId, download_file_content, then scripts/decode_drive_result.py on the persisted result. Prefer the newest file in each folder.",
+  "folders": {
+   "AR CASH DECK": {
+    "id": "1wdjxeo7jQfYFKY433WXYlgzKVzET2-hT",
+    "parent": "My Drive",
+    "children": {
+     "Inbox": "1rMF0u4ZvaNLQWH4QERpgBF0-fBbDpVnJ",
+     "Baseline": "1LsLSmVJt_7mJQPYK_Gy5gLsSE_lDoD-u",
+     "Output": "1p_CBxwNQi4g13tgTEtQ0pzwsqeEyve1X",
+     "10 october/Week 3/OCP Payments report": "1HOlzZu2xW5rSRAKmIP4cb19YO3rQVOl4",
+     "10 october/Week 3/AR presentation": "1jXy7Du8EqTd5VMQveqpF3hOoAbppATPD",
+     "11-November/Week 1": "1EBhJ59GdNKwC7D8MhH4hjV6MB0UAWGAH"
+    }
+   },
+   "AR CASH DECK  OCP Payments Weekly": {
+    "id": "1w4CHGD5Pzgj3I1bb2tLUAK6p3F6ryK9B",
+    "parent": "Group Destination (folder shared by chris.mcdonald33@gmail.com in 2013 — check this is intended)"
+   },
+   "COO Report (Input/Output)": {
+    "id": "1UHblz5eDyLHXe_GF4YFrLqbQgK9WmY4T",
+    "input": "1zlV5FqT_mu533las1GeDd3aNY9arvAwC",
+    "output": "1wUE6ar-i06aTIjn6p5NRTaQ6zUOybKjo",
+    "parent": "Group Destination (same shared folder)"
+   },
+   "COO Report (duplicate, empty)": {
+    "id": "1QzWAW7_0p-oKVCW6fvyRhE_WhdFkQkuU",
+    "parent": "Saved from Chrome"
+   }
+  },
+  "streams": {
+   "1_cash_in_ocp": {
+    "file": "OCP Payments Weekly.xlsx",
+    "id": "18OhtWOpqZwR8rhzZGLChUHQnn19ybesb",
+    "folder": "AR CASH DECK  OCP Payments Weekly",
+    "produced_by": "weekly OCP payment report conversation (ocp-payments-weekly skill)",
+    "use_sheet": "Payments Key (per invoice: Réference, Fournisseur, Pièce comptable, Date Paiement, Réf Paiement, Net à payer, Pay Month, BU, Class Procurement/Proservices, PSR/PROC) + 'Unmapped Invoices' + 'Summary by BU' for the tie-out",
+    "seen_2026-11-02": "extract JESA-_10.26.2026 (26/10/2026): October 187 invoices / 293,079,087.55 MAD (PROC 218,104,869.20 · PSR 74,974,218.35); September ties to the master (341,264,316.86 / 66,510,197.73); 12 October invoices unmapped"
+   },
+   "2_sap_payments": {
+    "file": "PAYMENTS OCTOBER W4 _ 29.10.26.xlsx",
+    "id": "1BpZCJeCR6lv7SOBl4dWtrNVIqQhbY6Uw",
+    "folder": "COO Report/Input",
+    "use_sheet": "PAYMENTS OCT (SAP layout A:AC + New Tier, Type, Mapping ID, Cost Center, WBS, PO, BU)",
+    "seen_2026-11-02": "1,612 lines, clearings to 29/10/2026; Type values lower-case (paiement/facture); BU in short codes (Water, F&C, Overhead …)"
+   },
+   "3_approved_tracking_log": {
+    "file": "Payment tracking log.xlsx",
+    "id": "1n_Tj6mSIqA10w8Vm47LJDh9Ox4A3wJgp",
+    "folder": "COO Report/Input",
+    "use_sheet": "Invoice Tracker (header row 3; 1,370 lines; actions to Nov 2nd) + Cancelled",
+    "seen_2026-11-02": "modified 02/11/2026 11:42"
+   },
+   "5b_lc_situation": {
+    "file": "LCs SITUATION - October 19th.xlsx",
+    "id": "1PJI4z2FXFROLUzVeQp5zZ_TmLJdNqzuD",
+    "folder": "AR CASH DECK/Inbox",
+    "seen_2026-11-02": "same situation as loaded (19/10); 13/10 version also present (1ILjKOvZuNXxiknzePMNur2nJoCg6ITXu)"
+   },
+   "other_in_inbox": {
+    "CASH flow W3.xlsx": "10wwQGfjf2m8zYDXaiU3vymAifU2FsDmb (W3 cash flow deck source, 21/10)",
+    "AR weekly.xlsx": "1zAp8MOFuaKD_NUhLxK7zec_hCqau_ibM (Power BI AR extract, mapping source)",
+    "Power BI - AR 10.28.2026.xlsx": "14W_Igy2JS0aJRxFxFUXb1pt7T1XT_PG2",
+    "UR Tracking_Consolidation.xlsx": "1kC755YSOVPYAx6Jz0IsBVL1jD3pn8lem",
+    "2026 10 26 - 4411 PARKED INVOICES DOWNPAYMENT ALL.xlsx": "1djs7hhFNykR21g68oMOUEuygxDJT6fmd",
+    "WIP DSO calc.xlsx": "1xAgzIKltpCxxkUwsDgXMG537PIIHZKXa",
+    "Baseline/AR Beg of the month.xlsx": "1Kof0V9TZlM9WcW_Vjw86R2MwBMCaviQ5"
+   },
+   "not_yet_on_drive": [
+    "5a LC payments file after 21/10",
+    "6 customs detail after 02/10",
+    "4 pending-approval lists / approval emails"
+   ]
+  }
+ }
 }

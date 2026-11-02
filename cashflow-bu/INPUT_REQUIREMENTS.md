@@ -61,6 +61,17 @@ Three accepted forms, any mix:
 - Month roll-forward instruction (when November actuals start: new SAP tab + new report column).
 - **Intake tab:** `7_Standing`.
 
+
+## Where the inputs live today (Google Drive, connected)
+| Stream | Drive location | File |
+|---|---|---|
+| 1 Cash IN | `AR CASH DECK  OCP Payments Weekly/` | `OCP Payments Weekly.xlsx` — output of the weekly OCP payment report conversation; sheet `Payments Key` is per invoice with BU, Class (Procurement = PROC, Proservices = PSR) and Pay Month, `Unmapped Invoices` lists what still needs a BU |
+| 2 SAP payments | `COO Report/Input/` | `PAYMENTS OCTOBER W<n> _ dd.mm.yy.xlsx`, sheet `PAYMENTS OCT` |
+| 3 Tracking log | `COO Report/Input/` | `Payment tracking log.xlsx`, sheet `Invoice Tracker` (header on row 3) |
+| 5b LC situation | `AR CASH DECK/Inbox/` | `LCs SITUATION - <date>.xlsx` |
+| 5a LC paid, 6 customs, 4 pending lists | not on Drive yet | drop them in `AR CASH DECK/Inbox/` or upload in chat |
+File IDs and what was last seen in each file are kept in `state/refresh-state.json → drive_sources`. The refresh takes the newest file in each folder; replacing the file in place (same name) is fine.
+
 ## Keys we match on (so lines are never double counted)
 | Stream | Dedupe key | Match to ongoing position |
 |---|---|---|
