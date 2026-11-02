@@ -4,10 +4,11 @@
 /ocp-payments-weekly
 
 Weekly OCP payments refresh.
-Attached:
-  1. OCP Payments Weekly.xlsx   (slim workbook: Summary by BU + Config + Overrides + Mapping + Payments Key + Unmapped Invoices + Data Sources)
-  2. JESA OCP File <NN>.xlsx    (this week's SAP/OCP payment extract, 35 columns A:AI)
-  3. [optional] Power BI - AR <date>.xlsx  (only if the mapping must be rebuilt)
+Inputs (read them from Google Drive with the Google_Drive connector; the connector downloads files up to 10 MB):
+  1. Workbook: "OCP Payments Weekly.xlsx" in Drive folder "AR CASH DECK  OCP Payments Weekly" (folder id 1w4CHGD5Pzgj3I1bb2tLUAK6p3F6ryK9B).
+  2. Extract: the newest "JESA-_<MM.DD.YYYY>.xlsx" in Drive folder "AR CASH DECK / Inbox" (folder id 1rMF0u4ZvaNLQWH4QERpgBF0-fBbDpVnJ), tab JESA, 35 columns A:AI.
+  3. [optional] AR file for a mapping rebuild: attached in chat (it is 24-47 MB, too big for the connector).
+The connector is read-only: send the updated workbook back in chat and I will overwrite the Drive copy myself.
 
 Rules:
 - Frozen months (Config!FrozenThrough and earlier) are never touched. Never repoint Jul-26 / Aug-26.
