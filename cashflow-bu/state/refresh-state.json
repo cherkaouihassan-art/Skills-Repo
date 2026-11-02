@@ -1,7 +1,7 @@
 {
  "report": "CASH FLOW ANALYSIS - BUs",
  "master_file": "cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx",
- "version_label": "October W4 (refresh 02/11/2026)",
+ "version_label": "October W4 final (Drive load + rulings 02/11/2026)",
  "received_from_user": "2026-11-02 (upload CASH_FLOW_ANALYSIS_-_BUs_October_W3.xlsx)",
  "data_as_of_cover": "2026-10-29",
  "include_ongoing_in_cumulative": true,
@@ -29,17 +29,19 @@
    "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = Yes)",
    "source": "Payment tracking log.xlsx (Drive, 02/11) + approved lists",
    "loaded_to": "2026-11-02",
-   "open_lines": 196,
-   "amount": -70298381.97,
-   "next_expected": "next tracking log export + approval emails/lists"
+   "open_lines": 317,
+   "amount": -101808812,
+   "next_expected": "next tracking log export + approval emails/lists",
+   "note": "AM list 26/10 added as approved (207 lines); Marine Maroc approved per email; Water log-promoted lines reverted to pending"
   },
   "4_pending": {
    "tab": "REPORT - Oct Ongoing-Position (OctOngoing, AA = No)",
    "source": "WEN Batch 5 (19/10), AM list, BU lists",
    "loaded_to": "2026-11-02",
-   "open_lines": 99,
-   "amount": -95690967.30999999,
-   "next_expected": "new BU lists / invoices sent for approval"
+   "open_lines": 122,
+   "amount": -369072775.752096,
+   "next_expected": "new BU lists / invoices sent for approval",
+   "note": "WEN parked-invoice list 19/10 loaded as pending (68 lines incl. 12 Future)"
   },
   "5a_lc_paid": {
    "tab": "SRC - LC Payments",
@@ -83,11 +85,11 @@
   "collections_ocp": 1986364321.58,
   "dividends": 185098380.28,
   "cash_out_jul_sep": -1734096676.8150268,
-  "cash_out_oct_actual": -304871031.1112279,
-  "approved_pmts": -294208879.78598535,
-  "net_after_approved": -161713885.85224012,
-  "pending_pmts": -95690967.30999999,
-  "net_all_ongoing": -257404853.1622401
+  "cash_out_oct_actual": -304709452.8299999,
+  "approved_pmts": -277889913.37530833,
+  "net_after_approved": -145233341.1603351,
+  "pending_pmts": -369072775.752096,
+  "net_all_ongoing": -514306116.9124311
  },
  "psr_mad": {
   "psr_collections": 372214892.74000007,
@@ -96,29 +98,13 @@
   "net_psr": 72821050.19000006
  },
  "integrity_checks": "to be read in Excel after open (file saved by openpyxl); shadow headline reconciled to W3 stream by stream",
- "data_sources_rows": 105,
+ "data_sources_rows": 109,
  "open_questions": [
-  "2_CashOut_SAP: invoice 'F180-2026' (XY CONCEPT) paid 273,110 on doc 2000012418 vs ongoing row 1353 amount 327,732 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice 'FA22556' (RESELEC) paid 74,150 on doc 2000012416 vs ongoing row 1092 amount 82,389 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice '037/2026' (CRIP) paid 76,328 on doc 2000012415 vs ongoing row 1085 amount 87,232 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice '026/2026' (CRIP) paid 44,553 on doc 2000012414 vs ongoing row 1108 amount 50,918 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice 'FE263324' (CARREFOUR INDUSTRIEL ET) paid 627,297 on doc 2000012412 vs ongoing row 160 amount 696,997 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice 'CT046/26' (C.TRAV) paid 109,936 on doc 2000012341 vs ongoing row 1012 amount 119,930 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: payment 154,169 PROTECOR doc 1500039282 — mixed BUs on invoice lines: AM 219,263, Water & Environement 30,834 — dominant AM used",
-  "2_CashOut_SAP: payment 4,668,675 ARVAL MAROC doc 1500039276 — mixed BUs on invoice lines: AM 3,658,079, Overhead (corporate) 1,861,512, Global Mining 43,105, Fertilizers & Chemicals 19,764 — dominant AM used",
-  "2_CashOut_SAP: invoice 'FA009/2026' (PIM PERFECT INSTALLATION) paid 186,226 on doc 1500039217 vs ongoing row 809 amount 170,445 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice '16/2026' (PROTECOR) paid 20,476 on doc 1500039216 vs ongoing row 1147 amount 17,063 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: invoice '15/2026' (PROTECOR) paid 57,549 on doc 1500039216 vs ongoing row 1109 amount 47,957 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: payment 65,020 PROTECOR doc 1500039216 — mixed BUs on invoice lines: AM 92,473, Water & Environement 13,004 — dominant AM used",
-  "2_CashOut_SAP: invoice 'FA2600157' (ISODEL SARL) paid 12,153 on doc 1500039215 vs ongoing row 1132 amount 23,040 — partial/short payment: confirm closing and balance row",
-  "2_CashOut_SAP: payment 7,878 ARVAL MAROC doc 1500002660 — mixed BUs on invoice lines: Building & Infrastructure 9,462, Water & Environement 5,244 — dominant Building & Infrastructure used",
-  "2_CashOut_SAP: supplier 'REPUBLIC SERVICES, INC' has no tier on Tiering Master — tier needed",
-  "2_CashOut_SAP: payment 61,098 CITY OF LAKELAND, FLORIDA doc 1500001534 (invoices 3637783 09/26) — no BU found: give a BU (counted in consolidated Unclassified until then)",
-  "2_CashOut_SAP: supplier 'DBS BUILDING SOLUTIONS, I' has no tier on Tiering Master — tier needed",
-  "2_CashOut_SAP: payment 100,480 CITY OF LAKELAND, FLORIDA doc 1500001524 (invoices 3637783  01/26, 3637783 08/26, 3637774 07/26) — no BU found: give a BU (counted in consolidated Unclassified until then)",
-  "Tracking log: 447 unpaid log lines (86,273,466 MAD) not on the ongoing position — AM PENDING AP 218 lines / 59.8 M is the block to rule on",
+  "Water 'Future' lines (12, 42.7 M) counted as pending — exclude?",
+  "Tiers needed: HASLER GROUP, CONVEYOR PRODUCTS AND SOL, ARDAMAN & ASSOCIATES, HANGZHOU WATER TREATMENT, FLUYTEC, TELSTAR MAROC, REPUBLIC SERVICES, DBS BUILDING SOLUTIONS",
   "LC: no payments file after 21/10 and no situation after 19/10 (Drive copy > 10 MB)",
-  "Customs: no detail after 02/10"
+  "Customs: no detail after 02/10",
+  "November roll-forward (new SAP tab + report column) needed before November clearings are loaded"
  ],
  "drive_sources": {
   "note": "Google Drive of cherkaouihassan@gmail.com (connected). Fetch with the Drive connector: search_files by parentId, download_file_content, then scripts/decode_drive_result.py on the persisted result. Prefer the newest file in each folder.",
@@ -204,5 +190,15 @@
   "net_after_approved": -118902352.22420311,
   "pending_pmts": -183606632.22680798,
   "net_all_ongoing": -302508984.45101106
+ },
+ "headline_w4_before_rulings": {
+  "collections_ocp": 1986364321.58,
+  "dividends": 185098380.28,
+  "cash_out_jul_sep": -1734096676.8150268,
+  "cash_out_oct_actual": -304871031.1112279,
+  "approved_pmts": -294208879.78598535,
+  "net_after_approved": -161713885.85224012,
+  "pending_pmts": -95690967.30999999,
+  "net_all_ongoing": -257404853.1622401
  }
 }

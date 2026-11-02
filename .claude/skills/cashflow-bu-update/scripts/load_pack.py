@@ -213,6 +213,8 @@ if rows:
                     if not og_status(r0).startswith('Open'): continue
                     oamt = abs(num(og.cell(r0, C_AMT).value)); target = ia if ia is not None else abs(amt)
                     ok = abs(oamt - target) <= max(1.0, 0.01 * oamt)
+                    sup_ok = norm_supplier(og.cell(r0, C_SUP).value)[:6] == norm_supplier(name)[:6]
+                    if not ok and not sup_ok: continue      # same reference on a different supplier with a different amount: not a match
                     matches.append((r0, rf, oamt, target, ok))
             if matches:
                 match = ','.join(str(x[0]) for x in matches)
@@ -263,7 +265,7 @@ def load_ongoing(tab, approved):
         bu = canon_bu(H(d, 'BU')); sup = H(d, 'Supplier'); ref = H(d, 'Reference'); amt = num(H(d, 'Amount'))
         if not bu or bu not in BUS or not sup or ref in (None, ''):
             REPORT['needs_ruling'].append(f"{tab}: line '{sup} / {ref}' missing BU/supplier/reference — not loaded"); continue
-        if amt > 0: amt = -amt; REPORT['warnings'].append(f"{tab}: '{ref}' amount given positive — signed negative (cash out)")
+        if amt > 0: REPORT['warnings'].append(f"{tab}: '{ref}' ({sup}) positive amount kept as a credit/reversal line (+{amt:,.2f})")
         key = norm_ref(ref); existing = OG_INDEX.get(key, [])
         same = [r for r in existing if norm_supplier(og.cell(r, C_SUP).value) == norm_supplier(sup) or abs(num(og.cell(r, C_AMT).value) - amt) <= 1]
         if same:
@@ -285,6 +287,7 @@ def load_ongoing(tab, approved):
             for c in range(1, og.max_column + 1): og.cell(r, c).value = None
             due = to_date(H(d, 'Due date'))
             via = H(d, 'Approved via') or H(d, 'Requested by') or 'pack'
+            label = str(H(d, 'Status label') or '').strip() or (A.label or f'pack {AS_OF:%d/%m}')
             vals = {C_BU: bu, C_SUP: sup, C_PO: H(d, 'PO'), C_REF: ref, C_AMT: amt, C_DUE: dt.datetime.combine(due, dt.time()) if due else None, C_TIER: tier,
                     C_PRIO: H(d, 'Priority'), C_COM: H(d, 'Comment'), C_SRC: f"{H(d, 'Source') or ''} (pack {PACK})".strip(),
                     C_OVR: f'Open - {label}',
@@ -338,6 +341,63 @@ if rows:
         add_source_row(f"'{SHEETS['ongoing']}'!{L(c_st)}1:{L(c_dt)}{og_last} (new check columns) + U/V/W on {flagged} rows", f"Intake pack {PACK} (3b_LogCheck from Payment tracking log)", '3b_LogCheck',
                        'Tracking-log status refreshed for every open ongoing line', 'match on normalised reference, then supplier/amount; PAID lines kept Open (standing rule)', len(rows),
                        f"{promoted} lines moved pending -> approved (now in log)", f"as-of {AS_OF}")
+
+# ================================================================== 8. Rulings (user decisions applied to existing lines)
+# tab 8_Rulings columns: Action | Target | Value | Reason | Source
+#   close   | ongoing row      | (paid amount)            -> Manual status override = Paid in Oct
+#   balance | ongoing row      | balance amount (negative)-> new OctOngoing row '<ref> - balance', same BU/supplier/tier, Open, same approval
+#   include | SAP document no. | Yes / No - corporate OH / No - excluded tier -> October tab AF (+ AH 'Overhead (corporate)', AJ 'OH' for corporate)
+#   bu      | SAP document no. | canonical BU             -> October tab AH
+hdr, rows = pack_rows('8_Rulings')
+if rows:
+    oct_ws = wb[SHEETS['pay_oct']]; oh_ws = {str(oct_ws.cell(1, c).value).strip(): c for c in range(1, oct_ws.max_column + 1) if oct_ws.cell(1, c).value}
+    def occ(prefix):
+        for k, c in oh_ws.items():
+            if k.lower().startswith(prefix.lower()): return c
+    c_doc, c_inc, c_bu, c_oh, c_src = occ('Document Number'), occ('Include in'), occ('BU (mapped)'), occ('OH?'), occ('BU mapping source')
+    done = Counter(); bal_rows = []
+    for d in rows:
+        act = str(H(d, 'Action') or '').strip().lower(); tgt = H(d, 'Target'); val = H(d, 'Value'); why = H(d, 'Reason') or ''
+        if act == 'close':
+            r = int(num(tgt))
+            if not A.dry_run:
+                og.cell(r, C_OVR, 'Paid in Oct'); og.cell(r, C_COM, f"{og.cell(r, C_COM).value or ''} | Closed per user ruling {AS_OF}: {why}".strip(' |'))
+            done['close'] += 1
+        elif act == 'balance':
+            r = int(num(tgt)); amt = -abs(num(val)); og_last += 1; nr = og_last
+            if not A.dry_run:
+                style_like(og, nr - 1, nr, og.max_column)
+                for c in range(1, og.max_column + 1): og.cell(nr, c).value = None
+                vals = {C_BU: og.cell(r, C_BU).value, C_SUP: og.cell(r, C_SUP).value, C_PO: og.cell(r, C_PO).value, C_REF: f"{og.cell(r, C_REF).value} - balance", C_AMT: amt,
+                        C_DUE: og.cell(r, C_DUE).value, C_TIER: og.cell(r, C_TIER).value, C_PRIO: og.cell(r, C_PRIO).value, C_COM: f"Balance after short payment of row {r} ({why}); user ruling {AS_OF}",
+                        C_SRC: og.cell(r, C_SRC).value, C_OVR: f"Open - balance {AS_OF:%d/%m}", C_INLOG: ('Yes' if str(H(d, 'Approval') or '').lower().startswith('y') else 'No') if H(d, 'Approval') not in (None, '') else og.cell(r, C_INLOG).value,
+                        ogc('Check vs tracking log'): og.cell(r, ogc('Check vs tracking log')).value, C_ADDED: dt.datetime.combine(AS_OF, dt.time()), C_BASIS: f'Balance row (ruling {AS_OF})'}
+                for c, v in vals.items(): og.cell(nr, c, v)
+                fill_rest(og, nr, og.max_column, set(vals))
+            bal_rows.append(nr); done['balance'] += 1
+        elif act == 'pending':
+            r = int(num(tgt))
+            if not A.dry_run:
+                og.cell(r, C_INLOG, 'No'); og.cell(r, ogc('Check vs tracking log'), f"Pending payment approval — user ruling {AS_OF}: {why}")
+                og.cell(r, C_COM, f"{og.cell(r, C_COM).value or ''} | Set to pending per user ruling {AS_OF}".strip(' |'))
+            done['pending'] += 1
+        elif act in ('include', 'bu'):
+            hit = [rr for rr in range(2, oct_ws.max_row + 1) if str(oct_ws.cell(rr, c_doc).value) == str(tgt).strip() and str(oct_ws.cell(rr, c_inc).value) != 'No - invoice line']
+            for rr in hit:
+                if not A.dry_run:
+                    if act == 'include':
+                        oct_ws.cell(rr, c_inc, val)
+                        if 'corporate' in str(val).lower(): oct_ws.cell(rr, c_bu, 'Overhead (corporate)'); oct_ws.cell(rr, c_oh, 'OH')
+                    else: oct_ws.cell(rr, c_bu, canon_bu(val))
+                    oct_ws.cell(rr, c_src, f"{oct_ws.cell(rr, c_src).value or ''} | user ruling {AS_OF}: {why}".strip(' |'))
+            done[act] += len(hit)
+            if not hit: REPORT['warnings'].append(f"8_Rulings: SAP document {tgt} not found on '{SHEETS['pay_oct']}'")
+        else: REPORT['warnings'].append(f"8_Rulings: unknown action '{act}'")
+    if not A.dry_run and bal_rows: tbl.ref = f"A1:{L(og.max_column)}{og_last}"
+    REPORT['streams']['8_Rulings'] = dict(done); log(f"8_Rulings: {dict(done)}")
+    if not A.dry_run and done:
+        add_source_row(f"OctOngoing rows closed/added ({dict(done)}); balance rows {bal_rows or 'none'}; '{SHEETS['pay_oct']}' AF/AH/AJ on ruled documents", f"User rulings {AS_OF} (pack {PACK}, tab 8_Rulings)", '8_Rulings',
+                       'User decisions on short/over-payments, corporate charges and BU mapping', 'see Reason column of the pack', len(rows), 'None', f"as-of {AS_OF}")
 
 # ================================================================== 5a. LC paid
 hdr, rows = pack_rows('5a_LC_Paid')

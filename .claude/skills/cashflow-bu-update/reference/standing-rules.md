@@ -36,3 +36,11 @@ Apply these on every refresh unless the user overrules them in writing. When the
 21. Every load gets a `Data Sources` row (source file, object, parameters, run time, row count, changes after retrieval, effect on the headline).
 22. After every load: full recalculation, all 18 integrity checks must read OK, and the headline move must be explained in one line per stream.
 23. Deliver the workbook plus the one-page movement summary (previous headline → new headline by stream).
+
+## Rulings of 02/11/2026
+24. A SAP payment equal to or above the ongoing line clears the line. A payment below it closes the line and carries the difference as a balance row (rule 9).
+25. When a payment's invoice lines span several BUs and the cash-out file gives no BU, use the dominant BU by amount.
+26. US corporate charges (CITY OF LAKELAND etc.) are corporate, not part of cash out (`No - corporate OH`).
+27. Water program: only lines previously approved by the user (Batch 3 approved request, 20/10 reinstatements, Priority list, Marine Maroc per O. Zizi email) are approved; every other Water line received (WEN parked-invoice list, Batch 5 and later) is pending approval even when it appears in the tracking log.
+28. AM: the AM approved list (requests dated 26/10 in `Approved AM Invoices Oct19th.xlsx`) is approved. Positive lines in supplier lists are credit notes / reversals and keep their sign.
+29. SAP payments match ongoing lines on the invoice references of the payment's invoice lines (same clearing document), at net cash (invoice TTC less withholding lines).

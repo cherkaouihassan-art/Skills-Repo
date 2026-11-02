@@ -2,6 +2,11 @@
 
 Newest first. One entry per refresh: inputs received, loads, headline movement, open questions.
 
+## 2026-11-02 (later) — rulings on the W4 refresh → W4 final
+- **Rulings (chat):** close lines when payment ≥ outstanding; short payments closed with balance rows; mixed-BU payments on dominant BU; CITY OF LAKELAND corporate (out); AM list of 26/10 approved (207 lines −64.3 M, credit lines kept positive); Marine Maroc Batch 5 approved per email (4.1 M open); Water: everything not previously approved is pending — 24 log-promoted Batch 5 lines reverted (78.6 M) and WEN parked list 19/10 loaded as pending (68 lines −195.0 M).
+- **Headline (MAD):** approved -277,889,913 · pending -369,072,776 · net after approved -145,233,341 · net all ongoing -514,306,117 (W4 before rulings: -257,404,853).
+- **Delivered:** `outputs/2026-11-02/CASH FLOW ANALYSIS - BUs October W4 (rulings 02-11).xlsx`; master replaced. Data Sources rows 106–109.
+
 ## 2026-11-02 — October W4 refresh (first live refresh from Drive)
 - **Inputs (Drive):** OCP Payments Weekly.xlsx (extract 26/10) · PAYMENTS OCTOBER W4 _ 29.10.26.xlsx · Payment tracking log.xlsx (02/11). LC and customs unchanged.
 - **Loaded:** +37 OCP invoices (76.0 M) · +81 SAP payment lines (33.6 M included; 284 duplicates skipped; 24 ongoing lines closed, 6.9 M) · tracking-log check on 319 open lines (208 in log, 69 moved pending → approved, 83 PAID-in-log kept Open) · cover dates updated. 4 Data Sources rows added (102–105).

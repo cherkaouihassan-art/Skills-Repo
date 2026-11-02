@@ -64,3 +64,36 @@ Corporate lines are outside the procurement scope anyway; the AM PENDING AP bloc
 - LC payments after 21/10 and a newer LC situation (the 19/10 file on Drive is 11 MB, above the connector's 10 MB download limit — a smaller export or the paid-LC file is needed).
 - Customs detail after 02/10.
 - Pending-approval lists received after 23/10 (none on Drive).
+
+
+---
+# Rulings applied 02/11/2026 (second load on the W4 master) — FINAL W4
+
+| Line | W3 | W4 (Drive load) | W4 final (rulings) | Rulings move |
+|---|---|---|---|---|
+| Collections — OCP report (procurement) | 1,919,249,481 | 1,986,364,322 | 1,986,364,322 | 0 |
+| Dividends (PROC compensable) | 185,098,380 | 185,098,380 | 185,098,380 | 0 |
+| Cash OUT Jul–Sep actuals | -1,734,096,677 | -1,734,096,677 | -1,734,096,677 | 0 |
+| Cash OUT Oct actuals | -276,005,347 | -304,871,031 | -304,709,453 | 161,578 |
+| Approved payments (Oct ongoing) | -213,148,190 | -294,208,880 | -277,889,913 | 16,318,966 |
+| Net balance after approved | -118,902,352 | -161,713,886 | -145,233,341 | 16,480,545 |
+| Pending payment approval | -183,606,632 | -95,690,967 | -369,072,776 | -273,381,808 |
+| Net position after all ongoing | -302,508,984 | -257,404,853 | -514,306,117 | -256,901,264 |
+
+## What changed with your rulings
+1. **Short / over-payments** — 9 ongoing lines closed: 3 where the payment exceeded the outstanding (PIM PERFECT, PROTECOR ×2) and 6 short-paid lines closed with a balance row for the difference (XY CONCEPT 54,622 · CARREFOUR INDUSTRIEL 69,700 · CRIP 10,904 and 6,365 · C.TRAV 9,994 · RESELEC 8,239; standing rule 9). The ISODEL/VOITH case was a reference collision, not a short payment, and was left alone.
+2. **Mixed-BU payments** — dominant BU kept (PROTECOR → AM, ARVAL 4.67 M → AM, ARVAL 7,878 → B&I).
+3. **CITY OF LAKELAND** — both payments (161,578) reclassified corporate, out of cash out.
+4. **AM list 26/10** (`Approved AM Invoices Oct19th.xlsx`, requests of 26/10): 207 new lines added as approved (−64.3 M, 32 credit/reversal lines kept positive), 39 existing lines confirmed approved, 32 already on the position. The 125 lines flagged "Approved" 12/10 and 25/09 were all already loaded.
+5. **Marine Maroc (Water)** — the 28 open Batch 5 invoices (4.12 M of the 4.31 M; 0.20 M was paid 13/10) are approved per the email of O. Zizi.
+6. **Water program** — every other Water line that was not previously approved is pending: 24 Batch 5 lines that the tracking log had moved to approved go back to pending (78.6 M), and the WEN parked-invoice list of 19/10 adds 68 lines (195.0 M) as pending: 24 Batch 5 lines not yet on the position 78.4 M, 56 lines not yet in a batch 152.3 M, 12 lines marked *Future* 42.7 M. Previously approved Water lines (Batch 3, 20/10 reinstatements) stay approved.
+
+## Open position after rulings (open lines, MAD)
+- AM approved 246 lines −75.0 M · Water approved 40 lines −20.8 M · F&C approved 27 lines −6.0 M · B&I approved 3 lines −0.06 M
+- Water pending 92 lines −273.4 M · F&C pending 27 lines −34.5 M · SP2M pending 2 lines −3.7 M · Energy pending 1 line −0.09 M
+
+## Remaining questions
+- The 12 Water lines marked *Future* on the WEN list (42.7 M, ATNER, SYCHEM…) are counted as pending because you asked for everything not previously approved; say if they should be excluded.
+- Suppliers without a tier (loaded as Unclassified): HASLER GROUP, CONVEYOR PRODUCTS AND SOL (AM); ARDAMAN & ASSOCIATES, HANGZHOU WATER TREATMENT, FLUYTEC, TELSTAR MAROC (Water); REPUBLIC SERVICES, DBS BUILDING SOLUTIONS (SAP payments).
+- Tracking-log lines not on the position: the AM block is now largely covered by the 26/10 list; corporate lines are out of scope.
+- Still missing: LC payments after 21/10, LC situation after 19/10 (export under 10 MB), customs after 02/10.
