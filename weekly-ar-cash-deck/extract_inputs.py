@@ -771,7 +771,7 @@ def main():
             detail.append([b, "advance_status", lab, mv("advance_status", b, lab), pv("advance_status", b, lab, lab), cur["advance_status"].get((b, lab), 0.0)])
     projects = [[b, t, w, n, v, st] for (b, t), lst in cur["top_projects"].items() for (w, n, v, st) in lst]
 
-    meta = {"as_of_date": as_of, "week_label": a.week_label or f"Week {as_of.isocalendar()[1]}", "ar_current_date": ar_date, "ar_prev_date": prev_date,
+    meta = {"as_of_date": as_of, "week_label": a.week_label or f"{as_of.strftime('%B')} W{(as_of.day - 1) // 7 + 1}", "ar_current_date": ar_date, "ar_prev_date": prev_date,
             "ar_month_start_date": ms_date, "cash_data_as_of": cash["data_as_of"].date() if cash["data_as_of"] else None,
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",

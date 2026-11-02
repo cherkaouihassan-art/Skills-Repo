@@ -26,6 +26,8 @@ echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; e
 python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseline "$MS_FILE" --ar-baseline-date "$MS_DATE" \
   --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" --dso-calc "$DSO" \
   --as-of "$ASOF" --ar-date "$ARDATE" --ar-prev-date "$PREVDATE" --out inputs/weekly_inputs.xlsx
-python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out "output/JESA_AR_Cash_Position_${ASOF}.pptx"
+WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
+OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"
+python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out "$OUT"
 cp inputs/weekly_inputs.xlsx "inputs/history/weekly_inputs_${ASOF}.xlsx"
-echo "done: output/JESA_AR_Cash_Position_${ASOF}.pptx"
+echo "done: $OUT"

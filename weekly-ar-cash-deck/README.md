@@ -44,7 +44,7 @@ Everything else (cash flow EXEC Summary, AP extract, LC situation, UR consolidat
    ./run_week.sh <folder> 2026-10-28 2026-10-27 2026-10-20
    #              sources   as-of      AR date    previous AR date
    ```
-   The deck lands in `output/JESA_AR_Cash_Position_<as-of>.pptx` and `inputs/weekly_inputs.xlsx` is copied to
+   The deck lands in `output/JESA_AR_Cash_Position_<Mon>_W<n>_<as-of>.pptx (e.g. Oct_W4)` and `inputs/weekly_inputs.xlsx` is copied to
    `inputs/history/`.
 3. Review `inputs/weekly_inputs.xlsx` if needed (`KEY_MESSAGES` wording, any manual correction), then rebuild with
    `python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out output/<name>.pptx`.

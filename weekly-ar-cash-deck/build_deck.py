@@ -451,7 +451,7 @@ def build(data, meta, out):
     tb(s, 0.9, 1.95, 11.5, 1.1, "AR, Cash & Payables Position", size=44, bold=True, color=NAVY)
     rect(s, 0.9, 3.25, 1.9, 0.04, GOLD)
     tb(s, 0.9, 3.4, 9, 0.5, "Weekly Executive Review", size=24, color=NAVY)
-    tb(s, 0.9, 3.95, 11.5, 0.4, f"Deck as of {asof}", size=12.5, color=SLATE)
+    tb(s, 0.9, 3.95, 11.5, 0.4, f"{meta.get('week_label', '')}   ·   Deck as of {asof}", size=12.5, color=SLATE)
     cards = [("Gross exposure", newar, RED), ("Unrecognized revenue", unrec, BLUE), ("Total AR", tot, SLATE), ("Unbilled", unb, TEAL), ("Unpaid", unp, GOLD), ("Advance", adv, NAVY2)]
     cw = (SW - 0.6 - 0.12 * 5) / 6
     for i, (lab, r, col) in enumerate(cards):
