@@ -7,6 +7,10 @@
 | `load_pack.py` | Load an intake pack into the master (append + dedupe, close matched ongoing lines, Data Sources rows, cover date, fullCalcOnLoad) | `load_pack.py master.xlsx pack.xlsx --out new.xlsx --as-of 2026-10-29 --requested-by "H." --label "October W4" [--dry-run]` |
 | `shadow_calc.py` | Recompute the report from the source tabs and compare with cached values or a baseline | `shadow_calc.py new.xlsx --baseline cashflow-bu/state/refresh-state.json` |
 | `verify.py` | shadow_calc against the baseline (+ optional `--lo-scan`: LibreOffice recalculates a copy only to scan for #REF!/#VALUE!) | `verify.py new.xlsx --baseline cashflow-bu/state/refresh-state.json [--lo-scan]` |
+| `deliver.py` | Build the deliverable with calculated values: INDEX/MATCH rewrite → LibreOffice recalc → full-calc-on-load flag → snapshot | `deliver.py new.xlsx outputs/<date>/<name>.xlsx` (5–10 min) |
+| `make_lo_compatible.py` | The XLOOKUP/LET → INDEX/MATCH rewrite used by deliver.py | called by deliver.py |
+| `build_pack_from_sources.py` | Native Drive files → intake pack (OCP Payments Key, SAP payments with invoice-line BU, tracking-log check) | `build_pack_from_sources.py master.xlsx --template … --out pack.xlsx --ocp f --sap f --log f` |
+| `decode_drive_result.py` | Persisted Drive download result → file | `decode_drive_result.py result.txt inbox/<date>/` |
 | `cfcommon.py` | Shared constants (BU names, codes, tiers, tab names) and normalisers | imported |
 
 Run times on the W3 master (11 MB): snapshot ~30 s, shadow ~40 s, load ~40 s, verify ~40 s (+5–10 min with --lo-scan).
