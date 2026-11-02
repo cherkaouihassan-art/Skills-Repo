@@ -43,16 +43,25 @@ def canon_bu(v):
 
 
 def norm_ref(v):
-    """Reference key the workbook uses: upper-case, strip everything but letters/digits/accents."""
+    """Reference key exactly as the workbook's helper formulas build it:
+    UPPER(SUBSTITUTE(TRIM(x&""), " ", ""), "-", ""), "/", ""), ".", "")."""
     if v is None: return ''
-    s = str(v)
-    if isinstance(v, (dt.date, dt.datetime)): s = v.strftime('%Y%m%d')
-    if re.fullmatch(r'\d+\.0', s): s = s[:-2]
-    return re.sub(r'[^0-9A-Z°&()\-]', '', s.upper()).replace('-', '')
+    if isinstance(v, (dt.datetime, dt.date)): s = v.strftime('%Y%m%d')
+    elif isinstance(v, float) and v.is_integer(): s = str(int(v))
+    else: s = str(v)
+    return s.strip().upper().replace(' ', '').replace('-', '').replace('/', '').replace('.', '')
 
 
 def norm_supplier(v):
-    return re.sub(r'[^A-Z0-9]', '', str(v or '').upper())[:12]
+    """Supplier key as Excel COUNTIF/XLOOKUP compare it: trimmed, case-insensitive."""
+    return str(v or '').strip().upper()
+
+
+def tier_str(v):
+    """Tier as the report writes it: 1/2/3 become '1','2','3'."""
+    if v is None: return ''
+    if isinstance(v, float) and v.is_integer(): return str(int(v))
+    return str(v).strip()
 
 
 def to_date(v):

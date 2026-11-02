@@ -7,7 +7,7 @@ import sys, os, json, datetime as dt
 from collections import defaultdict
 from openpyxl import load_workbook
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cfcommon import SHEETS, BUS, TIERS, LC_PROJECT, MONTHS, REPORT_COLS, BU_CODES, to_date, month_start, fmt
+from cfcommon import SHEETS, BUS, TIERS, LC_PROJECT, MONTHS, REPORT_COLS, BU_CODES, to_date, month_start, fmt, norm_ref, norm_supplier, tier_str
 
 path = sys.argv[1]
 tol = float(sys.argv[sys.argv.index('--tol') + 1]) if '--tol' in sys.argv else 1.0
@@ -49,7 +49,7 @@ for key, m in (('pay_jul', MONTHS[0]), ('pay_aug', MONTHS[1])):
         bu, tier, amt, oh = r[0], r[1], r[11], r[14]
         if oh is None: oh = 'OH' if __import__('cfcommon').norm_supplier(r[5]) in OHN0 else ''
         if not isinstance(amt, (int, float)) or bu in (None, ''): continue
-        t = str(tier)
+        t = tier_str(tier)
         S[('out', t, 'ALL', m)] += amt; S[('out', t, bu, m)] += amt
         if oh == 'OH': S[('oh', 'ALL', m)] += amt; S[('oh', bu, m)] += amt
 # ---- September (C amount, AK BU, AM tier, AP OH); AM/AK/AP are formulas -> re-derive when not calculated
@@ -60,6 +60,7 @@ for row in wb[SHEETS['tiering']].iter_rows(min_row=5, values_only=True):
 OHN = set()
 for row in wb[SHEETS['oh']].iter_rows(min_row=2, values_only=True):
     if len(row) > 4 and row[4]: OHN.add(_ns(row[4]))
+SEPT_KEYS = set()
 NAT = {'1 - National': '1', '2 - National': '2', '3 - National': '3', '1 - International': 'Intl 1', '2 - International': 'Intl 2', '3 - International': 'Intl 3'}
 for r in rows(SHEETS['pay_sep'], 42):
     amt, bu, tier, oh = r[2], r[col('AK')], r[col('AM')], r[col('AP')]
@@ -71,17 +72,20 @@ for r in rows(SHEETS['pay_sep'], 42):
         elif a == 'International': t0 = TM.get(_ns(r[5]), ''); tier = 'Intl ' + (t0 if t0 not in ('', '0') else '1')
         else: tier = a
     if oh is None: oh = 'OH' if _ns(r[5]) in OHN else ''
+    SEPT_KEYS.add(norm_ref(r[14])); SEPT_KEYS.add(norm_ref(r[6]))     # O reference, G document number
     if not isinstance(amt, (int, float)) or bu in (None, ''): continue
-    t = str(tier); m = MONTHS[2]
+    t = tier_str(tier); m = MONTHS[2]
     if bu != '(unmapped)': S[('out', t, 'ALL', m)] += amt
     S[('out', t, bu, m)] += amt
     if oh == 'OH':
         if bu != '(unmapped)': S[('oh', 'ALL', m)] += amt
         S[('oh', bu, m)] += amt
 # ---- October (C amount positive -> negate, AH BU, AG tier, AJ OH, AF include, G name)
+OCT_TEXT = []
 for r in rows(SHEETS['pay_oct'], 37):
+    OCT_TEXT.append(str(r[col('P')] or '').strip().upper() + '|' + str(r[col('U')] or '').strip().upper())
     if r[col('AF')] != 'Yes': continue
-    amt, bu, tier, oh, name = -(r[2] or 0), r[col('AH')], str(r[col('AG')]), r[col('AJ')], str(r[6] or '')
+    amt, bu, tier, oh, name = -(r[2] or 0), r[col('AH')], tier_str(r[col('AG')]), r[col('AJ')], str(r[6] or '')
     m = OCT
     if bu != '(unmapped)': S[('out', tier, 'ALL', m)] += amt
     else: S[('out', 'UNMAPPED', 'ALL', m)] += amt
@@ -89,23 +93,28 @@ for r in rows(SHEETS['pay_oct'], 37):
     if oh == 'OH': S[('oh', 'ALL', m)] += amt; S[('oh', bu, m)] += amt
     if bu == 'AM' and name.upper().startswith('PISTELLI'): S[('pistelli_paid',)] += -amt   # report adds back positive
 
+LC_OCT_REFS = []
 # ---- LC actuals (E date, G debit, S project, X vendor)
 for r in rows(SHEETS['lc'], 37):
     d = to_date(r[4]); amt = r[6]
     if d is None or not isinstance(amt, (int, float)): continue
     m = month_start(d); proj = r[col('S')]
     S[('lc', proj, m)] += -amt
+    if m >= OCT: LC_OCT_REFS.append(str(r[col('M')] or '').strip().upper())
     if proj == 'AMT' and str(r[col('X')] or '').upper().startswith('PELZ') and m == OCT: S[('pelz_lc_oct',)] += amt
 # ---- LC ongoing (P BU, Q signed) rows 5:32
 LC_TAB = sys.argv[sys.argv.index('--lc-tab') + 1] if '--lc-tab' in sys.argv else SHEETS['lc_ongoing']
 lo = wb[LC_TAB]
 for rr in range(5, lo.max_row + 1):
-    if str(lo.cell(rr, 1).value or '').upper().startswith('TOTAL') or lo.cell(rr, 3).value is None: 
-        if lo.cell(rr, 16).value is None: continue
+    if str(lo.cell(rr, 1).value or '').upper().startswith('TOTAL'): break      # LC list ends; BU summary table follows
+    if lo.cell(rr, 3).value in (None, ''): continue                             # not an LC line (needs a project code)
     bu, q, R, Lm = (clean(lo.cell(rr, c).value) for c in (16, 17, 18, 12))
     if bu is None and lo.cell(rr, 3).value:   # P is an XLOOKUP (not evaluated by LibreOffice): derive from the project code
         code = str(lo.cell(rr, 3).value).strip().upper(); bu = BU_CODES.get(code) or BU_CODES.get(code.split('-')[0])
     if bu in ('Business Unit', None) or str(lo.cell(rr, 1).value or '').upper().startswith('TOTAL'): continue
+    if R is None:   # R is a formula: LC ref found in October SAP references/text or in LC payments dated October
+        e = str(lo.cell(rr, 5).value or '').strip().upper()
+        R = 'Yes' if e and (any(e in t for t in OCT_TEXT) or any(e in t for t in LC_OCT_REFS)) else 'No'
     if q is None and isinstance(Lm, (int, float)): q = 0 if str(R) == 'Yes' else -Lm   # formula not yet calculated
     if bu and isinstance(q, (int, float)): S[('lc_ongoing', bu)] += q
 # ---- Customs DD (E amount, I BU, J month); rows added by openpyxl have no cached I/J -> derive from H/B
@@ -116,15 +125,45 @@ for r in rows(SHEETS['customs'], 13):
     if isinstance(amt, (int, float)) and bu and m: S[('customs', bu, m)] += -amt
 # ---- Ongoing position: E amount, A BU, B supplier, G tier, N status, P OH, AA approved
 OH_NAMES = set()
-from cfcommon import norm_supplier
+PRIORITY_KEYS = {norm_ref(v[0]) for v in wb['Priority list (02.10)'].iter_rows(min_row=4, max_row=28, min_col=8, max_col=8, values_only=True) if v[0]} if 'Priority list (02.10)' in wb.sheetnames else set()
 for row in wb[SHEETS['oh']].iter_rows(min_row=2, values_only=True):
     for v in (row[3] if len(row) > 3 else None, row[4] if len(row) > 4 else None):
         if v: OH_NAMES.add(norm_supplier(v))
-for r in rows(SHEETS['ongoing'], 34):
-    bu, sup, amt, tier, status, oh, appr = r[0], str(r[1] or ''), r[4], str(r[6]), r[13], r[15], r[26]
-    if status is None:   # row added by the loader: status/OH/approved are formulas without cached values yet
-        status = str(r[16] or 'Open'); oh = 'OH' if norm_supplier(sup) in OH_NAMES else ''
-    if appr is None: appr = 'Yes' if str(r[20]) == 'Yes' else 'No'
+# E (amount) and G (tier) carry formulas on some rows: read the formula text in a second lazy pass and evaluate them
+TMF = {}
+for row in wb[SHEETS['tiering']].iter_rows(min_row=5, values_only=True):
+    if row[0]: TMF[norm_supplier(row[0])] = (row[1], row[2])
+def tier_from_master(sup, default):
+    nat, raw = TMF.get(norm_supplier(sup), ('', '?'))
+    if raw in ('?', 0, '', None): t = default
+    else: t = raw
+    if str(nat).strip() == 'International' and isinstance(t, (int, float)) and not isinstance(t, bool): return f'Intl {tier_str(t)}'
+    return tier_str(t)
+OG_F = {}
+try:
+    wf = load_workbook(path, read_only=True)   # formulas; only the ongoing sheet is parsed (lazy)
+    wsf = wf[SHEETS['ongoing']]
+    FX = {f'$AF${i}': (clean(wsf[f'AF{i}'].value) if not isinstance(wsf[f'AF{i}'].value, str) or not str(wsf[f'AF{i}'].value).startswith('=') else None) for i in (1, 2, 3)}
+    for i, fr in enumerate(wsf.iter_rows(min_row=2, max_col=7), 2):
+        e, g = fr[4].value, fr[6].value
+        if isinstance(e, str) and e.startswith('='):
+            expr = e[1:]
+            for k, v in FX.items(): expr = expr.replace(k, str(v if v is not None else 0))
+            OG_F[(i, 'E')] = eval(expr, {'__builtins__': {}}, {}) if __import__('re').fullmatch(r'[0-9eE.+\-*/() ]+', expr) else None
+        if isinstance(g, str) and g.startswith('='):
+            OG_F[(i, 'G')] = 3 if ',3,' in g else 'Unclassified'
+    wf.close()
+except Exception as ex:
+    print('warning: could not read ongoing formulas:', ex)
+for i, r in enumerate(rows(SHEETS['ongoing'], 34), 2):
+    bu, sup, amt, tier, status, oh, appr = r[0], str(r[1] or ''), r[4], tier_str(r[6]), r[13], r[15], r[26]
+    if amt is None and (i, 'E') in OG_F: amt = OG_F[(i, 'E')]
+    if (tier == '' or r[6] is None) and (i, 'G') in OG_F: tier = tier_from_master(sup, OG_F[(i, 'G')])
+    if status is None:   # N is a formula: override, else Open unless the key is found in September payments
+        ovr = str(r[16] or '').strip(); key = norm_ref(r[3])
+        status = ovr if ovr else ('Open' if key == '' or key not in SEPT_KEYS else 'Paid in Sept')
+    if oh is None: oh = 'OH' if norm_supplier(sup) in OH_NAMES else ''
+    if appr is None: appr = 'Yes' if (str(r[20]) == 'Yes' or norm_ref(r[3]) in PRIORITY_KEYS) else 'No'
     status = str(status or '')
     if bu is None or not isinstance(amt, (int, float)) or not status.startswith('Open'): continue
     flag = 'F' if appr == 'Yes' else 'H'
@@ -134,6 +173,8 @@ for r in rows(SHEETS['ongoing'], 34):
 # ---- standing inputs
 pc = wb[SHEETS['proc_comp']]
 DIV = {pc.cell(r, 1).value: (clean(pc.cell(r, 3).value) or 0) for r in range(5, 15)}
+if not isinstance(DIV.get('Global Mining'), (int, float)) or DIV.get('Global Mining') == 0:
+    DIV['Global Mining'] = (clean(pc['C20'].value) or 0) + sum((clean(pc.cell(r, 3).value) or 0) for r in range(22, 27))
 DIV_TOTAL = clean(pc.cell(15, 3).value) or sum(v for v in DIV.values() if isinstance(v, (int, float)))
 
 def tier_out(tier, bu, m):
@@ -194,6 +235,8 @@ ws = wb[SHEETS['report']]
 heads = {'JESA': 7, **{b: r for b, r in __import__('cfcommon').BLOCK_ROWS.items()}}
 order = sorted(heads.items(), key=lambda x: x[1]); ends = {k: (order[i + 1][1] if i + 1 < len(order) else 336) for i, (k, _) in enumerate(order)}
 report = {}; diffs = []; ncomp = 0
+NO_CACHE = all(ws[f'B{r}'].value is None for r in (10, 16, 20, 35))   # openpyxl-saved file: formulas carry no values
+if NO_CACHE: print("No cached report values in this file (saved by openpyxl, not yet recalculated by Excel): comparing the headline only.")
 for bu, h in order:
     E = block(bu); report[bu] = {}
     for r in range(h, ends[bu]):
@@ -218,7 +261,7 @@ for bu, h in order:
             cached = float(cached) if isinstance(cached, (int, float)) else 0.0
             report[bu][f'{k}|{c}'] = {'expected': exp, 'cached': cached, 'cell': f'{c}{r}'}
             ncomp += 1
-            if abs(exp - cached) > tol: diffs.append((bu, k, f'{c}{r}', exp, cached, exp - cached))
+            if not NO_CACHE and abs(exp - cached) > tol: diffs.append((bu, k, f'{c}{r}', exp, cached, exp - cached))
 
 # ---- headline from shadow values
 J = block('JESA'); sw = 1 if str(wb[SHEETS['exec']]['F6'].value).upper() == 'TRUE' else 0
