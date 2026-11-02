@@ -1,7 +1,7 @@
 {
  "report": "CASH FLOW ANALYSIS - BUs",
  "master_file": "cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx",
- "version_label": "October W4 final + collections to 02/11",
+ "version_label": "October closed + November ongoing (02/11/2026) — delivered with calculated values",
  "received_from_user": "2026-11-02 (upload CASH_FLOW_ANALYSIS_-_BUs_October_W3.xlsx)",
  "data_as_of_cover": "2026-11-02",
  "include_ongoing_in_cumulative": true,
@@ -98,7 +98,7 @@
   "am_psr_excluded": -199393842.55,
   "net_psr": 72821050.19000006
  },
- "integrity_checks": "to be read in Excel after open (file saved by openpyxl); shadow headline reconciled to W3 stream by stream",
+ "integrity_checks": "18/18 OK on the LibreOffice-recalculated deliverable (02/11/2026); headline identical to the shadow calculation",
  "data_sources_rows": 112,
  "open_questions": [
   "LC: no payments file after 21/10 and no situation after 19/10 (Drive copy > 10 MB)",

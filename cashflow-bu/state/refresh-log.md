@@ -2,6 +2,11 @@
 
 Newest first. One entry per refresh: inputs received, loads, headline movement, open questions.
 
+## 2026-11-02 (night) — October closed, November ongoing, file delivered with values
+- **Presentation:** October column labelled as closed actuals; the ongoing columns relabelled November (open commitments carried into November). No formula changed.
+- **Delivery:** report-feeding XLOOKUP/LET formulas rewritten as INDEX/MATCH; file recalculated in LibreOffice so every figure shows in any viewer; Excel full-recalc-on-open kept for the view tabs. 18/18 integrity checks OK on the calculated values; headline = shadow calculation.
+- **Delivered:** `outputs/2026-11-02/CASH FLOW ANALYSIS - BUs October closed + November ongoing (02-11).xlsx`.
+
 ## 2026-11-02 (evening) — cash IN from OCP file of 02/11
 - **Input:** `OCP Payments Weekly 2.xlsx` (extract JESA-11.02.2026, uploaded). October now 239 invoices / 468.8 M (was 187 / 293.1 M at extract 26/10).
 - **Loaded:** +53 invoices (178.8 M): procurement 122.7 M (F&C 53.3 M, AM 43.2 M, Water 19.5 M, GM 4.0 M, ENE 2.7 M) and PSR 56.1 M (Water 44.1 M, AM 8.9 M, ENE 3.1 M — the ENE line is dated 02/11 and sits outside the October column until the roll-forward). No unmapped invoices.

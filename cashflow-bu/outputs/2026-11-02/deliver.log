@@ -1,0 +1,84 @@
+converted 49992 formulas (longest 3275 chars) -> /tmp/cfdeliver_jwpfutjq/conv.xlsx
+LibreOffice recalculation (several minutes) …
+ing vs Tracker!P395",
+        "Bridge Oct Ongoing vs Tracker!P396",
+        "Bridge Oct Ongoing vs Tracker!P397",
+        "Bridge Oct Ongoing vs Tracker!P398",
+        "Bridge Oct Ongoing vs Tracker!P399",
+        "Bridge Oct Ongoing vs Tracker!P400",
+        "Bridge Oct Ongoing vs Tracker!P401",
+        "Bridge Oct Ongoing vs Tracker!P402",
+        "Bridge Oct Ongoing vs Tracker!Q402",
+        "Bridge Oct Ongoing vs Tracker!R402",
+        "Bridge Oct Ongoing vs Tracker!P403",
+        "Bridge Oct Ongoing vs Tracker!P404",
+        "Bridge Oct Ongoing vs Tracker!P405",
+        "Bridge Oct Ongoing vs Tracker!P406"
+      ]
+    },
+    "#NAME?": {
+      "count": 46806,
+      "locations": [
+        "AM - Cash OUT Invoices!A12",
+        "AM - Cash OUT Invoices!B12",
+        "AM - Cash OUT Invoices!C12",
+        "AM - Cash OUT Invoices!D12",
+        "AM - Cash OUT Invoices!E12",
+        "AM - Cash OUT Invoices!F12",
+        "AM - Cash OUT Invoices!G12",
+        "AM - Cash OUT Invoices!H12",
+        "AM - Cash OUT Invoices!I12",
+        "AM - Cash OUT Invoices!J12",
+        "AM - Cash OUT Invoices!K12",
+        "AM - Cash OUT Invoices!L12",
+        "AM - Cash OUT Invoices!M12",
+        "AM - Cash OUT Invoices!N12",
+        "AM - Cash OUT Invoices!O12",
+        "AM - Cash OUT Invoices!P12",
+        "AM - Cash OUT Invoices!Q12",
+        "AM - Cash OUT Invoices!R12",
+        "AM - Cash OUT Invoices!S12",
+        "AM - Cash OUT Invoices!T12"
+      ]
+    }
+  },
+  "total_formulas": 122279
+}
+ 
+/home/user/Skills-Repo/.claude/skills/cashflow-bu-update/scripts/deliver.py:25: DeprecationWarning: 'count' is passed as positional argument
+  if '<calcPr' in x: x = re.sub(r'<calcPr([^>]*?)/>', lambda m: '<calcPr' + re.sub(r'\sfullCalcOnLoad="[^"]*"', '', m.group(1)) + ' fullCalcOnLoad="1"/>', x, 1)
+written cashflow-bu/outputs/2026-11-02/CASH FLOW ANALYSIS - BUs October closed + November ongoing (02-11).xlsx 9.1 MB
+FILE CASH FLOW ANALYSIS - BUs October closed + November ongoing (02-11).xlsx (9.1 MB)
+Data as of 2026-10-15 · include ongoing = True
+Basis: Jul–Aug–Sep actuals + Oct actuals (collections to 02/11 per OCP weekly report, payments to 29/10 per SAP W4) + October LC maturities per bank LC situation 19/10 v003 (counted as approved) + open commitments carried into November (approved + pending) (approved = in Payment tracking log 02/11 or on an approved list; pending = the rest)
+
+HEADLINE (MAD)
+  collections_ocp               2,109,066,829
+  dividends                       185,098,380
+  cash_out_jul_sep             -1,734,096,677
+  cash_out_oct_actual            -304,709,453
+  approved_pmts                  -277,889,913
+  net_after_approved              -22,530,833
+  pending_pmts                   -174,061,544
+  net_all_ongoing                -196,592,378
+
+INTEGRITY CHECKS: ALL OK
+
+STREAMS
+  1_cash_in_ocp                    {'rows': 8866, 'max_date': '2026-11-02', 'amount': 24023526101.7}
+  1_cash_in_ocp_october            {'rows': 240, 'max_date': '2026-11-02', 'amount': 471878547.22}
+  2_sap_payments_oct_included      {'rows': 178, 'max_date': '2026-10-29', 'amount': 271736172.59}
+  2_sap_payments_oct_all           {'rows': 1409, 'max_date': '2026-10-29', 'amount': 54448793.16}
+  5a_lc_paid                       {'rows': 66, 'max_date': '2026-10-16', 'amount': 144738901.36}
+  6_customs_dd                     {'rows': 122, 'max_date': '2026-10-02', 'amount': 200784404.0}
+  3_4_ongoing_position             {'open_lines': 499, 'closed_lines': 1143, 'approved_lines': 376, 'approved_amount': -135840309.33, 'pending_lines': 123, 'pending_amount': -174061544.5, 'last_date_added': '2026-10-29'}
+  5b_lc_situation                  {'tab': 'LC Ongoing (19-10)', 'title': 'LC MATURITIES — October 2026 ongoing (approved) — bank LC situation 19/10/2026', 'update_note': "Update 22/10/2026: LCs paid in October per Treasury file '2026 10 21 - LC PAYMENT OCTOBRE 2026' (8 lines, 35,254,361.07 MAD) loaded to 'SRC - LC Payments' rows 70:77; column R now also tests those payments — TAKRAF ILC00155371/0200 (12,576,950) dropped from ongoing as paid 16/10."}
+
+DATA SOURCES: 112 rows; last:
+  2026-11-02 12:36     OctOngoing rows closed/added ({'close': 9, 'balance': 6, 'include': 2, <- User rulings 2026-10-29 (pack CF_INPUT_PACK_2026-11-02c_rulings_water.
+  2026-11-02 14:24     OctOngoing rows closed/added ({'tier': 11, 'include': 2, 'master': 8}) <- User rulings 2026-10-29 (pack CF_INPUT_PACK_2026-11-02d_tiering.xlsx, 
+  2026-11-02 14:27     OctOngoing rows closed/added ({'remove': 68, 'master_remove': 3}); bal <- User rulings 2026-10-29 (pack CF_INPUT_PACK_2026-11-02e_batch5_only.xl
+  2026-11-02 16:18     'SRC - Cash In (AX Jul-Aug)'!A11134:AT11186 (53 rows appended)         <- Intake pack CF_INPUT_PACK_2026-11-02f_ocp.xlsx (from OCP Payments Week
+  2026-11-02 16:21     'EXEC Summary' / 'REPORT - Cashflow by BU' header texts                <- OCP Payments Weekly 2.xlsx (extract JESA-11.02.2026)
+  2026-11-02 16:30     'EXEC Summary' / 'REPORT - Cashflow by BU' column headers and cover te <- User instruction 02/11/2026
+DELIVER_EXIT=0
