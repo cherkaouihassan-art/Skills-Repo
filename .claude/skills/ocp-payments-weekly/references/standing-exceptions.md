@@ -30,6 +30,7 @@ extract now resolves them, so a Mapping rebuild can never drop them.
 |------------|----------|
 | Advisory / Proservices | 93000991 (3,988,796) |
 | AM / Procurement (Sep-26, 21/09 decisions) | 90021934 (4,196,301), 90021783, 90021784, 90021785, 90021796, 90021798 |
+| AM / Procurement (JESA invoice on JFC2, 9,063,016.82, paid 28/10/2026; decision of 02/11/2026) | 90022409 |
 | AM / Procurement (JESA invoices on JPH / MP1 / JFC1 / JFC2 / 107 DEF with no AR match; decisions of 06/10, 12/10 and 19/10) | 90022201, 90022202, 90022203, 90022204, 90022205, 90022206, 90022207, 90022209, 90022212, 90022216, 90022217, 90022218, 90022220, 90022224, 90022227, 90022234, 90022243, 90022244, 90022246, 90022290, 90022294, 90022325, 90022354, 90022360, 90022364, 90022365, 90022368, 90022376, 90022396, 90022403, 90022404, 90022425 |
 
 Pattern for the future: unmapped JESA invoices on Division JPH / MP1 / JFC1 / JFC2 have **always**
