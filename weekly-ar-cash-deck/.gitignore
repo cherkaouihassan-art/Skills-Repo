@@ -5,3 +5,4 @@ incoming/*
 !incoming/.gitkeep
 inputs/baseline/*.xlsx
 inputs/dso_calc/*.xlsx
+inputs/cash/*.xlsx

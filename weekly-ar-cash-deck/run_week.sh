@@ -15,7 +15,19 @@ cd "$(dirname "$0")"
 SRC="$1"; ASOF="$2"; ARDATE="$3"; PREVDATE="$4"
 find1() { find "$SRC" -maxdepth 1 -iname "$1" | head -1; }
 AR=$(find1 'AR_PRE*.xlsx'); [ -z "$AR" ] && AR=$(find1 'AR*.zip'); [ -z "$AR" ] && AR=$(find1 'AR*.csv'); [ -z "$AR" ] && AR=$(find1 'AR*.xlsx'); CASH=$(find1 'CASH*flow*.xlsx'); AP=$(find1 'AP*.xlsx'); [ -z "$AP" ] && AP=$(find1 'Supplier*.xlsx')
-LC=$(find1 '*LC*SITUATION*.xlsx'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx')
+LC=$(find1 '*LC*SITUATION*.xlsx'); [ -z "$LC" ] && LC=$(find1 '*LC*.zip'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx')
+# Cash flow workbook: the master maintained by the cash flow refresh kit in this repository (branch CASH_BRANCH),
+# newest delivered output first, else the master; a CASH*.xlsx dropped in the source folder overrides it.
+CASH_BRANCH="${CASH_BRANCH:-claude/laughing-wright-x02plq}"
+if [ -z "$CASH" ]; then
+  git fetch -q origin "$CASH_BRANCH" 2>/dev/null || true
+  REF="origin/$CASH_BRANCH"; git rev-parse -q --verify "$REF" >/dev/null 2>&1 || REF="origin/main"
+  CF_PATH=$(git ls-tree -r --name-only "$REF" -- cashflow-bu/outputs 2>/dev/null | grep -i '\.xlsx$' | sort | tail -1)
+  [ -z "$CF_PATH" ] && CF_PATH="cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx"
+  mkdir -p inputs/cash && CASH="inputs/cash/$(basename "$CF_PATH" | tr ' ' '_')"
+  git show "$REF:$CF_PATH" > "$CASH" 2>/dev/null || { echo "cash flow workbook not found in $REF ($CF_PATH) and none in $SRC"; exit 1; }
+  echo "cash flow workbook taken from $REF:$CF_PATH"
+fi
 for v in AR CASH AP LC UR; do [ -n "${!v}" ] || { echo "missing source file for $v in $SRC"; exit 1; }; done
 mkdir -p inputs/dso_calc
 if [ -n "$DSO" ]; then cp "$DSO" "inputs/dso_calc/DSO_calc_${ASOF}.xlsx"; fi

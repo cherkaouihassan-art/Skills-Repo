@@ -200,6 +200,9 @@ def extract_cash(path):
         return [num(r[c], 1e6) for c in range(3, 9)], i   # Jul, Aug, Sep, Oct actual, Oct ongoing, Cumulative
     r = ex[find_row(ex, "Data as of", col=2)]
     out["data_as_of"] = r[4] if isinstance(r[4], dt.datetime) else None
+    probe = ex[find_row(ex, "NET POSITION", col=2)]
+    if all(v is None for v in probe[3:9]):
+        raise SystemExit("cash flow workbook has no cached values (saved by a script, not by Excel): open it in Excel, save, and drop it in the inbox, or deliver it through the cash flow refresh kit's Excel save step")
     basis = ex[find_row(ex, "Basis in force", col=2)]
     out["basis"] = str([c for c in basis if c and str(c).strip() != "Basis in force"][0])
     s1 = find_row(ex, "1.   CASH POSITION BY MONTH", col=2)

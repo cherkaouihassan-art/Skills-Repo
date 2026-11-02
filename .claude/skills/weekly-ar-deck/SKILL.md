@@ -22,7 +22,7 @@ Required (matched by name pattern, case-insensitive):
 | Pattern | Content |
 |---|---|
 | `AR*.zip`, `AR*.csv` or `AR*.xlsx` | raw AR line list (sheet `AR`, or that sheet as CSV, zipped). On Google Drive it is the zipped CSV: the connector refuses files above 10 MB |
-| `CASH*flow*.xlsx` | cash flow workbook, sheet `EXEC Summary` |
+| cash flow workbook | **from the repository, not the drop folder**: `run_week.sh` pulls the newest `cashflow-bu/outputs/*/*.xlsx` (else `cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx`) from branch `claude/laughing-wright-x02plq`, maintained by the `cashflow-bu-update` skill. A `CASH*.xlsx` in the drop folder overrides it. If the extractor stops with "no cached values", the master was saved by a script: ask for the Excel-saved version or run the cash kit's delivery step |
 | `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` |
 | `*LC*SITUATION*.xlsx` | bank LC situation, sheet `LC avec echéance` |
 | `UR*Tracking*.xlsx` | unrecognized revenue consolidation |
