@@ -1,4 +1,4 @@
-converted 49992 formulas (longest 3275 chars) -> /tmp/cfdeliver_jwpfutjq/conv.xlsx
+converted 49992 formulas (longest 3275 chars) -> /tmp/cfdeliver_hh35qgd_/conv.xlsx
 LibreOffice recalculation (several minutes) …
 ing vs Tracker!P395",
         "Bridge Oct Ongoing vs Tracker!P396",
@@ -49,7 +49,7 @@ ing vs Tracker!P395",
   if '<calcPr' in x: x = re.sub(r'<calcPr([^>]*?)/>', lambda m: '<calcPr' + re.sub(r'\sfullCalcOnLoad="[^"]*"', '', m.group(1)) + ' fullCalcOnLoad="1"/>', x, 1)
 written cashflow-bu/outputs/2026-11-02/CASH FLOW ANALYSIS - BUs October closed + November ongoing (02-11).xlsx 9.1 MB
 FILE CASH FLOW ANALYSIS - BUs October closed + November ongoing (02-11).xlsx (9.1 MB)
-Data as of 2026-10-15 · include ongoing = True
+Data as of 2026-11-02 · include ongoing = True
 Basis: Jul–Aug–Sep actuals + Oct actuals (collections to 02/11 per OCP weekly report, payments to 29/10 per SAP W4) + October LC maturities per bank LC situation 19/10 v003 (counted as approved) + open commitments carried into November (approved + pending) (approved = in Payment tracking log 02/11 or on an approved list; pending = the rest)
 
 HEADLINE (MAD)
