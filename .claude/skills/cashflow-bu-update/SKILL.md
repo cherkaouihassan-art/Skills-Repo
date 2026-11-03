@@ -41,3 +41,6 @@ Follow `HOW TO UPDATE` section D in the workbook: new SAP tab `November Actual P
 - Lines PAID in the tracking log stay Open until SAP shows the payment.
 - Every load has a `Data Sources` row.
 - No model identifiers or session links inside the workbook.
+
+## Lean workbook (from 03/11/2026)
+The user asked for a simplified file: `scripts/build_lean_workbook.py <full.xlsx> <lean.xlsx> --as-of <date>` builds `COO Cash Position` with a formula-only Summary and three value tables — `CashIn`, `CashOut` (SAP layout A:AC + Month/Kind/Include?/Cash out/Tier/BU/OH?/Source) and `Ongoing` (15 live columns) — plus Tiering Master, OH Suppliers and Log. It reconciles itself to the full workbook's cached headline and prints the differences. If the user adopts the lean file as the working file, future refreshes append to its three tables (same dedupe keys) instead of the full workbook's source tabs; keep the full workbook for BU detail on request.

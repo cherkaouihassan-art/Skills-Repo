@@ -254,5 +254,21 @@
    24,
    -78370577.19
   ]
+ },
+ "lean_workbook": {
+  "file": "cashflow-bu/outputs/2026-11-03/COO Cash Position - Nov 3 (clean).xlsx",
+  "built_from": "cashflow-bu/inbox/2026-11-03/COO Cash Position - Nov 3.xlsx (user copy, 03/11/2026)",
+  "tabs": [
+   "Summary",
+   "README",
+   "Cash IN",
+   "Cash OUT",
+   "Ongoing",
+   "Tiering Master",
+   "OH Suppliers",
+   "Log"
+  ],
+  "known_difference_vs_full": "approved +840,972 (AM/Water OH approved lines kept)",
+  "user_source_of_truth_from_now": "to confirm — if the user adopts the lean file, future refreshes load into its three tables"
  }
 }

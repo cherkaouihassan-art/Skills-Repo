@@ -2,6 +2,12 @@
 
 Newest first. One entry per refresh: inputs received, loads, headline movement, open questions.
 
+## 2026-11-03 — lean workbook "COO Cash Position" built from the user's copy
+- **Input:** `COO Cash Position - Nov 3.xlsx` (the full workbook as continued by the user in Excel: payments to 30/10, tracking log 02/11, ongoing position cleaned 03/11 with an Approved? column).
+- **Built:** `outputs/2026-11-03/COO Cash Position - Nov 3 (clean).xlsx` — Summary (formulas only) · Cash IN (1,269 lines, OCP report Jul→Nov + dividends) · Cash OUT (6,493 lines in the SAP layout A:AC for all months, plus LC and customs lines, Include? flag) · Ongoing (1,669 lines, 15 live columns, open first) · Tiering Master · OH Suppliers · Log. 14,329 formulas instead of 177,530; 1.6 MB instead of 12.5 MB; values calculated.
+- **Reconciliation to the full workbook:** collections, dividends, Jul–Sep and October cash out, pending: identical to the MAD. Approved differs by 840,972 = AM/Water overhead lines inside approved, which the full headline excluded and the lean Summary keeps (documented in README).
+- **Script:** `build_lean_workbook.py`.
+
 ## 2026-11-02 (night) — October closed, November ongoing, file delivered with values
 - **Presentation:** October column labelled as closed actuals; the ongoing columns relabelled November (open commitments carried into November). No formula changed.
 - **Delivery:** report-feeding XLOOKUP/LET formulas rewritten as INDEX/MATCH; file recalculated in LibreOffice so every figure shows in any viewer; Excel full-recalc-on-open kept for the view tabs. 18/18 integrity checks OK on the calculated values; headline = shadow calculation.
