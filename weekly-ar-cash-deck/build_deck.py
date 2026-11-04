@@ -326,14 +326,16 @@ def waterfall(slide, x, y, w, h, cats, values, kinds, colors=None, label_size=8.
     plot = ch.plots[0]; plot.gap_width = 40; plot.overlap = 100
     b = plot.series[0]; b.format.fill.background(); b.format.line.fill.background()
     s = plot.series[1]; s.format.line.fill.background()
+    vmax = max(vis) or 1.0
     for i, c in enumerate(cols):
         pt = s.points[i]; pt.format.fill.solid(); pt.format.fill.fore_color.rgb = c
         pt.data_label.has_text_frame = True
         txt = (f0(values[i]) if kinds[i] == "total" else fd(values[i]))
         pt.data_label.text_frame.text = txt
+        small = vis[i] < 0.14 * vmax
         r = pt.data_label.text_frame.paragraphs[0].runs[0]; r.font.size = Pt(label_size); r.font.bold = True; r.font.name = FONT
-        r.font.color.rgb = WHITE
-        pt.data_label.position = XL_LABEL_POSITION.INSIDE_END if kinds[i] == "total" else XL_LABEL_POSITION.CENTER
+        r.font.color.rgb = (DARK if small else WHITE)
+        pt.data_label.position = XL_LABEL_POSITION.OUTSIDE_END if small else (XL_LABEL_POSITION.INSIDE_END if kinds[i] == "total" else XL_LABEL_POSITION.CENTER)
     _style_axes(ch, cat_size=cat_size)
     return ch
 
