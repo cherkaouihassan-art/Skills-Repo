@@ -6,3 +6,4 @@ incoming/*
 inputs/baseline/*.xlsx
 inputs/dso_calc/*.xlsx
 inputs/cash/*.xlsx
+inputs/ocp_payments/*.xlsx

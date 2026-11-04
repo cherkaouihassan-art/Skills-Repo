@@ -471,6 +471,36 @@ def compute_dso(dc, ar_bu_total):
         if b in dso and hist: dso[b]["prior"] = hist[-1]
     return dso
 
+# ----------------------------------------------------------------------------- OCP payments weekly workbook (collections per OCP payment report)
+def _mlabel(v):
+    if isinstance(v, (dt.datetime, dt.date)): return v.strftime("%b")
+    m = re.match(r"([A-Z][a-z]{2})-\d\d", str(v).strip()) if v else None
+    return m.group(1) if m else None
+
+def extract_ocp_payments(path):
+    """'Summary by BU': total, PSR (Proservices) and procurement payments by BU and month (MAD -> MMAD)."""
+    rows = load(path, "Summary by BU")
+    def block(title_prefix, first=False):
+        start = 0
+        if not first:
+            start = next(i for i, r in enumerate(rows) if r[1] and str(r[1]).strip().lower().startswith(title_prefix.lower()))
+        hi = next(i for i in range(start, len(rows)) if rows[i][1] and str(rows[i][1]).strip().lower() == "business unit")
+        hdr = rows[hi]; months = [(c, _mlabel(v)) for c, v in enumerate(hdr) if _mlabel(v)]
+        out = {}; i = hi + 1
+        while i < len(rows) and (rows[i][1] is not None or rows[i + 1][1] is not None if i + 1 < len(rows) else rows[i][1] is not None):
+            r = rows[i]; lab = str(r[1]).strip() if r[1] else ""
+            if lab:
+                key = "TOTAL" if lab.upper() == "TOTAL" else canon_bu(lab)
+                if key: out[key] = {m: num(r[c], 1e6) for c, m in months}
+                if lab.upper() == "TOTAL": break
+            i += 1
+        return out, [m for _, m in months]
+    total, months = block("", first=True)
+    psr, _ = block("Proservices (PSR) Payments")
+    try: proc, _ = block("Procurement Payments by Business Unit")
+    except StopIteration: proc = {k: {m: v.get(m, 0) - psr.get(k, {}).get(m, 0) for m, v in d.items()} for k, d in total.items()}
+    return {"months": months, "total": total, "psr": psr, "proc": proc}
+
 # ----------------------------------------------------------------------------- Unrecognized revenue tracking (UR consolidation)
 def extract_ur(path):
     out = {}
@@ -569,7 +599,7 @@ def default_messages(ar, cash, lc, ap, meta):
     coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll); dep = sum(c[7] for c in coll)
     month = meta["as_of_date"].strftime("%B"); cmonth = meta["ar_current_date"].strftime("%B")
     cam = cash.get("cash_actual_month") or month[:3]; com = cash.get("cash_ongoing_month") or month[:3]; cpt = cash.get("cash_payments_to") or meta["payments_to"]
-    ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot")
+    ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot"); oc = ar.get("ocp_coll")
     sg = ar.get("signed_tot") or {}; urs = ar.get("ur_signed_tot")
     sr = ar.get("signed_resp") or {}
     msg_signed = [f"Signed roll-ups: unbilled signed {sg.get('Signed', 0):,.0f} MMAD ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), not signed {sg.get('Not signed', 0):,.0f}"
@@ -581,8 +611,10 @@ def default_messages(ar, cash, lc, ap, meta):
         msg_signed,
         [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs {ms_lab}); gross exposure {new[3]:,.0f} MMAD ({dd(new)} WoW)",
          f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee."],
-        [f"Invoices paid in {cmonth} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
-         f"Invoices deposited in {cmonth}: {dep:,.0f} MMAD."],
+        [(f"Collections {oc['month']} per OCP payment report: {oc['proc'] + oc['psr']:,.0f} MMAD (procurement {oc['proc']:,.0f}, PSR {oc['psr']:,.0f})"
+          + (f"; {oc['ytd']:,.0f} MMAD year to date" if oc.get("ytd") else "")) if oc else f"Invoices paid in {cmonth} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
+         (f"Previous report: procurement {oc['prev_proc']:,.0f}, PSR {oc['prev_psr']:,.0f} ({d(round(oc['proc']+oc['psr']) - round(oc['prev_proc']+oc['prev_psr']))}). " if oc and oc.get("prev_proc") is not None and oc.get("prev_psr") is not None else "")
+         + f"Invoices deposited in {cmonth}: {dep:,.0f} MMAD."],
         [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
          f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
          f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities) bring the position to {d(net_appr)} MMAD; "
@@ -632,6 +664,14 @@ def prev_from_inputs(path):
     if "JESA_UNBILLED_BU" in wb.sheetnames:
         P["jesa_unbilled"] = {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")}
     P["ap_kpi"] = {r["metric"]: r["current"] for r in recs("AR_KPI") if str(r["metric"]).startswith("AP ") or r["metric"] == "LC"}
+    try:
+        P["cash_prev"] = {r["line"]: r["oct_actual"] for r in recs("CASH_MONTHLY")}
+        P["coll_prev_bu"] = {r["bu"]: (r["oct_cash_in"] or 0) for r in recs("CASH_BU_OCT")}
+        for r in recs("CASH_PSR_BU"): P["coll_prev_bu"][r["bu"]] = P["coll_prev_bu"].get(r["bu"], 0) + (r["oct_actual"] or 0)
+        P["cash_prev_month"] = next((r["value"] for r in recs("META") if r["key"] == "cash_actual_month"), None)
+        P["cash_prev_note"] = next((r["value"] for r in recs("META") if r["key"] == "cash_actual_note"), None)
+    except Exception as e:
+        print("WARN previous cash collections:", e)
     if "AR_SIGNED_BU" in wb.sheetnames and "responsibility" in [c.value for c in wb["AR_SIGNED_BU"][2]]:
         P["signed_bu"] = {(r["bu"], r["responsibility"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_BU")}
         P["signed_status"] = {(s2_code(r["status"]), r["responsibility"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_STATUS")}
@@ -665,6 +705,7 @@ def main():
     ap_.add_argument("--collections-to", default=None); ap_.add_argument("--payments-to", default=None); ap_.add_argument("--lc-date", default=None)
     ap_.add_argument("--ap-label", default=None); ap_.add_argument("--week-label", default=None)
     ap_.add_argument("--draft-note", default=None, help="text shown on the title slide when figures are provisional")
+    ap_.add_argument("--ocp-payments", default=None, help="OCP Payments Weekly workbook ('Summary by BU'): monthly collections per OCP payment report")
     ap_.add_argument("--out", default="inputs/weekly_inputs.xlsx")
     a = ap_.parse_args()
 
@@ -807,6 +848,34 @@ def main():
 
     ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
     ar["nonocp_tot"] = sum(cur["nonocp"].values())
+    # ---- collections per OCP payment report: monthly series from the OCP payments workbook, current month from the cash workbook
+    ocp = extract_ocp_payments(a.ocp_payments) if a.ocp_payments else None
+    cmm = {r[0]: r for r in cash["cash_monthly"]}
+    cam_ = cash.get("cash_actual_month") or as_of.strftime("%b")
+    cur_proc = cmm["Procurement collections (OCP payment report)"][4]; cur_psr = cmm["PSR collections (labor)"][4]
+    months_series = []
+    if ocp:
+        for m in ocp["months"]:
+            pr = ocp["proc"].get("TOTAL", {}).get(m, 0.0); ps = ocp["psr"].get("TOTAL", {}).get(m, 0.0)
+            if m == cam_: pr, ps = cur_proc, cur_psr   # the cash workbook carries the latest cut of the current month
+            months_series.append([m, pr, ps, pr + ps])
+        if cam_ not in ocp["months"]: months_series.append([cam_, cur_proc, cur_psr, cur_proc + cur_psr])
+    else:
+        for m, key in (("Jul", 1), ("Aug", 2), ("Sep", 3), (cam_, 4)):
+            months_series.append([m, cmm["Procurement collections (OCP payment report)"][key], cmm["PSR collections (labor)"][key], cmm["Procurement collections (OCP payment report)"][key] + cmm["PSR collections (labor)"][key]])
+    psr_bu_cur = {r[0]: r[4] for r in cash.get("psr_bu", [])}
+    prev_same_month = (P.get("cash_prev_month") in (None, cam_))
+    coll_bu_rows = []
+    for b in sorted({*cash["bu_cash_in"].keys(), *psr_bu_cur.keys()}):
+        pr = cash["bu_cash_in"].get(b, [0] * 6)[3]; ps = psr_bu_cur.get(b, 0.0)
+        ytd = (ocp["total"].get(b, {}) if ocp else {})
+        ytd_v = sum(v for m, v in ytd.items() if m != cam_) + pr + ps if ocp else None
+        prev_t = (P.get("coll_prev_bu") or {}).get(b) if prev_same_month else None
+        coll_bu_rows.append([b, pr, ps, pr + ps, prev_t, ytd_v])
+    ar["ocp_coll"] = {"month": cam_, "proc": cur_proc, "psr": cur_psr, "ytd": (sum(r[5] for r in coll_bu_rows if r[5] is not None) if ocp else None),
+                      "prev_proc": (P.get("cash_prev") or {}).get("Procurement collections (OCP payment report)") if prev_same_month else None,
+                      "prev_psr": (P.get("cash_prev") or {}).get("PSR collections (labor)") if prev_same_month else None, "prev_note": P.get("cash_prev_note")}
+    ar["ocp_coll_monthly"] = months_series; ar["ocp_coll_bu"] = coll_bu_rows
     ar["signed_tot"] = {c: sum(v for (b, rp, cc), v in cur["signed_bu"].items() if cc == c) for c in ("Signed", "Not signed")}
     ar["signed_resp"] = {(rp, c): sum(v for (b, r_, cc), v in cur["signed_bu"].items() if r_ == rp and cc == c) for rp in ("Client", "JESA") for c in ("Signed", "Not signed")}
     ar["ur_signed_tot"] = (sum((r[2] or 0) + (r[7] or 0) for r in ur["table"]) if ur else None)
@@ -862,6 +931,8 @@ def main():
     write_sheet(wb, "COLLECTIONS_MONTHLY", ["month", "labor", "non_labor"], [[m, cur["coll_month"].get((i + 1, "labor"), 0.0), cur["coll_month"].get((i + 1, "non_labor"), 0.0)] for i, m in enumerate(months)],
                 note="Monthly payments received (amount invoiced, by payment date), labor (PSR) vs non-labor (PROC).", widths=[10])
     write_sheet(wb, "CASH_MONTHLY", ["line", "jul", "aug", "sep", "oct_actual", "oct_ongoing", "cumulative"], cash["cash_monthly"], note="Cash flow workbook 'EXEC Summary' (MMAD): cash in positive, cash out negative.", widths=[48])
+    write_sheet(wb, "COLLECTIONS_OCP_MONTHLY", ["month", "procurement", "psr", "total"], ar["ocp_coll_monthly"], note="Collections per OCP payment report by month (MMAD): OCP payments weekly workbook, current month from the cash flow workbook.", widths=[10, 14, 12, 12])
+    write_sheet(wb, "COLLECTIONS_OCP_BU", ["bu", "procurement", "psr", "total", "prev_report_total", "ytd_total"], ar["ocp_coll_bu"], note=f"Collections per OCP payment report, current month ({ar['ocp_coll']['month']}) by BU: procurement (EXEC Summary 4A) and PSR (section 3); prev_report_total = same month in the previous deck; ytd from the OCP payments workbook.", widths=[28, 13, 12, 12, 16, 12])
     write_sheet(wb, "CASH_PSR_BU", ["bu", "jul", "aug", "sep", "oct_actual", "oct_ongoing", "cumulative"], cash.get("psr_bu", []), note="PSR (labor) collections by BU per OCP payment report (EXEC Summary section 3), MMAD.", widths=[28])
     write_sheet(wb, "CASH_BU", ["bu", "cash_in", "cash_out_suppliers", "cash_out_lc", "cash_out_customs", "net_actuals", "oct_approved", "net_after_approved", "oct_pending", "net_all_ongoing"], cash["cash_bu"], note="Procurement net balance by BU, Jul–Oct cumulative (EXEC Summary section 5).", widths=[28])
     bu_oct = []

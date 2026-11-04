@@ -1,4 +1,4 @@
-# Status 2 → responsibility and client signature (reference, finance guideline of 4 Nov 2026)
+# Status 2 → responsibility and client signature (reference, finance guideline of 4 Nov 2026 – v2: at-risk lines also follow the roll-up status)
 
 Responsibility: `Client` = action with the client / OCP, `JESA` = action with JESA. Signature: whether the attachment or service
 sheet has been signed by the client. `Depends` = read the roll-up status column of the AR file: it is **signed** when that
@@ -7,8 +7,8 @@ column contains the word "signed" (and not "not signed"), otherwise **not signed
 
 | Status 2 | Responsibility | Signed or not | Note |
 |---|---|---|---|
-| C-1-a At risk (new project) | Client | NOT signed | |
-| C-1-b At risk (budget overrun) | Client | NOT signed | |
+| C-1-a At risk (new project) | Client | Depends | roll-up status column |
+| C-1-b At risk (budget overrun) | Client | Depends | roll-up status column |
 | C-1-c Pending client PO | Client | Depends | roll-up status column |
 | C-1-d Pending PO correction | Client | Depends | roll-up status column |
 | C-2-a Waiting OCP VAT exemption | Client | Depends | roll-up status column |

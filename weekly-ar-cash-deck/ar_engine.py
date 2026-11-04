@@ -135,10 +135,10 @@ def iter_ar_rows(path):
         if not any(c.strip() for c in row): continue
         yield [_csv_cell(v, date_cols[i] if i < len(date_cols) else False) for i, v in enumerate(row)]
 
-# Client signature and responsibility of unbilled lines — finance guideline of 4 Nov 2026 (reference/status2_signed_mapping.md).
+# Client signature and responsibility of unbilled lines — finance guideline of 4 Nov 2026, v2 (reference/status2_signed_mapping.md).
 # value: (responsibility, signature); signature 'Depends' = look at the roll-up status column; None = not part of unbilled AR.
 SIGNED_MAP = {
-    "c-1.a": ("Client", "Not signed"), "c-1.b": ("Client", "Not signed"), "c-1.c": ("Client", "Depends"), "c-1.d": ("Client", "Depends"),
+    "c-1.a": ("Client", "Depends"), "c-1.b": ("Client", "Depends"), "c-1.c": ("Client", "Depends"), "c-1.d": ("Client", "Depends"),
     "c-1.e": ("Client", "Depends"), "c-2.a": ("Client", "Depends"), "c-3.a": ("Client", "Signed"), "c-3.b": ("Client", "Signed"),
     "c-4.a": ("Client", "Not signed"), "c-5.a": ("Client", "Signed"), "c-5.b": ("Client", "Not signed"), "c-6.a": ("Client", "Not signed"),
     "c-7.a": None, "c-7.b": None, "pdr": ("Client", "Depends"),

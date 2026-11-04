@@ -26,6 +26,7 @@ Required (matched by name pattern, case-insensitive):
 | `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` |
 | `*LC*SITUATION*.xlsx` | bank LC situation, sheet `LC avec echéance` |
 | `UR*Tracking*.xlsx` | unrecognized revenue consolidation |
+| `OCP*Payments*.xlsx` (when refreshed) | OCP payments weekly workbook: collections per OCP payment report by month and BU |
 | `*DSO*.xlsx` (monthly) | DSO calculation workbook: 12-month trailing revenue per project, DSO trend |
 | `*BU*Meeting*.pdf` (optional) | reconciliation reference (total AR, unbilled, unpaid, invoices paid) |
 

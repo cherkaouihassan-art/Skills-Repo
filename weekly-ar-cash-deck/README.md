@@ -17,6 +17,7 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 | 3 | `AP_information.xlsx` | `4411 - Parked - Downpayment` | supplier payables (downpayments, parked, 4411) – must be the extract of the current week |
 | 4 | `<date> - LC_SITUATION.xlsx` | `LC avec echéance` | bank LC situation – latest version (maturity columns are read from the header) |
 | 5 | `UR_Tracking_Consolidation.xlsx` | `Summary UR`, `Summary PO by BU`, `Sheet1` | unrecognized revenue (columns already include the 6% markup) |
+| 5b | `OCP Payments Weekly.xlsx` | `Summary by BU` | monthly collections per OCP payment report (total, PSR, procurement by BU); the current month comes from the cash flow workbook. Feeds the collections slide, the executive summary and the collected-by-BU figures |
 | 6 | `WIP_DSO_calc.xlsx` | `12 Months Trailing`, `Trend`, `DSO Table` | DSO = total AR of the BU ÷ 12-month trailing revenue × 365. The AR side is recomputed every week from the AR extract; the revenue side (per project, trailing 12 months) only changes when a month closes, so a refreshed workbook is needed once a month (the last one is kept in `inputs/dso_calc/`). `Trend` gives the monthly DSO history for the trend slide. The BU meeting PDF is no longer needed for DSO |
 | 7 | beginning-of-month AR extract | `AR` | once per month: the first AR extract of the month, path and date in `inputs/month_start.txt` |
 
@@ -92,7 +93,8 @@ between the main body and the backup, change its `D.section = ...` tag.
 | `AR_BU_DETAIL` | per BU: ownership, unbilled statuses, unpaid groups and phases, aging buckets, advance statuses | BU zoom slides |
 | `AR_BU_PROJECTS` | per BU: top 8 unbilled and unpaid projects | BU zoom slides |
 | `UNRECOGNIZED` | unrecognized suppliers by BU and status | 7 |
-| `COLLECTIONS_BU`, `COLLECTIONS_MONTHLY` | payments received by BU (month to date, prior month, YTD, non-OCP split, deposited) and monthly series | 4, 6, 8, 11, BU zooms |
+| `COLLECTIONS_OCP_MONTHLY`, `COLLECTIONS_OCP_BU` | collections per OCP payment report: monthly series (procurement / PSR) and current month by BU with previous-report comparison and YTD | collections slide, executive summary, AR by BU, BU zooms |
+| `COLLECTIONS_BU`, `COLLECTIONS_MONTHLY` | invoices paid per the AR extract (by payment date), non-OCP split, deposited invoices | non-OCP slide, deposited card |
 | `CASH_MONTHLY` | group cash IN / OUT / net by month incl. October commitments, PSR block | 9 |
 | `CASH_BU`, `CASH_BU_OCT` | cumulative and current-month cash position by BU | 13 |
 | `CASH_PSR_BU` | PSR (labor) collections by BU and month, with the provision lines in `CASH_MONTHLY` | 14 (PSR slide) |
