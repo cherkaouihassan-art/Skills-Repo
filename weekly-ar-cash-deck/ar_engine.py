@@ -223,7 +223,7 @@ def aggregate(path, as_of, prev_cutoff=None):
             jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
             sc = signed_class(code, g(r, "Rollup status"))
-            if sc: signed_bu[(b, sc[0], sc[1])] += amt; signed_st[(code, sc[0], sc[1])] += amt
+            if sc: signed_bu[(b, sc[0], sc[1], lab)] += amt; signed_st[(code, sc[0], sc[1])] += amt
             owner[(b, owner_of(code))] += amt; st_tot[code] += amt; st_bu[(b, code)] += amt
             agu[(b, bucket(g(r, "Category Unbilled")))] += amt
             proj[(b, "Unbilled", wbs, pname)] += amt; st_proj.setdefault((b, "Unbilled", wbs, pname), code)
