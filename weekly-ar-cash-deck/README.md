@@ -85,7 +85,7 @@ between the main body and the backup, change its `D.section = ...` tag.
 | `AR_SPLITS` | labor / non-labor and OCP / non-OCP (current) | 3 |
 | `AR_BU` | BU × component × month_start / prev_week / current | 4, 5 |
 | `AR_UNBILLED_OWNER` | BU × (at risk / under JESA / under OCP / SS postponed) | 6 |
-| `AR_SIGNED_BU`, `AR_SIGNED_STATUS` | unbilled by responsibility (client / JESA) and client signature, by BU and by Status 2, per `reference/status2_signed_mapping.md` | signed roll-ups slide |
+| `AR_SIGNED_BU`, `AR_SIGNED_STATUS` | unbilled by responsibility (client / JESA) and client signature, by BU and by Status 2, per `reference/status2_signed_mapping.md` | responsibility & signature slide (5) |
 | `AR_UNBILLED_STATUS` | detailed unbilled statuses (OCP / JESA / at risk) | 6 |
 | `AR_UNPAID_STATUS` | unpaid by OCP processing status | 6 |
 | `AR_AGING` | AR by year of origin | 4 |

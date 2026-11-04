@@ -470,13 +470,13 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 1b. Agenda
     s = D.slide("Agenda", f"Weekly review – {asof}")
     items = [("1", "Key messages", "Headline position: AR, unrecognized revenue, collections, cash, payables and letters of credit"),
-             ("2", "Accounts receivable", "Executive summary with week-on-week and month-start comparatives, signed roll-ups by responsibility, unbilled under JESA responsibility, non-OCP clients"),
+             ("2", "Accounts receivable", "Executive summary with week-on-week and month-start comparatives, unbilled by responsibility and client signature, non-OCP clients"),
              ("3", "Unrecognized revenue & suppliers", "Executed scope not yet booked as AR, by business unit and status; supplier PO book"),
              ("4", "Payments received", "Invoices paid in the month and year to date, by business unit"),
              ("5", "Cash position – procurement", "Cash in versus cash out by month and by business unit, before and after October commitments"),
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
              ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
-             ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled & unpaid status view, PSR collections, October payments, LC and AP detail, sources")]
+             ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled under JESA responsibility detail, unbilled & unpaid status view, PSR collections, payments, LC and AP detail, sources")]
     y0 = 1.3; step = (SH - 0.6 - y0) / len(items)
     for i, (n, t, d_) in enumerate(items):
         y = y0 + i * step
@@ -535,7 +535,7 @@ def build(data, meta, out):
                ("Non-labor", [splits.get("Total AR non-labor"), splits.get("Unbilled non-labor"), splits.get("Unpaid non-labor")])],
               [NAVY2, LBLUE], stacked=True, gap=80, label_size=9, label_colors=[WHITE, DARK])
 
-    # ------------------------------------------------------------------ 3b. Signed roll-ups (unbilled and unrecognized)
+    # ------------------------------------------------------------------ 3b. Unbilled by responsibility and client signature (one slide)
     D.section = "ar_signed"
     sgr = data.get("AR_SIGNED_BU", [])
     if sgr and "responsibility" in sgr[0]:
@@ -544,58 +544,53 @@ def build(data, meta, out):
         cells = [("Client", "Signed"), ("Client", "Not signed"), ("JESA", "Signed"), ("JESA", "Not signed")]
         def sv(b, cell, k): return ((sgd.get(b, {}).get(cell) or {}).get(k)) or 0
         has_sprev = any(r.get("prev_week") is not None for r in sgr)
-        T = {cell: sum(sv(b, cell, "current") for b in sgd) for cell in cells}
-        Tp = {cell: sum(sv(b, cell, "prev_week") for b in sgd) for cell in cells}
-        Tm = {cell: sum(sv(b, cell, "month_start") for b in sgd) for cell in cells}
-        sig = T[("Client", "Signed")] + T[("JESA", "Signed")]; nsig = T[("Client", "Not signed")] + T[("JESA", "Not signed")]
-        sig_p = Tp[("Client", "Signed")] + Tp[("JESA", "Signed")]; nsig_p = Tp[("Client", "Not signed")] + Tp[("JESA", "Not signed")]
-        sig_m = Tm[("Client", "Signed")] + Tm[("JESA", "Signed")]; nsig_m = Tm[("Client", "Not signed")] + Tm[("JESA", "Not signed")]
-        ur_s = {r["bu"]: ((r["eq_signed_by_client"] or 0) + (r["sub_signed_by_client"] or 0)) for r in data["UNRECOGNIZED"]}
-        ur_t = {r["bu"]: (r["grand_total"] or 0) for r in data["UNRECOGNIZED"]}
-        urs_tot = sum(ur_s.values()); urt_tot = sum(ur_t.values())
-        s = D.slide("Signed Roll-ups – Unbilled & Unrecognized", f"Unbilled signed by the client {f0(sig)} MMAD ({sig/(unb['current'] or 1)*100:.0f}%), not signed {f0(nsig)}" + (f" ({fd(round(sig) - round(sig_p))} signed WoW)" if has_sprev else "") + f"; unrecognized signed {f0(urs_tot)} of {f0(urt_tot)}")
+        def tsum(cellset, k): return sum(sv(b, c, k) for b in sgd for c in cellset)
+        R = {"Client": [("Client", "Signed"), ("Client", "Not signed")], "JESA": [("JESA", "Signed"), ("JESA", "Not signed")]}
+        S = {"Signed": [("Client", "Signed"), ("JESA", "Signed")], "Not signed": [("Client", "Not signed"), ("JESA", "Not signed")]}
+        ur_s = sum(((r["eq_signed_by_client"] or 0) + (r["sub_signed_by_client"] or 0)) for r in data["UNRECOGNIZED"]); ur_t = sum((r["grand_total"] or 0) for r in data["UNRECOGNIZED"])
+        cC, cJ = tsum(R["Client"], "current"), tsum(R["JESA"], "current"); sS, sN = tsum(S["Signed"], "current"), tsum(S["Not signed"], "current")
+        def dlt(cellset): return ((round(tsum(cellset, "current")) - round(tsum(cellset, "prev_week"))) if has_sprev else None, round(tsum(cellset, "current")) - round(tsum(cellset, "month_start")))
+        s = D.slide("Unbilled – Responsibility & Client Signature", f"Under client / OCP responsibility {f0(cC)} MMAD, under JESA {f0(cJ)}; signed by the client {f0(sS)} ({sS/(unb['current'] or 1)*100:.0f}% of unbilled), not signed {f0(sN)}")
         cw = (SW - 0.6 - 0.12 * 4) / 5
-        kpi_card(s, 0.3, 1.2, cw, 1.25, "Unbilled signed by client", sig, delta_wow=(round(sig) - round(sig_p)) if has_sprev else None, delta_ms=round(sig) - round(sig_m), good_when_negative=False, value_size=20, ms_label="vs month start")
-        kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.25, "Unbilled not signed", nsig, delta_wow=(round(nsig) - round(nsig_p)) if has_sprev else None, delta_ms=round(nsig) - round(nsig_m), value_size=20, ms_label="vs month start")
-        for i, (rp, lab, col) in enumerate((("Client", "Client / OCP responsibility", NAVY2), ("JESA", "JESA responsibility", BLUE)), start=2):
-            x0 = 0.3 + i * (cw + 0.12)
-            rect(s, x0, 1.2, cw, 1.25, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.1); rect(s, x0, 1.32, 0.07, 1.01, col)
-            tb(s, x0 + 0.15, 1.27, cw - 0.2, 0.28, lab.upper(), size=9, bold=True, color=SLATE)
-            tb(s, x0 + 0.15, 1.52, cw - 0.2, 0.9, [[(f"{f0(T[(rp, 'Signed')])} ", {"bold": True, "size": 17, "color": GREEN}), ("signed", {"size": 9, "color": SLATE})],
-                                                   [(f"{f0(T[(rp, 'Not signed')])} ", {"bold": True, "size": 17, "color": GOLD}), ("not signed", {"size": 9, "color": SLATE})]], size=10)
-        kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.2, cw, 1.25, "Unrecognized signed by client", urs_tot, value_size=20)
-        tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.2 + 1.25 - 0.32, cw - 0.3, 0.26, f"{urs_tot/(urt_tot or 1)*100:.0f}% of {f0(urt_tot)} unrecognized", size=8.5, color=SLATE)
-        # left: by BU, responsibility x signature
-        tb(s, 0.4, 2.65, 6.6, 0.3, "Unbilled by business unit – responsibility × client signature (MMAD)", size=12, bold=True, color=NAVY)
+        for i, (lab, val, cellset, gwn) in enumerate((("Under client / OCP responsibility", cC, R["Client"], True), ("Under JESA responsibility", cJ, R["JESA"], True), ("Signed by client", sS, S["Signed"], False), ("Not signed", sN, S["Not signed"], True))):
+            dw, dm = dlt(cellset)
+            kpi_card(s, 0.3 + i * (cw + 0.12), 1.2, cw, 1.25, lab, val, delta_wow=dw, delta_ms=dm, good_when_negative=gwn, value_size=20, ms_label="vs month start")
+        kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.2, cw, 1.25, "Unrecognized signed by client", ur_s, value_size=20)
+        tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.2 + 1.25 - 0.32, cw - 0.3, 0.26, f"{ur_s/(ur_t or 1)*100:.0f}% of {f0(ur_t)} unrecognized", size=8.5, color=SLATE)
+        # ---- section A: responsibility by BU with comparatives
+        tb(s, 0.4, 2.65, 6.6, 0.3, "A · Unbilled by responsibility and business unit (MMAD)", size=12, bold=True, color=NAVY)
         sb = sorted([b for b in sgd if sum(abs(sv(b, c, "current")) for c in cells) > 0.5], key=lambda b: -sum(sv(b, c, "current") for c in cells))
         rows, colors = [], {}
+        def bv(b, cellset, k): return sum(sv(b, c, k) for c in cellset)
         for i, b in enumerate(sb):
-            vals = [sv(b, c, "current") for c in cells]; t_ = sum(vals); sg_ = vals[0] + vals[2]
-            dsg = (round(sg_) - round(sv(b, ("Client", "Signed"), "prev_week") + sv(b, ("JESA", "Signed"), "prev_week"))) if has_sprev else None
-            rows.append([short(b)] + [f0(v) for v in vals] + [f0(t_), f"{sg_/t_*100:.0f}%" if t_ else "–", fd(dsg) if dsg is not None else "n/a"]); colors[(i, 7)] = delta_color(dsg, False)
-        rows.append(["Total JESA"] + [f0(T[c]) for c in cells] + [f0(sig + nsig), f"{sig/(sig + nsig or 1)*100:.0f}%", fd(round(sig) - round(sig_p)) if has_sprev else "n/a"])
-        table(s, 0.4, 2.95, 6.6, ["BU", "Client\nsigned", "Client\nnot signed", "JESA\nsigned", "JESA\nnot signed", "Unbilled", "% signed", "Δ signed\nWoW"], rows,
-              col_w=[1.35, 0.75, 0.8, 0.7, 0.8, 0.75, 0.7, 0.75], font_size=8.5, header_size=8, row_h=0.285, header_h=0.42, colors=colors, total_last=True)
-        # right top: by status
-        sst = data.get("AR_SIGNED_STATUS", [])
-        tb(s, 7.25, 2.65, 5.8, 0.3, "Unbilled by status (MMAD)", size=12, bold=True, color=NAVY)
-        agg_st = {}
-        for r in sst: agg_st.setdefault((r["status"], r["responsibility"]), {})[r["class"]] = r["current"] or 0
-        st_rows = sorted(agg_st.items(), key=lambda kv: -abs(sum(kv[1].values())))[:5]
-        rows = [[(str(k[0])[:36] + "…") if len(str(k[0])) > 37 else str(k[0]), k[1], f0(v.get("Signed", 0)), f0(v.get("Not signed", 0))] for k, v in st_rows]
-        oth = [v for k, v in agg_st.items() if k not in dict(st_rows)]
-        if oth: rows.append(["Other statuses", "", f0(sum(v.get("Signed", 0) for v in oth)), f0(sum(v.get("Not signed", 0) for v in oth))])
-        na_ = (unb["current"] or 0) - sig - nsig
-        if abs(na_) >= 0.5: rows.append(["Not applicable (J-5.a rejected, J-6.x)", "", "", f0(na_)])
-        rows.append(["Total unbilled", "", f0(sig), f0(nsig + (na_ if abs(na_) >= 0.5 else 0))])
-        table(s, 7.25, 2.95, 5.8, ["Status", "Resp.", "Signed", "Not signed"], rows, col_w=[3.2, 0.7, 0.9, 1.0], font_size=8, header_size=8, row_h=0.225, header_h=0.28, total_last=True, align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
-        # right bottom: unrecognized signed by BU
-        yr = 2.95 + 0.28 + 0.225 * len(rows) + 0.25
-        tb(s, 7.25, yr, 5.8, 0.3, "Unrecognized revenue – signed by client vs not signed, by BU (MMAD)", size=11, bold=True, color=NAVY)
-        ub_ = sorted([b for b in ur_t if ur_t[b] > 0.5], key=lambda b: -ur_t[b])[:6]
-        ch = bar_chart(s, 7.15, yr + 0.27, 6.0, max(1.2, SH - 0.55 - (yr + 0.27)), [short(b) for b in ub_], [("Signed by client", [ur_s[b] for b in ub_]), ("Not signed", [ur_t[b] - ur_s[b] for b in ub_])], [GREEN, GOLD], stacked=True, horizontal=True, gap=35, cat_size=7.5, label_size=7, label_colors=[WHITE, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM)
-        hide_small_labels(ch, [[ur_s[b] for b in ub_], [ur_t[b] - ur_s[b] for b in ub_]], 60)
-        tb(s, 0.4, SH - 0.42, 12.6, 0.2, "Mapping per finance guideline (reference/status2_signed_mapping.md): C-* statuses = client / OCP responsibility, J-* = JESA; signed = C-3.a/b, C-5.a, J-3.a, J-3.c, J-4.a, plus C-1.c/d, C-2.a lines whose roll-up status reads signed; unpaid, unearned and advance statuses excluded.", size=7.5, italic=True, color=SLATE)
+            oc, je = bv(b, R["Client"], "current"), bv(b, R["JESA"], "current")
+            ocw = (round(oc) - round(bv(b, R["Client"], "prev_week"))) if has_sprev else None; ocm = round(oc) - round(bv(b, R["Client"], "month_start"))
+            jew = (round(je) - round(bv(b, R["JESA"], "prev_week"))) if has_sprev else None; jem = round(je) - round(bv(b, R["JESA"], "month_start"))
+            rows.append([short(b), f0(oc), fd(ocw) if ocw is not None else "n/a", fd(ocm), f0(je), fd(jew) if jew is not None else "n/a", fd(jem), f0(oc + je)])
+            colors[(i, 2)] = delta_color(ocw); colors[(i, 3)] = delta_color(ocm); colors[(i, 5)] = delta_color(jew); colors[(i, 6)] = delta_color(jem)
+        dwC, dmC = dlt(R["Client"]); dwJ, dmJ = dlt(R["JESA"])
+        rows.append(["Total JESA", f0(cC), fd(dwC) if dwC is not None else "n/a", fd(dmC), f0(cJ), fd(dwJ) if dwJ is not None else "n/a", fd(dmJ), f0(cC + cJ)])
+        n = len(rows) - 1; colors[(n, 2)] = delta_color(dwC); colors[(n, 3)] = delta_color(dmC); colors[(n, 5)] = delta_color(dwJ); colors[(n, 6)] = delta_color(dmJ)
+        table(s, 0.4, 2.95, 6.6, ["BU", "Client / OCP", "Δ WoW", "Δ vs MS", "JESA", "Δ WoW", "Δ vs MS", "Unbilled"], rows, col_w=[1.4, 0.85, 0.7, 0.75, 0.75, 0.7, 0.75, 0.8], font_size=8.5, header_size=8, row_h=0.285, header_h=0.32, colors=colors, total_last=True)
+        tb(s, 0.4, 2.95 + 0.32 + 0.285 * len(rows) + 0.08, 6.6, 0.45, f"Client / OCP = C-* statuses (action with the client, incl. at risk); JESA = J-* statuses (incl. service sheets postponed). Excludes {f0((unb['current'] or 0) - cC - cJ)} MMAD of rejected and unearned lines.", size=8, italic=True, color=SLATE)
+        # ---- section B: signature by BU and responsibility
+        tb(s, 7.25, 2.65, 5.8, 0.3, "B · Client signature by business unit and responsibility (MMAD)", size=12, bold=True, color=NAVY)
+        rows, colors = [], {}
+        for rp, lab in (("Client", "Client / OCP responsibility"), ("JESA", "JESA responsibility")):
+            sg_, ns_ = tsum([(rp, "Signed")], "current"), tsum([(rp, "Not signed")], "current")
+            dsw = (round(sg_) - round(tsum([(rp, "Signed")], "prev_week"))) if has_sprev else None
+            rows.append([lab, f0(sg_), f0(ns_), f"{sg_/((sg_ + ns_) or 1)*100:.0f}%", fd(dsw) if dsw is not None else "n/a"]); colors[(len(rows) - 1, 4)] = delta_color(dsw, False)
+        dsw = (round(sS) - round(tsum(S["Signed"], "prev_week"))) if has_sprev else None
+        rows.append(["Total unbilled", f0(sS), f0(sN), f"{sS/((sS + sN) or 1)*100:.0f}%", fd(dsw) if dsw is not None else "n/a"]); colors[(2, 4)] = delta_color(dsw, False)
+        table(s, 7.25, 2.95, 5.8, ["", "Signed", "Not signed", "% signed", "Δ signed WoW"], rows, col_w=[2.3, 0.9, 0.95, 0.8, 0.85], font_size=9, header_size=8.5, row_h=0.3, header_h=0.3, colors=colors, total_last=True, first_col_bold=True)
+        yb = 2.95 + 0.3 + 0.3 * 3 + 0.15
+        top = sb[:8]
+        ch = bar_chart(s, 7.15, yb, 6.0, SH - 0.5 - yb, [short(b) for b in top],
+                       [("Client · signed", [sv(b, ("Client", "Signed"), "current") for b in top]), ("Client · not signed", [sv(b, ("Client", "Not signed"), "current") for b in top]),
+                        ("JESA · signed", [sv(b, ("JESA", "Signed"), "current") for b in top]), ("JESA · not signed", [sv(b, ("JESA", "Not signed"), "current") for b in top])],
+                       [NAVY2, LBLUE, GREEN, GOLD], stacked=True, gap=40, cat_size=7.5, label_size=7, label_colors=[WHITE, DARK, WHITE, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM, title="Signed vs not signed by BU, split by responsibility")
+        hide_small_labels(ch, [[sv(b, c, "current") for b in top] for c in cells], 90)
+        tb(s, 0.4, SH - 0.42, 12.6, 0.2, "Signature per finance guideline (reference/status2_signed_mapping.md): signed = C-3.a/b, C-5.a, J-3.a, J-3.c, J-4.a, plus pending-PO lines (C-1.c/d, C-2.a) whose roll-up status reads signed; the rest not signed.", size=7.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 4. AR movement (comparatives)
     D.section = "ar_backup"
@@ -762,8 +757,8 @@ def build(data, meta, out):
     table(s, 6.3, 2.75, 6.8, ["BU", "Client", "Project", "Unbilled", "Unpaid", "Status"], rows, col_w=[0.95, 1.5, 1.85, 0.6, 0.6, 1.55], font_size=7.5, header_size=7.5, row_h=0.255, header_h=0.28, total_last=True,
           align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT, PP_ALIGN.LEFT])
 
-    # ------------------------------------------------------------------ 6c. Unbilled under JESA responsibility
-    D.section = "ar_jesa"
+    # ------------------------------------------------------------------ 6c. Unbilled under JESA responsibility (backup)
+    D.section = "ar_backup"
     ju = {}
     for r in data.get("JESA_UNBILLED_BU", []): ju.setdefault(r["bu"], {})[r["split"]] = r
     def jv(b, sp, k): return ((ju.get(b, {}).get(sp) or {}).get(k)) or 0
@@ -1189,7 +1184,7 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 14. Backup: LC detail
     D.section = "backup_divider"
     D.divider("08", "Backup",
-              [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "DSO trend by business unit", "Unbilled & unpaid status view"]),
+              [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "DSO trend by business unit", "Unbilled under JESA responsibility – PSR / Procurement and status detail", "Unbilled & unpaid status view"]),
                ("Cash position", ["PSR (labor) collections by business unit and provisions", f"{cam} paid, {com} approved and pending payments"]),
                ("Payables & letters of credit", ["LC detail by letter of credit", "Supplier payables detail (tiers, top suppliers)"]),
                ("Reference", ["Sources & definitions"])],
