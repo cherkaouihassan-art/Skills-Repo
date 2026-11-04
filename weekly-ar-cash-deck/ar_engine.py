@@ -135,6 +135,19 @@ def iter_ar_rows(path):
         if not any(c.strip() for c in row): continue
         yield [_csv_cell(v, date_cols[i] if i < len(date_cols) else False) for i, v in enumerate(row)]
 
+# signed by the client: statuses where the client has signed the attachment / service sheet, plus lines flagged signed in the
+# roll-up columns (pending PO / PO correction lines signed by the client). Proposed mapping, to be confirmed by finance.
+SIGNED_STATUS = {"c-5.a", "j-3.a", "j-3.c", "j-4.a", "c-6.a"}
+SIGNED_ROLLUP = {"signed", "signed by client", "approved"}
+NOT_SIGNED_ROLLUP = {"not signed", "not signed by client", "waiting for jesa approval", "waiting for ocp approval", "pending client pm approval"}
+def signed_class(code, rollup):
+    """'Signed' / 'Not signed' / 'At risk' for an unbilled line, None for lines outside unbilled AR (unearned on LS)."""
+    if code == "j-6.a": return None
+    if code in ("c-1.a", "c-1.b"): return "At risk"
+    r = " ".join(str(rollup or "").strip().lower().split())
+    if code in SIGNED_STATUS or r in SIGNED_ROLLUP: return "Signed"
+    return "Not signed"
+
 def aggregate(path, as_of, prev_cutoff=None):
     """Aggregate a raw AR line list. as_of: date of the snapshot (for the current month). prev_cutoff: date (payments up to
     that date count as 'previous week' collections). Returns a dict of plain-python structures (MMAD)."""
@@ -146,7 +159,7 @@ def aggregate(path, as_of, prev_cutoff=None):
     D = lambda: collections.defaultdict(float)
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
-    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D()
+    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); signed_bu = D(); signed_st = D()
     coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
     cur_m = (as_of.year, as_of.month)
     prior_m = ((as_of.replace(day=1) - dt.timedelta(days=1)).year, (as_of.replace(day=1) - dt.timedelta(days=1)).month)
@@ -197,6 +210,8 @@ def aggregate(path, as_of, prev_cutoff=None):
         if comp == "Unbilled" and owner_of(code) == "Under JESA":
             jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
+            sc = signed_class(code, g(r, "Rollup status"))
+            if sc: signed_bu[(b, sc)] += amt; signed_st[(code, sc)] += amt
             owner[(b, owner_of(code))] += amt; st_tot[code] += amt; st_bu[(b, code)] += amt
             agu[(b, bucket(g(r, "Category Unbilled")))] += amt
             proj[(b, "Unbilled", wbs, pname)] += amt; st_proj.setdefault((b, "Unbilled", wbs, pname), code)
@@ -220,6 +235,7 @@ def aggregate(path, as_of, prev_cutoff=None):
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
             "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st),
+            "signed_bu": dict(signed_bu), "signed_status": dict(signed_st),
             "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
 
 def bus_in(agg):

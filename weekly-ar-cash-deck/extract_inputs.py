@@ -200,6 +200,14 @@ def extract_cash(path):
         return [num(r[c], 1e6) for c in range(3, 9)], i   # Jul, Aug, Sep, Oct actual, Oct ongoing, Cumulative
     r = ex[find_row(ex, "Data as of", col=2)]
     out["data_as_of"] = r[4] if isinstance(r[4], dt.datetime) else None
+    # month labels: the header row of section 1 reads e.g. 'Oct-26 actual (closed) · collections to 02/11 · payments to 30/10' | 'Nov-26 ongoing …'
+    h = ex[find_row(ex, "1.   CASH POSITION BY MONTH", col=2) + 1]
+    act, ong = str(h[6] or ""), str(h[7] or "")
+    m1 = re.search(r"([A-Z][a-z]{2})-\d\d", act); m2 = re.search(r"([A-Z][a-z]{2})-\d\d", ong)
+    out["cash_actual_month"] = m1.group(1) if m1 else "Oct"; out["cash_ongoing_month"] = m2.group(1) if m2 else out["cash_actual_month"]
+    pt = re.search(r"payments to (\d\d/\d\d)", act); ct = re.search(r"collections to (\d\d/\d\d)", act)
+    out["cash_payments_to"] = pt.group(1) if pt else None; out["cash_collections_to"] = ct.group(1) if ct else None
+    out["cash_actual_note"] = "(closed)" if "closed" in act.lower() else (f"to {pt.group(1)}" if pt else "to date")
     probe = ex[find_row(ex, "NET POSITION", col=2)]
     if all(v is None for v in probe[3:9]):
         raise SystemExit("cash flow workbook has no cached values (saved by a script, not by Excel): open it in Excel, save, and drop it in the inbox, or deliver it through the cash flow refresh kit's Excel save step")
@@ -559,24 +567,28 @@ def default_messages(ar, cash, lc, ap, meta):
     o = {kk.split("|")[1]: 0 for kk in ap["by_bu_origin"]}
     for kk, v in ap["by_bu_origin"].items(): o[kk.split("|")[1]] += v
     coll = ar["collections_bu"]; oct_cur = sum(c[2] for c in coll); oct_pw = sum(c[1] for c in coll); ytd = sum(c[5] for c in coll); dep = sum(c[7] for c in coll)
-    month = meta["as_of_date"].strftime("%B")
+    month = meta["as_of_date"].strftime("%B"); cmonth = meta["ar_current_date"].strftime("%B")
+    cam = cash.get("cash_actual_month") or month[:3]; com = cash.get("cash_ongoing_month") or month[:3]; cpt = cash.get("cash_payments_to") or meta["payments_to"]
     ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot")
+    sg = ar.get("signed_tot") or {}; urs = ar.get("ur_signed_tot")
+    msg_signed = [f"Signed roll-ups: unbilled signed {sg.get('Signed', 0):,.0f} MMAD ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), not signed {sg.get('Not signed', 0):,.0f}"
+                  + (f"; unrecognized signed {urs:,.0f}" if urs is not None else ""),
+                  f"Signed = attachments or service sheets signed by the client (statuses C-5.a, J-3.a, J-3.c, J-4.a, C-6.a and roll-ups flagged signed); at risk {sg.get('At risk', 0):,.0f} MMAD shown separately."]
     return [
         [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} vs {pw_lab}, {dm(tot)} vs {ms_lab}",
-         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW)."
-         + (f" Unbilled under JESA responsibility {ju[0]:,.0f} MMAD (PSR {ju[1]:,.0f} / Procurement {ju[2]:,.0f}); non-OCP receivables {nonocp:,.0f} MMAD." if ju else "")],
+         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW)."],
+        msg_signed,
         [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs {ms_lab}); gross exposure {new[3]:,.0f} MMAD ({dd(new)} WoW)",
          f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee."],
-        [f"Invoices paid in {month} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
-         f"Invoices deposited in {month}: {dep:,.0f} MMAD."],
-        [f"Procurement cash Jul–{month[:3]}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
-         f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {meta['payments_to']} gives {d(net_act)} MMAD. "
-         f"Approved payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of {month} LC maturities) bring the position to {d(net_appr)} MMAD; "
+        [f"Invoices paid in {cmonth} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
+         f"Invoices deposited in {cmonth}: {dep:,.0f} MMAD."],
+        [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
+         f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
+         f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities) bring the position to {d(net_appr)} MMAD; "
          f"pending payments of {pend:,.0f} MMAD bring it to {d(net_all)} MMAD."],
-        [f"Supplier payables {ap_tot:,.0f} MMAD, of which {ap_over:,.0f} MMAD past due",
-         f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD ({ap['n_lines']:,} open lines)."],
-        [f"Letters of credit {lc_all:,.0f} MMAD: {lc_open:,.0f} on opened LCs, {lc_all - lc_open:,.0f} still to be opened",
-         f"{lc_oct:,.0f} MMAD matures in {month}; {mt.get('2026', 0):,.0f} MMAD in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027."],
+        [f"Supplier payables {ap_tot:,.0f} MMAD ({ap_over:,.0f} past due); letters of credit {lc_all:,.0f} MMAD, {lc_open:,.0f} on opened LCs",
+         f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD. "
+         f"LC: {lc_all - lc_open:,.0f} MMAD still to be opened; {mt.get('2026', 0):,.0f} MMAD matures in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027 (LC situation {meta.get('lc_date', '')})."],
     ]
 
 def prev_from_dashboard(d):
@@ -618,6 +630,10 @@ def prev_from_inputs(path):
         P["nonocp"] = {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")}
     if "JESA_UNBILLED_BU" in wb.sheetnames:
         P["jesa_unbilled"] = {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")}
+    P["ap_kpi"] = {r["metric"]: r["current"] for r in recs("AR_KPI") if str(r["metric"]).startswith("AP ") or r["metric"] == "LC"}
+    if "AR_SIGNED_BU" in wb.sheetnames:
+        P["signed_bu"] = {(r["bu"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_BU")}
+        P["signed_status"] = {(s2_code(r["status"]), r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_STATUS")}
     return P
 
 PHASES = ["Rejected", "Treasury", "OCP subs", "Ordonnancement", "Missing reception", "Other"]
@@ -647,6 +663,7 @@ def main():
     ap_.add_argument("--ar-prev-date", required=True, help="previous AR snapshot date YYYY-MM-DD")
     ap_.add_argument("--collections-to", default=None); ap_.add_argument("--payments-to", default=None); ap_.add_argument("--lc-date", default=None)
     ap_.add_argument("--ap-label", default=None); ap_.add_argument("--week-label", default=None)
+    ap_.add_argument("--draft-note", default=None, help="text shown on the title slide when figures are provisional")
     ap_.add_argument("--out", default="inputs/weekly_inputs.xlsx")
     a = ap_.parse_args()
 
@@ -655,9 +672,9 @@ def main():
     cur = aggregate(a.ar, ar_date, prev_cutoff=prev_date)
     print("current AR (MMAD):", {k: round(v, 1) for k, v in cur["kpi"].items()})
     if a.ar_prev:
-        P = aggregate(a.ar_prev, prev_date); P["detail"] = None
-        P["ap"] = {}; P["unpaid_phase_total"] = dict(phase_total(P)); P["status_total"] = P["status_total"]
-        P["detail_agg"] = P
+        A = aggregate(a.ar_prev, prev_date)
+        P = prev_from_inputs(a.prev_inputs) if a.prev_inputs else {"ap": {}}
+        P.update(A); P["detail"] = None; P["unpaid_phase_total"] = dict(phase_total(A)); P["detail_agg"] = A
     elif a.prev_inputs: P = prev_from_inputs(a.prev_inputs)
     elif a.ar_dashboard: P = prev_from_dashboard(extract_ar(a.ar_dashboard))
     else: raise SystemExit("need one of --ar-prev / --prev-inputs / --ar-dashboard for the previous week")
@@ -665,12 +682,17 @@ def main():
     MS = aggregate(a.ar_baseline, dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else ar_date) if a.ar_baseline else None
     if MS: print("month-start AR (MMAD):", {k: round(v, 1) for k, v in MS["kpi"].items()})
     cash = extract_cash(a.cash); lc = extract_lc(a.lc); ap = extract_ap(a.ap, as_of)
-    if not cash.get("lc_oct_maturity_total") and lc.get("months"):
-        # 'LC Ongoing' sheet absent: take the current-month maturities from the bank LC situation instead
-        lc_oct_m = sum(l["months"].get(lc["months"][0], 0) for l in lc["lines"])
-        cash["lc_oct_maturity_total"] = min(lc_oct_m, abs(sum(r[6] for r in cash["cash_bu"])))
-        cash["lc_oct_maturity_bu"] = {}
-        print(f"INFO LC {lc['months'][0]} maturities taken from the LC situation file: {cash['lc_oct_maturity_total']:,.1f} MMAD")
+    if not cash.get("lc_oct_maturity_total"):
+        # 'LC Ongoing' sheet absent: ongoing LC payments line of the cash workbook, else the LC situation column of the ongoing month
+        lcp_line = next((r for r in cash["cash_monthly"] if r[0] == "Cash OUT LC payments"), None)
+        v = abs(lcp_line[5]) if lcp_line and lcp_line[5] else 0.0
+        src = "cash workbook ongoing LC payments"
+        if not v and lc.get("months"):
+            mon = f"{as_of.year}-{MONTHS.index(next((m for m in MONTHS if m.startswith(cash.get('cash_ongoing_month', 'Oct'))), 'October')) + 1:02d}"
+            col = mon if mon in lc["months"] else lc["months"][0]
+            v = sum(l["months"].get(col, 0) for l in lc["lines"]); src = f"LC situation column {col}"
+        cash["lc_oct_maturity_total"] = min(v, abs(sum(r[6] for r in cash["cash_bu"]))); cash["lc_oct_maturity_bu"] = {}
+        print(f"INFO LC maturities counted as approved: {cash['lc_oct_maturity_total']:,.1f} MMAD ({src})")
     ur = extract_ur(a.ur) if a.ur else None
     if ur and a.ur_prev:
         ur["prev"] = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_prev)).items()}; ur["prev_source"] = "last week's deck"
@@ -704,7 +726,7 @@ def main():
         if key: ap_cur_bu[b][key] += v
     for l in lc["lines"]:
         if l["opened"] == "Yes": ap_cur_bu[l["bu"]]["lc"] += l["encours_mad"]
-    ap_prev_bu = P.get("ap", {})
+    ap_prev_bu = P.get("ap", {}); apk = P.get("ap_kpi") or {}
     def ap_tot(d, k): return sum(v[k] for v in d.values())
     kpi = [["Advance Payment", msv(MS["kpi"] if MS else {}, "Advance"), P["kpi"]["Advance"], cur["kpi"]["Advance"]],
            ["Unbilled", msv(MS["kpi"] if MS else {}, "Unbilled"), P["kpi"]["Unbilled"], cur["kpi"]["Unbilled"]],
@@ -712,10 +734,10 @@ def main():
            ["Total AR", msv(MS["kpi"] if MS else {}, "Total AR"), P["kpi"]["Total AR"], cur["kpi"]["Total AR"]],
            ["Unrecognized Revenue (incl. markup)", ur_ms_tot, ur_prev, ur_cur],
            ["Total NEW AR", (msv(MS["kpi"] if MS else {}, "Total AR") + ur_ms_tot) if (MS and ur_ms) else 0, P["kpi"]["Total AR"] + ur_prev, cur["kpi"]["Total AR"] + ur_cur],
-           ["AP Downpayment", 0, ap_tot(ap_prev_bu, "downpayment"), ap_tot(ap_cur_bu, "downpayment")],
-           ["AP Parked Invoices", 0, ap_tot(ap_prev_bu, "parked"), ap_tot(ap_cur_bu, "parked")],
-           ["AP Invoices 4411", 0, ap_tot(ap_prev_bu, "inv4411"), ap_tot(ap_cur_bu, "inv4411")],
-           ["LC", 0, ap_tot(ap_prev_bu, "lc"), ap_tot(ap_cur_bu, "lc")]]
+           ["AP Downpayment", 0, apk.get("AP Downpayment", ap_tot(ap_prev_bu, "downpayment")), ap_tot(ap_cur_bu, "downpayment")],
+           ["AP Parked Invoices", 0, apk.get("AP Parked Invoices", ap_tot(ap_prev_bu, "parked")), ap_tot(ap_cur_bu, "parked")],
+           ["AP Invoices 4411", 0, apk.get("AP Invoices 4411", ap_tot(ap_prev_bu, "inv4411")), ap_tot(ap_cur_bu, "inv4411")],
+           ["LC", 0, apk.get("LC", ap_tot(ap_prev_bu, "lc")), ap_tot(ap_cur_bu, "lc")]]
     kpi.append(["Total Payables incl. LC", 0, sum(r[2] for r in kpi[6:10]), sum(r[3] for r in kpi[6:10])])
     bus = [b for b in bus_in(cur) if b != "Other"]
     ar = {"kpi": kpi, "month_start_date": ms_date, "prev_baseline_date": None}
@@ -774,7 +796,9 @@ def main():
             detail.append([b, "advance_status", lab, mv("advance_status", b, lab), pv("advance_status", b, lab, lab), cur["advance_status"].get((b, lab), 0.0)])
     projects = [[b, t, w, n, v, st] for (b, t), lst in cur["top_projects"].items() for (w, n, v, st) in lst]
 
-    meta = {"as_of_date": as_of, "week_label": a.week_label or f"{as_of.strftime('%B')} W{(as_of.day - 1) // 7 + 1}", "ar_current_date": ar_date, "ar_prev_date": prev_date,
+    meta = {"as_of_date": as_of, "week_label": a.week_label or f"{as_of.strftime('%B')} W{(as_of.day - 1) // 7 + 1}", "draft_note": a.draft_note or "",
+            "cash_actual_month": cash.get("cash_actual_month"), "cash_actual_note": cash.get("cash_actual_note"), "cash_ongoing_month": cash.get("cash_ongoing_month"),
+            "cash_payments_to": cash.get("cash_payments_to") or a.payments_to, "cash_collections_to": cash.get("cash_collections_to") or a.collections_to, "ar_current_date": ar_date, "ar_prev_date": prev_date,
             "ar_month_start_date": ms_date, "cash_data_as_of": cash["data_as_of"].date() if cash["data_as_of"] else None,
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
@@ -782,6 +806,8 @@ def main():
 
     ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
     ar["nonocp_tot"] = sum(cur["nonocp"].values())
+    ar["signed_tot"] = {c: sum(v for (b, cc), v in cur["signed_bu"].items() if cc == c) for c in ("Signed", "Not signed", "At risk")}
+    ar["ur_signed_tot"] = (sum((r[2] or 0) + (r[7] or 0) for r in ur["table"]) if ur else None)
     wb = openpyxl.Workbook(); wb.remove(wb.active)
     write_sheet(wb, "META", ["key", "value"], [[k, (v.isoformat() if isinstance(v, dt.date) else v)] for k, v in meta.items()], note="Dates and labels used on the slides. Edit freely.", widths=[24, 60])
     write_sheet(wb, "KEY_MESSAGES", ["n", "title", "body"], [[i + 1, t, b] for i, (t, b) in enumerate(default_messages(ar, cash, lc, ap, meta))], note="Drafted from the figures in deck order; rewrite the wording as needed (max 6 messages).", widths=[4, 70, 120])
@@ -813,6 +839,16 @@ def main():
     jcodes = sorted({c for (c, l) in cur["jesa_unbilled_status"]}, key=lambda c: -(cur["jesa_unbilled_status"].get((c, "labor"), 0) + cur["jesa_unbilled_status"].get((c, "non_labor"), 0)))
     write_sheet(wb, "JESA_UNBILLED_STATUS", ["status", "labor", "non_labor"], [[_sl(c), cur["jesa_unbilled_status"].get((c, "labor"), 0.0), cur["jesa_unbilled_status"].get((c, "non_labor"), 0.0)] for c in jcodes],
                 note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
+    sg = cur["signed_bu"]; sgp = P.get("signed_bu") or {}; sgm = MS["signed_bu"] if MS else {}
+    classes = ["Signed", "Not signed", "At risk"]
+    write_sheet(wb, "AR_SIGNED_BU", ["bu", "class", "month_start", "prev_week", "current"],
+                [[b, c, (sgm.get((b, c), 0.0) if MS else None), (sgp.get((b, c)) if sgp else None), sg.get((b, c), 0.0)] for b in bus_in(cur) for c in classes],
+                note="Unbilled by client signature: 'Signed' = Status 2 in C-5.a, J-3.a, J-3.c, J-4.a, C-6.a or roll-up status signed/approved; 'At risk' = C-1.a/b; the rest 'Not signed'. MMAD.", widths=[28, 12, 12, 12, 12])
+    sst = cur["signed_status"]; sstp = P.get("signed_status") or {}
+    codes = sorted({c for c, _ in sst}, key=lambda c: -sum(abs(v) for (cc, _), v in sst.items() if cc == c))
+    write_sheet(wb, "AR_SIGNED_STATUS", ["status", "class", "prev_week", "current"],
+                [[_sl(c), k, (sstp.get((c, k)) if sstp else None), sst.get((c, k), 0.0)] for c in codes for k in classes if abs(sst.get((c, k), 0.0)) > 0.005],
+                note="Unbilled by Status 2 and client signature class (MMAD).", widths=[50, 12, 12, 12])
     write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month", "total_ar", "revenue_12m"], [[b, v.get("current"), v.get("prior"), v.get("ar"), v.get("rev12")] for b, v in dso.items()],
                 note="DSO (days) = total AR of the BU / 12-month trailing revenue x 365 (DSO calc workbook); 'JESA Group' row = group DSO; prior month from the Trend sheet.", widths=[28, 12, 14, 12, 12])
     if dso_trend:

@@ -79,12 +79,13 @@ between the main body and the backup, change its `D.section = ...` tag.
 
 | Tab | Content (MMAD) | Feeds slides |
 |---|---|---|
-| `META` | as-of dates, AR snapshot / previous / baseline dates, cut-off labels | all |
+| `META` | as-of dates, AR snapshot / previous / baseline dates, cut-off labels, cash workbook month labels (actual / ongoing month), optional `draft_note` (`--draft-note`) | all |
 | `KEY_MESSAGES` | n, title, body | 2 |
 | `AR_KPI` | metric × month_start / prev_week / current (advance, unbilled, unpaid, total AR, unrecognized, gross exposure, AP buckets, LC) | 1, 3, 4, 12 |
 | `AR_SPLITS` | labor / non-labor and OCP / non-OCP (current) | 3 |
 | `AR_BU` | BU × component × month_start / prev_week / current | 4, 5 |
 | `AR_UNBILLED_OWNER` | BU × (at risk / under JESA / under OCP / SS postponed) | 6 |
+| `AR_SIGNED_BU`, `AR_SIGNED_STATUS` | unbilled signed by the client vs not signed vs at risk, by BU and by Status 2 (signed = C-5.a, J-3.a, J-3.c, J-4.a, C-6.a or roll-up status signed/approved) | signed roll-ups slide |
 | `AR_UNBILLED_STATUS` | detailed unbilled statuses (OCP / JESA / at risk) | 6 |
 | `AR_UNPAID_STATUS` | unpaid by OCP processing status | 6 |
 | `AR_AGING` | AR by year of origin | 4 |
