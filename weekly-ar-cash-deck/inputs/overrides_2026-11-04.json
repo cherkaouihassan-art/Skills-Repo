@@ -1,0 +1,11 @@
+{
+ "_note": "Manual corrections applied after extraction (MMAD). UR: SP2M signed-by-client split per the UR consolidation table of 4 Nov (file not received).",
+ "UR": {
+  "SP2M Ad Hoc Program": {
+   "eq_pending_approval": 0.200762,
+   "eq_signed_by_client": 47.364303,
+   "sub_pending_approval": 83.002894,
+   "sub_signed_by_client": 91.925758
+  }
+ }
+}

@@ -147,8 +147,16 @@ SIGNED_MAP = {
     "j-3.a": ("JESA", "Signed"), "j-3.c": ("Client", "Signed"), "j-4.a": ("JESA", "Signed"),
     "j-5.a": None, "j-6.a": None, "j-6.b": None, "j-6.c": None, "j-6.d": None, "j-7.a": ("JESA", "Not signed"),
 }
-def signed_class(code, rollup):
-    """(responsibility, 'Signed'/'Not signed') for an unbilled line, or None when the status is outside the signed view."""
+import re as _re
+_SIGN_POS = _re.compile(r"sign[eé]"); _SIGN_NEG = _re.compile(r"not\s+sign|non\s+sign|unsign|pas\s+sign")
+def signed_flag(*texts):
+    """True when one of the texts says the roll-up is signed ('signed' / 'signé'), and none says not signed."""
+    joined = " ".join(str(t or "").strip().lower() for t in texts if t)
+    return bool(_SIGN_POS.search(joined)) and not _SIGN_NEG.search(joined)
+
+def signed_class(code, rollup, comment=None):
+    """(responsibility, 'Signed'/'Not signed') for an unbilled line, or None when the status is outside the signed view.
+    'Depends' statuses: signed when the roll-up status column or the PA comments (the 'AP column' of the AR file) carry the word signed."""
     m = SIGNED_MAP.get(code)
     if m is None:
         if code not in SIGNED_MAP:  # unknown code: responsibility from the prefix, signature from the roll-up column
@@ -156,8 +164,7 @@ def signed_class(code, rollup):
         else: return None
     resp, sig = m
     if sig == "Depends":
-        r = str(rollup or "").strip().lower()
-        sig = "Signed" if ("signed" in r and "not signed" not in r) else "Not signed"
+        sig = "Signed" if (signed_flag(rollup) or signed_flag(comment)) else "Not signed"
     return resp, sig
 
 def labor_type(v):
@@ -192,7 +199,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     D = lambda: collections.defaultdict(float)
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
-    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
+    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); jesa_unb_bs = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
     coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
     cm_ref = coll_month_ref or as_of   # month reported for collections / deposited invoices (date inside that month)
     cur_m = (cm_ref.year, cm_ref.month)
@@ -222,7 +229,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
                             coll_bu[(b, "month_prev")] += inv
                             if nonp: coll_bu[(b, "month_prev_nonocp")] += inv
                     if (pdd.year, pdd.month) == prior_m:
-                        coll_bu[(b, "prior")] += inv
+                        coll_bu[(b, "prior")] += inv; coll_bu[(b, f"prior_{lab}")] += inv
                         if nonp: coll_bu[(b, "prior_nonocp")] += inv
             rd = g(r, "Reception date")
             if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m and (rd.date() if isinstance(rd, dt.datetime) else rd) <= as_of: dep_bu[b] += amt; dep_tot += amt
@@ -243,9 +250,11 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
             nonocp[(b, comp)] += amt; key = (b, wbs, pname)
             nonocp_proj[(key, comp)] += amt; nonocp_meta.setdefault(key, (str(g(r, "Project Client") or "").strip(), status_label(code)))
         if comp == "Unbilled" and owner_of(code) == "Under JESA":
-            jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
+            jesa_unb_bs[(b, code, lab)] += amt   # all J-* statuses (rejected J-5.a included, shown as a memo)
+            if not code.startswith(("j-5", "j-6")):   # same scope as the 'under JESA responsibility' box (signature mapping: J-5/J-6 = N/A)
+                jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
-            sc = signed_class(code, g(r, "Rollup status"))
+            sc = signed_class(code, g(r, "Rollup status"), g(r, "Comments PA"))
             if sc:
                 signed_bu[(b, sc[0], sc[1], lab)] += amt; signed_st[(code, sc[0], sc[1])] += amt
                 if project_status is not None:
@@ -273,7 +282,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     return {"kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
-            "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st),
+            "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st), "jesa_unbilled_bu_status": dict(jesa_unb_bs),
             "signed_bu": dict(signed_bu), "signed_status": dict(signed_st), "signed_pstatus": dict(signed_ps),
             "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
 

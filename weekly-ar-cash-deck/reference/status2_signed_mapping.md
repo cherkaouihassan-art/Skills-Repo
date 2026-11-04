@@ -1,8 +1,8 @@
 # Status 2 → responsibility and client signature (reference, finance guideline of 4 Nov 2026 – v3: at-risk lines follow the roll-up status; service sheets postponed are under client responsibility)
 
 Responsibility: `Client` = action with the client / OCP, `JESA` = action with JESA. Signature: whether the attachment or service
-sheet has been signed by the client. `Depends` = read the roll-up status column of the AR file: it is **signed** when that
-column contains the word "signed" (and not "not signed"), otherwise **not signed**. `N/A` lines are not part of unbilled AR
+sheet has been signed by the client. `Depends` = read the "AP column" of the AR file, i.e. the PA comments (`Comments PA`) and, when filled,
+the roll-up status column: the line is **signed** when either contains the word signed / signé (and not "not signed"), otherwise **not signed**. `N/A` lines are not part of unbilled AR
 (unpaid statuses, unearned on lump sum, advances) and are left out of the signed view.
 
 | Status 2 | Responsibility | Signed or not | Note |

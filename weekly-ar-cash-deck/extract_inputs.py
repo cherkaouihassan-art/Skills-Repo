@@ -685,6 +685,9 @@ def prev_from_inputs(path):
         P["nonocp"] = {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")}
     if "JESA_UNBILLED_BU" in wb.sheetnames:
         P["jesa_unbilled"] = {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")}
+    if "JESA_UNBILLED_BU_STATUS" in wb.sheetnames:
+        _sc = lambda lbl: str(lbl).split(" ")[0].lower()
+        P["jesa_unbilled_bu_status"] = {(r["bu"], _sc(r["status"]), sp): r[sp] or 0 for r in recs("JESA_UNBILLED_BU_STATUS") for sp in ("labor", "non_labor")}
     P["ap_kpi"] = {r["metric"]: r["current"] for r in recs("AR_KPI") if str(r["metric"]).startswith("AP ") or r["metric"] == "LC"}
     try:
         P["cash_prev"] = {r["line"]: r["oct_actual"] for r in recs("CASH_MONTHLY")}
@@ -729,6 +732,7 @@ def main():
     ap_.add_argument("--collections-to", default=None); ap_.add_argument("--payments-to", default=None); ap_.add_argument("--lc-date", default=None)
     ap_.add_argument("--ap-label", default=None); ap_.add_argument("--week-label", default=None)
     ap_.add_argument("--draft-note", default=None, help="text shown on the title slide when figures are provisional")
+    ap_.add_argument("--overrides", default=None, help="JSON with manual corrections, e.g. {\"UR\": {\"<bu>\": {\"eq_signed_by_client\": 47.4}}} (MMAD)")
     ap_.add_argument("--suspension-log", default=None, help="Suspension log workbook: project status (continue / suspended / completed …) joined to the unbilled lines by WBS")
     ap_.add_argument("--coll-month", default=None, help="month reported for collections, YYYY-MM (default: the cash workbook's actual month, else the AR snapshot month)")
     ap_.add_argument("--ocp-payments", default=None, help="OCP Payments Weekly workbook ('Summary by BU'): monthly collections per OCP payment report")
@@ -765,6 +769,13 @@ def main():
         cash["lc_oct_maturity_total"] = min(v, abs(sum(r[6] for r in cash["cash_bu"]))); cash["lc_oct_maturity_bu"] = {}
         print(f"INFO LC maturities counted as approved: {cash['lc_oct_maturity_total']:,.1f} MMAD ({src})")
     ur = extract_ur(a.ur) if a.ur else None
+    if a.overrides and ur:
+        ov = json.load(open(a.overrides)); UR_COLS = ["bu", "eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk", "sub_pending_approval", "sub_signed_by_client", "sub_pending_submission", "sub_under_cn", "sub_at_risk", "total_suppliers", "lines_to_adjust", "grand_total"]
+        for bu_, cols in (ov.get("UR") or {}).items():
+            for row in ur["table"]:
+                if canon_bu(row[0]) == canon_bu(bu_):
+                    for col, val in cols.items(): row[UR_COLS.index(col)] = float(val)
+                    print(f"override UR {row[0]}: {cols}")
     if ur and a.ur_prev:
         ur["prev"] = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_prev)).items()}; ur["prev_source"] = "last week's deck"
     elif ur and P.get("ur_prev"):
@@ -836,7 +847,7 @@ def main():
     ar["collections_bu"] = []
     for b in bus:
         cb = cur["coll_bu"]
-        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0), cb.get((b, "jul_ytd"), 0.0), cb.get((b, "jul_ytd_labor"), 0.0), cb.get((b, "jul_ytd_non_labor"), 0.0), cb.get((b, "month_labor"), 0.0), cb.get((b, "month_non_labor"), 0.0)])
+        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0), cb.get((b, "jul_ytd"), 0.0), cb.get((b, "jul_ytd_labor"), 0.0), cb.get((b, "jul_ytd_non_labor"), 0.0), cb.get((b, "month_labor"), 0.0), cb.get((b, "month_non_labor"), 0.0), cb.get((b, "prior_labor"), 0.0), cb.get((b, "prior_non_labor"), 0.0)])
     ar["ap_bu"] = [[b, ap_prev_bu.get(b, {}).get("downpayment", 0.0), ap_cur_bu[b]["downpayment"], ap_prev_bu.get(b, {}).get("parked", 0.0), ap_cur_bu[b]["parked"],
                     ap_prev_bu.get(b, {}).get("inv4411", 0.0), ap_cur_bu[b]["inv4411"], ap_prev_bu.get(b, {}).get("lc", 0.0), ap_cur_bu[b]["lc"]] for b in bus if b in ap_cur_bu or b in ap_prev_bu]
     # per-BU detail (current / prev when a raw prev file or prev inputs with detail exist / month start)
@@ -937,11 +948,17 @@ def main():
                 note="Non-OCP projects driving unbilled and unpaid (top 40 by total, MMAD, current week).", widths=[26, 30, 14, 44, 10, 10, 40])
     write_sheet(wb, "JESA_UNBILLED_BU", ["bu", "split", "month_start", "prev_week", "current"],
                 [[b, sp, (MS["jesa_unbilled"].get((b, sp), 0.0) if MS else None), Pj.get((b, sp)), cur["jesa_unbilled"].get((b, sp), 0.0)] for b in bus for sp in ("labor", "non_labor")],
-                note="Unbilled where the action sits with JESA (J-* statuses except SS postponed), by BU and PSR (labor) / Procurement (non-labor), MMAD.", widths=[28, 12])
+                note="Unbilled under JESA responsibility (J-* statuses except SS postponed, rejected and unearned), by BU and PSR (labor) / Procurement (non-labor), MMAD. Same scope as the slide-5 box.", widths=[28, 12])
     from ar_engine import status_label as _sl
     jcodes = sorted({c for (c, l) in cur["jesa_unbilled_status"]}, key=lambda c: -(cur["jesa_unbilled_status"].get((c, "labor"), 0) + cur["jesa_unbilled_status"].get((c, "non_labor"), 0)))
     write_sheet(wb, "JESA_UNBILLED_STATUS", ["status", "labor", "non_labor"], [[_sl(c), cur["jesa_unbilled_status"].get((c, "labor"), 0.0), cur["jesa_unbilled_status"].get((c, "non_labor"), 0.0)] for c in jcodes],
                 note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
+    jbs = cur.get("jesa_unbilled_bu_status", {}); jbs_p = P.get("jesa_unbilled_bu_status") or {}
+    jcodes_all = sorted({c for (b, c, l) in jbs}, key=lambda c: -abs(sum(v for (b, c2, l), v in jbs.items() if c2 == c)))
+    write_sheet(wb, "JESA_UNBILLED_BU_STATUS", ["bu", "status", "labor", "non_labor", "prev_week", "current"],
+                [[b, _sl(c), jbs.get((b, c, "labor"), 0.0), jbs.get((b, c, "non_labor"), 0.0), (jbs_p.get((b, c, "labor"), 0.0) + jbs_p.get((b, c, "non_labor"), 0.0)) if jbs_p else None,
+                  jbs.get((b, c, "labor"), 0.0) + jbs.get((b, c, "non_labor"), 0.0)] for b in bus for c in jcodes_all if abs(jbs.get((b, c, "labor"), 0.0)) + abs(jbs.get((b, c, "non_labor"), 0.0)) > 1e-6],
+                note="Unbilled with a J-* status (service sheets postponed excluded) by BU and status, PSR / Procurement, MMAD. J-5.a rejected / J-6 unearned lines are outside the 'under JESA responsibility' scope and shown as a memo.", widths=[28, 50, 12, 12, 12, 12])
     sg = cur["signed_bu"]; sgp = P.get("signed_bu") or {}; sgm = MS["signed_bu"] if MS else {}
     cells = [(rp, c, l) for rp in ("Client", "JESA") for c in ("Signed", "Not signed") for l in ("labor", "non_labor")]
     write_sheet(wb, "AR_SIGNED_BU", ["bu", "responsibility", "class", "split", "month_start", "prev_week", "current"],
@@ -965,7 +982,7 @@ def main():
     if dso_trend:
         write_sheet(wb, "DSO_TREND", ["bu"] + dso_trend["trend_months"] + ["current"], [[b] + (dso_trend["trend"].get(b) or [None] * len(dso_trend["trend_months"])) + [dso[b]["current"]] for b in dso if b != "JESA Group"],
                     note=f"DSO history by BU (days) from the DSO calc workbook 'Trend' sheet; 12-month revenue window {dso_trend['window'][0]} to {dso_trend['window'][-1]}.", widths=[28] + [9] * (len(dso_trend["trend_months"]) + 1))
-    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd", "since_jul", "since_jul_labor", "since_jul_non_labor", "month_labor", "month_non_labor"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
+    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd", "since_jul", "since_jul_labor", "since_jul_non_labor", "month_labor", "month_non_labor", "prior_labor", "prior_non_labor"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
                 note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT; nonocp_* = same measures for non-OCP clients (Client 1).", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     write_sheet(wb, "COLLECTIONS_MONTHLY", ["month", "labor", "non_labor"], [[m, cur["coll_month"].get((i + 1, "labor"), 0.0), cur["coll_month"].get((i + 1, "non_labor"), 0.0)] for i, m in enumerate(months)],
