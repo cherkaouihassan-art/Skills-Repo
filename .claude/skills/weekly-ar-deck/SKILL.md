@@ -93,6 +93,9 @@ traceback must be fixed before delivering (the extractor is label-anchored: comp
 
 ## Rules
 
+- The signed / not signed and client / JESA responsibility classification of unbilled lines follows
+  `weekly-ar-cash-deck/reference/status2_signed_mapping.md` (finance guideline). Change it only when finance changes the guideline.
+
 - Never change the aggregation rules in `ar_engine.py` to make a number match; report the difference instead.
 - Changes requested by the reviewer are applied in `build_deck.py` / `extract_inputs.py`, committed and pushed,
   so the next weekly run carries them.

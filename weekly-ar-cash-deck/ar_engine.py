@@ -135,18 +135,30 @@ def iter_ar_rows(path):
         if not any(c.strip() for c in row): continue
         yield [_csv_cell(v, date_cols[i] if i < len(date_cols) else False) for i, v in enumerate(row)]
 
-# signed by the client: statuses where the client has signed the attachment / service sheet, plus lines flagged signed in the
-# roll-up columns (pending PO / PO correction lines signed by the client). Proposed mapping, to be confirmed by finance.
-SIGNED_STATUS = {"c-5.a", "j-3.a", "j-3.c", "j-4.a", "c-6.a"}
-SIGNED_ROLLUP = {"signed", "signed by client", "approved"}
-NOT_SIGNED_ROLLUP = {"not signed", "not signed by client", "waiting for jesa approval", "waiting for ocp approval", "pending client pm approval"}
+# Client signature and responsibility of unbilled lines — finance guideline of 4 Nov 2026 (reference/status2_signed_mapping.md).
+# value: (responsibility, signature); signature 'Depends' = look at the roll-up status column; None = not part of unbilled AR.
+SIGNED_MAP = {
+    "c-1.a": ("Client", "Not signed"), "c-1.b": ("Client", "Not signed"), "c-1.c": ("Client", "Depends"), "c-1.d": ("Client", "Depends"),
+    "c-1.e": ("Client", "Depends"), "c-2.a": ("Client", "Depends"), "c-3.a": ("Client", "Signed"), "c-3.b": ("Client", "Signed"),
+    "c-4.a": ("Client", "Not signed"), "c-5.a": ("Client", "Signed"), "c-5.b": ("Client", "Not signed"), "c-6.a": ("Client", "Not signed"),
+    "c-7.a": None, "c-7.b": None, "pdr": ("Client", "Depends"),
+    "j-1.a": ("JESA", "Not signed"), "j-1.b": ("JESA", "Not signed"), "j-1.c": ("JESA", "Not signed"), "j-1.d": ("JESA", "Not signed"),
+    "j-1.e": ("JESA", "Not signed"), "j-1.f": ("JESA", "Not signed"), "j-2.a": ("JESA", "Not signed"),
+    "j-3.a": ("JESA", "Signed"), "j-3.c": ("JESA", "Signed"), "j-4.a": ("JESA", "Signed"),
+    "j-5.a": None, "j-6.a": None, "j-6.b": None, "j-6.c": None, "j-6.d": None, "j-7.a": ("JESA", "Not signed"),
+}
 def signed_class(code, rollup):
-    """'Signed' / 'Not signed' / 'At risk' for an unbilled line, None for lines outside unbilled AR (unearned on LS)."""
-    if code == "j-6.a": return None
-    if code in ("c-1.a", "c-1.b"): return "At risk"
-    r = " ".join(str(rollup or "").strip().lower().split())
-    if code in SIGNED_STATUS or r in SIGNED_ROLLUP: return "Signed"
-    return "Not signed"
+    """(responsibility, 'Signed'/'Not signed') for an unbilled line, or None when the status is outside the signed view."""
+    m = SIGNED_MAP.get(code)
+    if m is None:
+        if code not in SIGNED_MAP:  # unknown code: responsibility from the prefix, signature from the roll-up column
+            m = ("JESA" if code.startswith("j-") else "Client", "Depends")
+        else: return None
+    resp, sig = m
+    if sig == "Depends":
+        r = str(rollup or "").strip().lower()
+        sig = "Signed" if ("signed" in r and "not signed" not in r) else "Not signed"
+    return resp, sig
 
 def aggregate(path, as_of, prev_cutoff=None):
     """Aggregate a raw AR line list. as_of: date of the snapshot (for the current month). prev_cutoff: date (payments up to
@@ -211,7 +223,7 @@ def aggregate(path, as_of, prev_cutoff=None):
             jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
             sc = signed_class(code, g(r, "Rollup status"))
-            if sc: signed_bu[(b, sc)] += amt; signed_st[(code, sc)] += amt
+            if sc: signed_bu[(b, sc[0], sc[1])] += amt; signed_st[(code, sc[0], sc[1])] += amt
             owner[(b, owner_of(code))] += amt; st_tot[code] += amt; st_bu[(b, code)] += amt
             agu[(b, bucket(g(r, "Category Unbilled")))] += amt
             proj[(b, "Unbilled", wbs, pname)] += amt; st_proj.setdefault((b, "Unbilled", wbs, pname), code)

@@ -571,9 +571,10 @@ def default_messages(ar, cash, lc, ap, meta):
     cam = cash.get("cash_actual_month") or month[:3]; com = cash.get("cash_ongoing_month") or month[:3]; cpt = cash.get("cash_payments_to") or meta["payments_to"]
     ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot")
     sg = ar.get("signed_tot") or {}; urs = ar.get("ur_signed_tot")
+    sr = ar.get("signed_resp") or {}
     msg_signed = [f"Signed roll-ups: unbilled signed {sg.get('Signed', 0):,.0f} MMAD ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), not signed {sg.get('Not signed', 0):,.0f}"
                   + (f"; unrecognized signed {urs:,.0f}" if urs is not None else ""),
-                  f"Signed = attachments or service sheets signed by the client (statuses C-5.a, J-3.a, J-3.c, J-4.a, C-6.a and roll-ups flagged signed); at risk {sg.get('At risk', 0):,.0f} MMAD shown separately."]
+                  f"Under client / OCP responsibility: {sr.get(('Client', 'Signed'), 0):,.0f} signed, {sr.get(('Client', 'Not signed'), 0):,.0f} not signed; under JESA responsibility: {sr.get(('JESA', 'Signed'), 0):,.0f} signed, {sr.get(('JESA', 'Not signed'), 0):,.0f} not signed."]
     return [
         [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} vs {pw_lab}, {dm(tot)} vs {ms_lab}",
          f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW)."],
@@ -631,9 +632,9 @@ def prev_from_inputs(path):
     if "JESA_UNBILLED_BU" in wb.sheetnames:
         P["jesa_unbilled"] = {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")}
     P["ap_kpi"] = {r["metric"]: r["current"] for r in recs("AR_KPI") if str(r["metric"]).startswith("AP ") or r["metric"] == "LC"}
-    if "AR_SIGNED_BU" in wb.sheetnames:
-        P["signed_bu"] = {(r["bu"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_BU")}
-        P["signed_status"] = {(s2_code(r["status"]), r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_STATUS")}
+    if "AR_SIGNED_BU" in wb.sheetnames and "responsibility" in [c.value for c in wb["AR_SIGNED_BU"][2]]:
+        P["signed_bu"] = {(r["bu"], r["responsibility"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_BU")}
+        P["signed_status"] = {(s2_code(r["status"]), r["responsibility"], r["class"]): r["current"] or 0 for r in recs("AR_SIGNED_STATUS")}
     return P
 
 PHASES = ["Rejected", "Treasury", "OCP subs", "Ordonnancement", "Missing reception", "Other"]
@@ -806,7 +807,8 @@ def main():
 
     ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
     ar["nonocp_tot"] = sum(cur["nonocp"].values())
-    ar["signed_tot"] = {c: sum(v for (b, cc), v in cur["signed_bu"].items() if cc == c) for c in ("Signed", "Not signed", "At risk")}
+    ar["signed_tot"] = {c: sum(v for (b, rp, cc), v in cur["signed_bu"].items() if cc == c) for c in ("Signed", "Not signed")}
+    ar["signed_resp"] = {(rp, c): sum(v for (b, r_, cc), v in cur["signed_bu"].items() if r_ == rp and cc == c) for rp in ("Client", "JESA") for c in ("Signed", "Not signed")}
     ar["ur_signed_tot"] = (sum((r[2] or 0) + (r[7] or 0) for r in ur["table"]) if ur else None)
     wb = openpyxl.Workbook(); wb.remove(wb.active)
     write_sheet(wb, "META", ["key", "value"], [[k, (v.isoformat() if isinstance(v, dt.date) else v)] for k, v in meta.items()], note="Dates and labels used on the slides. Edit freely.", widths=[24, 60])
@@ -840,15 +842,15 @@ def main():
     write_sheet(wb, "JESA_UNBILLED_STATUS", ["status", "labor", "non_labor"], [[_sl(c), cur["jesa_unbilled_status"].get((c, "labor"), 0.0), cur["jesa_unbilled_status"].get((c, "non_labor"), 0.0)] for c in jcodes],
                 note="Unbilled under JESA responsibility by status and PSR / Procurement (MMAD, current week).", widths=[50, 12, 12])
     sg = cur["signed_bu"]; sgp = P.get("signed_bu") or {}; sgm = MS["signed_bu"] if MS else {}
-    classes = ["Signed", "Not signed", "At risk"]
-    write_sheet(wb, "AR_SIGNED_BU", ["bu", "class", "month_start", "prev_week", "current"],
-                [[b, c, (sgm.get((b, c), 0.0) if MS else None), (sgp.get((b, c)) if sgp else None), sg.get((b, c), 0.0)] for b in bus_in(cur) for c in classes],
-                note="Unbilled by client signature: 'Signed' = Status 2 in C-5.a, J-3.a, J-3.c, J-4.a, C-6.a or roll-up status signed/approved; 'At risk' = C-1.a/b; the rest 'Not signed'. MMAD.", widths=[28, 12, 12, 12, 12])
+    cells = [(rp, c) for rp in ("Client", "JESA") for c in ("Signed", "Not signed")]
+    write_sheet(wb, "AR_SIGNED_BU", ["bu", "responsibility", "class", "month_start", "prev_week", "current"],
+                [[b, rp, c, (sgm.get((b, rp, c), 0.0) if MS else None), (sgp.get((b, rp, c)) if sgp else None), sg.get((b, rp, c), 0.0)] for b in bus_in(cur) for rp, c in cells],
+                note="Unbilled by responsibility (Client = action with OCP, JESA) and client signature, per reference/status2_signed_mapping.md (statuses C-1.c/d, C-2.a signed when the roll-up status contains 'signed'). MMAD.", widths=[28, 14, 12, 12, 12, 12])
     sst = cur["signed_status"]; sstp = P.get("signed_status") or {}
-    codes = sorted({c for c, _ in sst}, key=lambda c: -sum(abs(v) for (cc, _), v in sst.items() if cc == c))
-    write_sheet(wb, "AR_SIGNED_STATUS", ["status", "class", "prev_week", "current"],
-                [[_sl(c), k, (sstp.get((c, k)) if sstp else None), sst.get((c, k), 0.0)] for c in codes for k in classes if abs(sst.get((c, k), 0.0)) > 0.005],
-                note="Unbilled by Status 2 and client signature class (MMAD).", widths=[50, 12, 12, 12])
+    codes = sorted({c for c, _, _ in sst}, key=lambda c: -sum(abs(v) for (cc, _, _), v in sst.items() if cc == c))
+    write_sheet(wb, "AR_SIGNED_STATUS", ["status", "responsibility", "class", "prev_week", "current"],
+                [[_sl(c), rp, k, (sstp.get((c, rp, k)) if sstp else None), sst.get((c, rp, k), 0.0)] for c in codes for rp, k in cells if abs(sst.get((c, rp, k), 0.0)) > 0.005],
+                note="Unbilled by Status 2, responsibility and client signature (MMAD).", widths=[50, 14, 12, 12, 12])
     write_sheet(wb, "DSO", ["bu", "dso_current", "dso_prior_month", "total_ar", "revenue_12m"], [[b, v.get("current"), v.get("prior"), v.get("ar"), v.get("rev12")] for b, v in dso.items()],
                 note="DSO (days) = total AR of the BU / 12-month trailing revenue x 365 (DSO calc workbook); 'JESA Group' row = group DSO; prior month from the Trend sheet.", widths=[28, 12, 14, 12, 12])
     if dso_trend:
