@@ -190,6 +190,7 @@ def aggregate(path, as_of, prev_cutoff=None):
                 if pdd > as_of: continue   # payments booked after the snapshot date belong to next week's view
                 if pdd.year == as_of.year:
                     coll_month[(pdd.month, lab)] += inv; coll_bu[(b, "ytd")] += inv; coll_cnt[b] += 1
+                    if pdd.month >= 7: coll_bu[(b, "jul_ytd")] += inv; coll_bu[(b, f"jul_ytd_{lab}")] += inv
                     if nonp: coll_bu[(b, "ytd_nonocp")] += inv
                     if prev_cutoff and pdd <= prev_cutoff: coll_bu[(b, "ytd_prev")] += inv
                     if (pdd.year, pdd.month) == cur_m:

@@ -602,21 +602,22 @@ def default_messages(ar, cash, lc, ap, meta):
     ju = ar.get("jesa_unbilled_tot"); nonocp = ar.get("nonocp_tot"); oc = ar.get("ocp_coll")
     sg = ar.get("signed_tot") or {}; urs = ar.get("ur_signed_tot")
     sr = ar.get("signed_resp") or {}; sl = ar.get("signed_lab") or {}; ura = ar.get("ur_attachments")
-    pay_msg = (f"collections {oc['month']} {oc['proc'] + oc['psr']:,.0f} MMAD per OCP payment report" if oc else f"invoices paid in {cmonth} {oct_cur:,.0f} MMAD")
+    jul_tot = sum(c[12] for c in coll if len(c) > 12); jul_lab = sum(c[13] for c in coll if len(c) > 13); jul_nl = sum(c[14] for c in coll if len(c) > 14)
+    pay_msg = (f"collections {oc['month']} {oc['proc'] + oc['psr']:,.0f} MMAD" if oc else f"invoices paid in {cmonth} {oct_cur:,.0f} MMAD")
     return [
-        [f"Gross exposure {new[3]:,.0f} MMAD: {dd(new)} week on week, {dm(new)} vs month start; {pay_msg}",
-         f"Total AR {tot[3]:,.0f} + unrecognized revenue {unrec[3]:,.0f}" + (f"; {oc['month']} collections split procurement {oc['proc']:,.0f} / PSR {oc['psr']:,.0f}." if oc else ".")],
-        [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} week on week, {dm(tot)} vs month start",
-         f"Unbilled {unb[3]:,.0f} ({dd(unb)} WoW, {dm(unb)} vs month start), unpaid {unp[3]:,.0f} ({dd(unp)} WoW), advance {adv[3]:,.0f} ({dd(adv)} WoW)."],
-        [f"Signed roll-ups: {sg.get('Signed', 0):,.0f} MMAD of unbilled signed by the client ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), {sg.get('Not signed', 0):,.0f} not signed",
+        [f"Gross exposure {new[3]:,.0f} MMAD: {dd(new)} WoW, {dm(new)} vs MS; {pay_msg}",
+         f"Total AR {tot[3]:,.0f} + unrecognized revenue {unrec[3]:,.0f}" + (f"; {oc['month']} collections split procurement {oc['proc']:,.0f} / PSR {oc['psr']:,.0f}" if oc else "") + f"; payments received since July {jul_tot:,.0f} MMAD (PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}, AR report)."],
+        [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} WoW, {dm(tot)} vs MS",
+         f"**Unbilled {unb[3]:,.0f}** ({dd(unb)} WoW, {dm(unb)} vs MS), **unpaid {unp[3]:,.0f}** ({dd(unp)} WoW, {dm(unp)} vs MS), advance {adv[3]:,.0f} ({dd(adv)} WoW)."],
+        [f"Signed roll-ups: {sg.get('Signed', 0):,.0f} MMAD of unbilled signed by the client ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), {sg.get('Not signed', 0):,.0f} not signed ({sg.get('Not signed', 0)/(unb[3] or 1)*100:.0f}%)",
          f"Signed: PSR {sl.get(('Signed', 'labor'), 0):,.0f} / Procurement {sl.get(('Signed', 'non_labor'), 0):,.0f}; not signed: PSR {sl.get(('Not signed', 'labor'), 0):,.0f} / Procurement {sl.get(('Not signed', 'non_labor'), 0):,.0f}. "
          f"Under client / OCP responsibility {sr.get(('Client', 'Signed'), 0):,.0f} signed and {sr.get(('Client', 'Not signed'), 0):,.0f} not signed; under JESA {sr.get(('JESA', 'Signed'), 0):,.0f} signed and {sr.get(('JESA', 'Not signed'), 0):,.0f} not signed."],
-        [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs month start)" + (f"; attachments signed by the client {urs:,.0f}" + (f" of {ura:,.0f} issued ({urs/ura*100:.0f}%)" if ura else "") if urs is not None else ""),
-         f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee" + (f"; {ura:,.0f} MMAD of attachments are issued to the client, of which {urs:,.0f} signed." if ura and urs is not None else ".")],
-        [(f"Collections {oc['month']} per OCP payment report: {oc['proc'] + oc['psr']:,.0f} MMAD (procurement {oc['proc']:,.0f}, PSR {oc['psr']:,.0f})"
-          + (f"; {oc['ytd']:,.0f} MMAD year to date" if oc.get("ytd") else "")) if oc else f"Invoices paid in {cmonth} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {ytd:,.0f} MMAD year to date",
+        [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs MS)" + (f"; signed by the client {urs:,.0f}" + (f" of {ura:,.0f} that can be signed ({urs/ura*100:.0f}%)" if ura else "") if urs is not None else ""),
+         f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee" + (f"; {ura:,.0f} MMAD of attachments can be signed by the client, of which {urs:,.0f} are signed." if ura and urs is not None else ".")],
+        [(f"Collections {oc['month']}: {oc['proc'] + oc['psr']:,.0f} MMAD (procurement {oc['proc']:,.0f}, PSR {oc['psr']:,.0f}); {jul_tot:,.0f} MMAD received since July (AR report)")
+          if oc else f"Invoices paid in {cmonth} to {cw_lab}: {oct_cur:,.0f} MMAD ({d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {jul_tot:,.0f} MMAD since July",
          (f"Previous report: procurement {oc['prev_proc']:,.0f}, PSR {oc['prev_psr']:,.0f} ({d(round(oc['proc']+oc['psr']) - round(oc['prev_proc']+oc['prev_psr']))}). " if oc and oc.get("prev_proc") is not None and oc.get("prev_psr") is not None else "")
-         + f"Invoices deposited in {cmonth}: {dep:,.0f} MMAD."],
+         + f"Since July: PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}. Invoices deposited in {cmonth}: {dep:,.0f} MMAD."],
         [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
          f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
          f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities) bring the position to {d(net_appr)} MMAD; "
@@ -811,7 +812,7 @@ def main():
     ar["collections_bu"] = []
     for b in bus:
         cb = cur["coll_bu"]
-        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0)])
+        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0), cb.get((b, "jul_ytd"), 0.0), cb.get((b, "jul_ytd_labor"), 0.0), cb.get((b, "jul_ytd_non_labor"), 0.0)])
     ar["ap_bu"] = [[b, ap_prev_bu.get(b, {}).get("downpayment", 0.0), ap_cur_bu[b]["downpayment"], ap_prev_bu.get(b, {}).get("parked", 0.0), ap_cur_bu[b]["parked"],
                     ap_prev_bu.get(b, {}).get("inv4411", 0.0), ap_cur_bu[b]["inv4411"], ap_prev_bu.get(b, {}).get("lc", 0.0), ap_cur_bu[b]["lc"]] for b in bus if b in ap_cur_bu or b in ap_prev_bu]
     # per-BU detail (current / prev when a raw prev file or prev inputs with detail exist / month start)
@@ -935,7 +936,7 @@ def main():
     if dso_trend:
         write_sheet(wb, "DSO_TREND", ["bu"] + dso_trend["trend_months"] + ["current"], [[b] + (dso_trend["trend"].get(b) or [None] * len(dso_trend["trend_months"])) + [dso[b]["current"]] for b in dso if b != "JESA Group"],
                     note=f"DSO history by BU (days) from the DSO calc workbook 'Trend' sheet; 12-month revenue window {dso_trend['window'][0]} to {dso_trend['window'][-1]}.", widths=[28] + [9] * (len(dso_trend["trend_months"]) + 1))
-    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
+    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd", "since_jul", "since_jul_labor", "since_jul_non_labor"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
                 note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT; nonocp_* = same measures for non-OCP clients (Client 1).", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     write_sheet(wb, "COLLECTIONS_MONTHLY", ["month", "labor", "non_labor"], [[m, cur["coll_month"].get((i + 1, "labor"), 0.0), cur["coll_month"].get((i + 1, "non_labor"), 0.0)] for i, m in enumerate(months)],
