@@ -975,7 +975,7 @@ def build(data, meta, out):
     card(s, 0.3 + 5 * (cw + 0.1), 1.2, cw, 1.1, "Net after ongoing", fd(net_all), f"Actuals {fd(net_act)} · after approved {fd(net_appr)}", fill=(RED if net_all < 0 else GREEN), value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 6 * (cw + 0.1), 1.2, cw, 1.1, "PSR collected", f0(psr["cumulative"]), f"Jul–{cam}: {f0(psr['jul'])} · {f0(psr['aug'])} · {f0(psr['sep'])} · {f0(psr['oct_actual'])}", fill=SLATE, value_size=20, sub_size=7.5, label_size=8.5)
     # ---- cumulative position by BU (EXEC Summary section 5)
-    tb(s, 0.4, 2.45, 12.6, 0.3, f"Cumulative position Jul–{cam} by business unit – actuals, {com} approved (suppliers / LC) and pending commitments (MMAD)", size=12, bold=True, color=NAVY)
+    tb(s, 0.4, 2.38, 12.6, 0.3, f"Cumulative position Jul–{cam} by business unit – actuals, {com} approved (suppliers / LC) and pending commitments (MMAD)", size=11.5, bold=True, color=NAVY)
     lc_ong = {r["bu"]: (r["oct_ongoing_lc"] or 0) for r in data.get("CASH_BU_OCT", [])}
     rows, colors = [], {}
     for i, r in enumerate(cbu):
@@ -986,13 +986,13 @@ def build(data, meta, out):
     rows.append(["Total BUs", f0(tot_r["cash_in"]), f0(-tot_r["cash_out_suppliers"]), f0(-tot_r["cash_out_lc"]), f0(-tot_r["cash_out_customs"]), fd(tot_r["net_actuals"]), f0(t_sup), f0(t_lc), fd(tot_r["net_after_approved"]), f0(-tot_r["oct_pending"]), fd(tot_r["net_all_ongoing"])])
     n = len(rows) - 1
     for j, k in ((5, "net_actuals"), (8, "net_after_approved"), (10, "net_all_ongoing")): colors[(n, j)] = delta_color(tot_r[k], False)
-    table(s, 0.35, 2.75, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved\nsuppliers", f"LC payments\ndue {com}", "Net after approved", f"{com} pending\nsuppliers", "Net after all ongoing"], rows,
-          col_w=[1.5, 0.9, 1.0, 0.8, 0.9, 0.95, 1.05, 0.95, 1.1, 1.0, 1.15], font_size=8.5, header_size=8, row_h=0.225, header_h=0.38, total_last=True, first_col_bold=True, colors=colors)
-    yb = 2.75 + 0.38 + 0.225 * len(rows) + 0.12
+    table(s, 0.35, 2.66, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved\nsuppliers", f"LC payments\ndue {com}", "Net after approved", f"{com} pending\nsuppliers", "Net after all ongoing"], rows,
+          col_w=[1.5, 0.9, 1.0, 0.8, 0.9, 0.95, 1.05, 0.95, 1.1, 1.0, 1.15], font_size=8, header_size=7.5, row_h=0.2, header_h=0.34, total_last=True, first_col_bold=True, colors=colors)
+    yb = 2.66 + 0.34 + 0.2 * len(rows) + 0.1
     # ---- bottom left: position by month (table)
     # ---- bottom: group walk from cash IN to the net position after all ongoing
     tb(s, 0.4, yb - 0.02, 12.6, 0.26, f"From cash IN to the net position after all {com} commitments – JESA Group (MMAD)", size=11, bold=True, color=NAVY)
-    waterfall(s, 0.3, yb + 0.22, 12.7, SH - 0.45 - (yb + 0.22),
+    waterfall(s, 0.3, yb + 0.2, 12.7, SH - 0.38 - (yb + 0.2),
               ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved suppliers", f"LC payments due", "Net after approved", f"{com} pending suppliers", "Net after all ongoing"],
               [tot_r["cash_in"], tot_r["cash_out_suppliers"], tot_r["cash_out_lc"], tot_r["cash_out_customs"], tot_r["net_actuals"], t_sup, t_lc, tot_r["net_after_approved"], -tot_r["oct_pending"], tot_r["net_all_ongoing"]],
               ["total", "delta", "delta", "delta", "total", "delta", "delta", "total", "delta", "total"], label_size=8, cat_size=7.5)
