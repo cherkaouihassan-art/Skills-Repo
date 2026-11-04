@@ -551,11 +551,11 @@ def build(data, meta, out):
     aL, aN = (splits.get("Total AR labor") or 0) - L - uL, (splits.get("Total AR non-labor") or 0) - N - uN
     if sgl:
         sL, sN = sgl.get(("Signed", "labor"), 0), sgl.get(("Signed", "non_labor"), 0)
-        series = [("Unbilled – signed by client", [sL, sN]), ("Unbilled – not signed", [L - sL, N - sN]), ("Unpaid", [uL, uN]), ("Advance", [aL, aN])]
+        series = [("Unbilled – signed by client", [sL, sN, 0]), ("Unbilled – not signed", [L - sL, N - sN, 0]), ("Unpaid", [uL, uN, 0]), ("Advance", [0, 0, aL + aN])]
         cols = [GREEN, GOLD, NAVY2, LBLUE]; lab_cols = [WHITE, DARK, WHITE, DARK]
     else:
-        series = [("Unbilled", [L, N]), ("Unpaid", [uL, uN]), ("Advance", [aL, aN])]; cols = [NAVY2, GREY, LBLUE]; lab_cols = [WHITE, WHITE, DARK]
-    ch = bar_chart(s, 5.3, 4.55, 7.7, 2.6, [f"Labor (PSR) – {f0(L + uL + aL)}", f"Non-labor (Procurement) – {f0(N + uN + aN)}"], series, cols, stacked=True, gap=90, label_size=8.5, label_colors=lab_cols, legend_pos=XL_LEGEND_POSITION.RIGHT)
+        series = [("Unbilled", [L, N, 0]), ("Unpaid", [uL, uN, 0]), ("Advance", [0, 0, aL + aN])]; cols = [NAVY2, GREY, LBLUE]; lab_cols = [WHITE, WHITE, DARK]
+    ch = bar_chart(s, 5.3, 4.55, 7.7, 2.6, [f"Labor (PSR)\ntotal {f0(L + uL)}", f"Non-labor (Procurement)\ntotal {f0(N + uN)}", f"Advance\n{f0(aL + aN)}"], series, cols, stacked=True, gap=70, label_size=8.5, cat_size=8.5, label_colors=lab_cols, legend_pos=XL_LEGEND_POSITION.RIGHT)
     hide_small_labels(ch, [v for _, v in series], 60)
 
     # ------------------------------------------------------------------ 3b. Unbilled by responsibility and client signature (one slide)
@@ -574,16 +574,22 @@ def build(data, meta, out):
         dwU, dmU = dlt(cells)
         s = D.slide("Unbilled – Responsibility & Client Signature", f"Unbilled {f0(U)} MMAD ({fd(dwU) if dwU is not None else 'n/a'} WoW, {fd(dmU)} vs MS): client / OCP {f0(cC)} vs JESA {f0(cJ)}; signed {f0(sS)} ({sS/(U or 1)*100:.0f}%) vs not signed {f0(sN)}")
         cw = (SW - 0.6 - 0.12 * 3) / 4
+        # level 1: total unbilled
+        rect(s, 0.3, 1.12, SW - 0.6, 0.62, NAVY, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.15)
+        tb(s, 0.5, 1.12, 12.4, 0.62, [[("TOTAL UNBILLED  ", {"size": 10, "bold": True, "color": LBLUE}), (f"{f0(U)} MMAD", {"size": 20, "bold": True, "color": WHITE}),
+                                       (f"     WoW {fd(dwU) if dwU is not None else 'n/a'}   ·   vs month start {fd(dmU)}   ·   PSR {f0(tsum(sel(l='labor'), 'current'))} · Procurement {f0(tsum(sel(l='non_labor'), 'current'))}", {"size": 10, "color": WHITE})]], anchor=MSO_ANCHOR.MIDDLE)
+        for i in range(4):  # connectors to level 2
+            rect(s, 0.3 + i * (cw + 0.12) + cw / 2 - 0.01, 1.74, 0.02, 0.14, GREY)
         boxes = (("Under client / OCP responsibility", sel("Client"), True, NAVY2), ("Under JESA responsibility", sel("JESA"), True, NAVY2), ("Signed by client", sel(c="Signed"), False, GREEN), ("Not signed by client", sel(c="Not signed"), True, GOLD))
-        tb(s, 0.3, 1.1, 2 * cw + 0.12, 0.22, "RESPONSIBILITY – who holds the next action", size=8, bold=True, color=NAVY2)
-        tb(s, 0.3 + 2 * (cw + 0.12), 1.1, 2 * cw + 0.12, 0.22, "SIGNATURE – has the client signed the attachment / service sheet", size=8, bold=True, color=GREEN)
+        tb(s, 0.3, 1.86, 2 * cw + 0.12, 0.2, "BY RESPONSIBILITY – who holds the next action", size=7.5, bold=True, color=NAVY2)
+        tb(s, 0.3 + 2 * (cw + 0.12), 1.86, 2 * cw + 0.12, 0.2, "BY SIGNATURE – has the client signed the attachment / service sheet", size=7.5, bold=True, color=GREEN)
         for i, (lab, cs, gwn, col) in enumerate(boxes):
             dw, dm = dlt(cs); val = tsum(cs, "current")
-            kpi_card(s, 0.3 + i * (cw + 0.12), 1.32, cw, 1.2, lab, val, delta_wow=dw, delta_ms=dm, good_when_negative=gwn, value_size=20, ms_label="vs month start", accent=col, border=(LBLUE if i < 2 else RGBColor(0xB9, 0xE2, 0xC6)))
-            tb(s, 0.3 + i * (cw + 0.12) + 0.15, 1.32 + 0.4, cw - 0.3, 0.36, [[(f"{val/(U or 1)*100:.0f}% of unbilled", {"size": 8.5, "color": SLATE})], [(f"PSR {f0(tsum([x for x in cs if x[2] == 'labor'], 'current'))} · Proc {f0(tsum([x for x in cs if x[2] == 'non_labor'], 'current'))}", {"size": 8, "color": SLATE})]], size=8, align=PP_ALIGN.RIGHT)
+            kpi_card(s, 0.3 + i * (cw + 0.12), 2.06, cw, 1.2, lab, val, delta_wow=dw, delta_ms=dm, good_when_negative=gwn, value_size=18, ms_label="vs month start", accent=col, border=(LBLUE if i < 2 else RGBColor(0xB9, 0xE2, 0xC6)))
+            tb(s, 0.3 + i * (cw + 0.12) + 1.3, 2.06 + 0.36, cw - 1.45, 0.22, f"{val/(U or 1)*100:.0f}% of unbilled · PSR {f0(tsum([x for x in cs if x[2] == 'labor'], 'current'))} · Proc {f0(tsum([x for x in cs if x[2] == 'non_labor'], 'current'))}", size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
         # ---- section 1: responsibility by BU
         sb = sorted([b for b in sgd if abs(tsum(cells, "current", b)) > 0.5], key=lambda b: -tsum(cells, "current", b))
-        tb(s, 0.4, 2.68, 6.3, 0.3, "1 · Unbilled by responsibility – under client / OCP vs under JESA (MMAD)", size=11.5, bold=True, color=NAVY2)
+        tb(s, 0.4, 3.38, 6.3, 0.3, "1 · Unbilled by responsibility – under client / OCP vs under JESA (MMAD)", size=11.5, bold=True, color=NAVY2)
         rows, colors = [], {}
         for i, b in enumerate(sb):
             oc, je = tsum(sel("Client"), "current", b), tsum(sel("JESA"), "current", b); t_ = oc + je
@@ -593,10 +599,10 @@ def build(data, meta, out):
         dwC, _ = dlt(sel("Client")); dwJ, _ = dlt(sel("JESA"))
         rows.append(["Total JESA", f0(cC), f"{cC/(U or 1)*100:.0f}%", fd(dwC) if dwC is not None else "n/a", f0(cJ), f"{cJ/(U or 1)*100:.0f}%", fd(dwJ) if dwJ is not None else "n/a", f0(U)])
         n = len(rows) - 1; colors[(n, 3)] = delta_color(dwC); colors[(n, 6)] = delta_color(dwJ)
-        table(s, 0.4, 2.98, 6.3, ["BU", "Client / OCP", "%", "Δ WoW", "JESA", "%", "Δ WoW", "Unbilled"], rows, col_w=[1.35, 0.9, 0.55, 0.65, 0.8, 0.55, 0.65, 0.85], font_size=8.5, header_size=8, row_h=0.26, header_h=0.3, colors=colors, total_last=True, header_fill=NAVY2)
-        tb(s, 0.4, 2.98 + 0.3 + 0.26 * len(rows) + 0.05, 6.3, 0.4, f"Client / OCP = C-* statuses (action with the client, incl. at risk) and service sheets postponed; JESA = the other J-* statuses. Excludes {f0((unb['current'] or 0) - U)} MMAD of rejected and unearned lines.", size=7.5, italic=True, color=SLATE)
+        table(s, 0.4, 3.66, 6.3, ["BU", "Client / OCP", "%", "Δ WoW", "JESA", "%", "Δ WoW", "Unbilled"], rows, col_w=[1.35, 0.9, 0.55, 0.65, 0.8, 0.55, 0.65, 0.85], font_size=8.5, header_size=8, row_h=0.24, header_h=0.3, colors=colors, total_last=True, header_fill=NAVY2)
+        tb(s, 0.4, 3.66 + 0.3 + 0.24 * len(rows) + 0.05, 6.3, 0.4, f"Client / OCP = C-* statuses (action with the client, incl. at risk) and service sheets postponed; JESA = the other J-* statuses. Excludes {f0((unb['current'] or 0) - U)} MMAD of rejected and unearned lines.", size=7.5, italic=True, color=SLATE)
         # ---- section 2: signature by BU with the responsibility of what is not signed
-        tb(s, 6.95, 2.68, 6.1, 0.3, "2 · Client signature – signed vs not signed, who holds the unsigned part (MMAD)", size=11, bold=True, color=GREEN)
+        tb(s, 6.95, 3.38, 6.1, 0.3, "2 · Client signature – signed vs not signed, who holds the unsigned part (MMAD)", size=11, bold=True, color=GREEN)
         rows, colors = [], {}
         for i, b in enumerate(sb):
             sg_, ns_ = tsum(sel(c="Signed"), "current", b), tsum(sel(c="Not signed"), "current", b); t_ = sg_ + ns_
@@ -607,8 +613,12 @@ def build(data, meta, out):
         dw, dm = dlt(sel(c="Signed"))
         rows.append(["Total JESA", f0(sS), f"{sS/(U or 1)*100:.0f}%", fd(dw) if dw is not None else "n/a", fd(dm), f0(sN), f0(tsum(sel("Client", "Not signed"), "current")), f0(tsum(sel("JESA", "Not signed"), "current"))])
         n = len(rows) - 1; colors[(n, 3)] = delta_color(dw, False); colors[(n, 4)] = delta_color(dm, False)
-        table(s, 6.95, 2.98, 6.1, ["BU", "Signed", "% signed", "Δ WoW", "Δ vs MS", "Not signed", "o/w client\n/ OCP", "o/w JESA"], rows, col_w=[1.3, 0.75, 0.65, 0.65, 0.7, 0.8, 0.7, 0.65], font_size=8.5, header_size=8, row_h=0.26, header_h=0.36, colors=colors, total_last=True, header_fill=GREEN)
-        tb(s, 6.95, 2.98 + 0.36 + 0.26 * len(rows) + 0.05, 6.1, 0.4, "Signed = C-3.a/b, C-5.a, J-3.a, J-3.c, J-4.a, plus at-risk, pending-PO and VAT-exemption lines whose roll-up status reads signed (finance guideline, reference/status2_signed_mapping.md).", size=7.5, italic=True, color=SLATE)
+        NS_FILL = RGBColor(0xFA, 0xEF, 0xD6); NS_HDR = RGBColor(0xA6, 0x7C, 0x1F)
+        fills = {(i, j): NS_FILL for i in range(len(rows)) for j in (6, 7)}
+        gs_ = table(s, 6.95, 3.66, 6.1, ["BU", "Signed", "% signed", "Δ WoW", "Δ vs MS", "Not signed", "Not signed\nunder Client", "Not signed\nunder JESA"], rows, col_w=[1.25, 0.72, 0.62, 0.62, 0.66, 0.78, 0.75, 0.7], font_size=8.5, header_size=7.5, row_h=0.24, header_h=0.36, colors=colors, fills=fills, total_last=True, header_fill=GREEN)
+        for j in (6, 7):
+            c_ = gs_.table.cell(0, j); c_.fill.solid(); c_.fill.fore_color.rgb = NS_HDR
+        tb(s, 6.95, 3.66 + 0.36 + 0.24 * len(rows) + 0.05, 6.1, 0.4, "Signed = C-3.a/b, C-5.a, J-3.a, J-3.c, J-4.a, plus at-risk, pending-PO and VAT-exemption lines whose roll-up status reads signed (finance guideline, reference/status2_signed_mapping.md).", size=7.5, italic=True, color=SLATE)
 
         # ---- PSR signature by BU (dedicated slide)
         s = D.slide("Signature Progress – Unbilled PSR by Business Unit", f"Unbilled PSR (labor) {f0(tsum(sel(l='labor'), 'current'))} MMAD: signed by the client {f0(tsum(sel(c='Signed', l='labor'), 'current'))} ({tsum(sel(c='Signed', l='labor'), 'current')/(tsum(sel(l='labor'), 'current') or 1)*100:.0f}%), not signed {f0(tsum(sel(c='Not signed', l='labor'), 'current'))}")
@@ -617,20 +627,20 @@ def build(data, meta, out):
         for i, (lab, cs, gwn, col) in enumerate((("Unbilled PSR", sel(l="labor"), True, NAVY2), ("PSR signed by client", sel(c="Signed", l="labor"), False, GREEN), ("PSR not signed", sel(c="Not signed", l="labor"), True, GOLD), ("PSR not signed – under JESA", sel("JESA", "Not signed", "labor"), True, GOLD))):
             dw, dm = dlt(cs)
             kpi_card(s, 0.3 + i * (cw + 0.12), 1.2, cw, 1.2, lab, tsum(cs, "current"), delta_wow=dw, delta_ms=dm, good_when_negative=gwn, value_size=20, ms_label="vs month start", accent=col)
-        tb(s, 0.4, 2.6, 7.6, 0.3, "Unbilled PSR – signed vs not signed by business unit, with the responsibility of the unsigned part (MMAD)", size=12, bold=True, color=NAVY)
+        tb(s, 0.4, 2.6, 7.6, 0.3, "Unbilled PSR – signed vs not signed by BU, and who holds the unsigned part (MMAD)", size=11.5, bold=True, color=NAVY)
         rows, colors = [], {}
         pb = sorted([b for b in sgd if abs(tsum(sel(l="labor"), "current", b)) > 0.5], key=lambda b: -tsum(sel(l="labor"), "current", b))
         for i, b in enumerate(pb):
             t_ = tsum(sel(l="labor"), "current", b); sg_ = tsum(sel(c="Signed", l="labor"), "current", b)
             nsC, nsJ = tsum(sel("Client", "Not signed", "labor"), "current", b), tsum(sel("JESA", "Not signed", "labor"), "current", b)
-            dw, dm = dlt(sel(c="Signed", l="labor"), b)
-            rows.append([short(b), f0(t_), f0(sg_), f"{sg_/t_*100:.0f}%" if abs(t_) > 0.5 else "–", fd(dw) if dw is not None else "n/a", fd(dm), f0(nsC + nsJ), f0(nsC), f0(nsJ)])
-            colors[(i, 4)] = delta_color(dw, False); colors[(i, 5)] = delta_color(dm, False)
-        dw, dm = dlt(sel(c="Signed", l="labor"))
-        rows.append(["Total JESA", f0(TL), f0(SL), f"{SL/(TL or 1)*100:.0f}%", fd(dw) if dw is not None else "n/a", fd(dm), f0(NL), f0(tsum(sel("Client", "Not signed", "labor"), "current")), f0(tsum(sel("JESA", "Not signed", "labor"), "current"))])
-        n = len(rows) - 1; colors[(n, 4)] = delta_color(dw, False); colors[(n, 5)] = delta_color(dm, False)
-        table(s, 0.4, 2.9, 7.6, ["BU", "Unbilled\nPSR", "Signed", "% signed", "Δ signed\nWoW", "Δ signed\nvs MS", "Not\nsigned", "o/w client\n/ OCP", "o/w JESA"], rows,
-              col_w=[1.35, 0.85, 0.8, 0.75, 0.8, 0.8, 0.8, 0.85, 0.8], font_size=9, header_size=8, row_h=0.3, header_h=0.44, colors=colors, total_last=True)
+            rows.append([short(b), f0(t_), f0(sg_), f"{sg_/t_*100:.0f}%" if abs(t_) > 0.5 else "–", f0(nsC + nsJ), f0(nsC), f0(nsJ)])
+        rows.append(["Total JESA", f0(TL), f0(SL), f"{SL/(TL or 1)*100:.0f}%", f0(NL), f0(tsum(sel("Client", "Not signed", "labor"), "current")), f0(tsum(sel("JESA", "Not signed", "labor"), "current"))])
+        NS_FILL = RGBColor(0xFA, 0xEF, 0xD6); NS_HDR = RGBColor(0xA6, 0x7C, 0x1F)
+        fills = {(i, j): NS_FILL for i in range(len(rows)) for j in (5, 6)}
+        gs_ = table(s, 0.4, 2.9, 7.6, ["BU", "Unbilled PSR", "Signed", "% signed", "Not signed", "Not signed\nunder Client", "Not signed\nunder JESA"], rows,
+              col_w=[1.6, 1.0, 0.95, 0.9, 1.0, 1.1, 1.05], font_size=9, header_size=8.5, row_h=0.3, header_h=0.44, fills=fills, total_last=True)
+        for j in (5, 6):
+            c_ = gs_.table.cell(0, j); c_.fill.solid(); c_.fill.fore_color.rgb = NS_HDR
         topp = pb[:9]
         ch = bar_chart(s, 8.2, 2.6, 4.9, 4.5, [short(b) for b in topp], [("Signed", [tsum(sel(c="Signed", l="labor"), "current", b) for b in topp]), ("Not signed – client / OCP", [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp]), ("Not signed – JESA", [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp])], [GREEN, GOLD, ORANGE], stacked=True, horizontal=True, gap=35, cat_size=8, label_size=7.5, label_colors=[WHITE, DARK, WHITE], legend_pos=XL_LEGEND_POSITION.BOTTOM, title="Unbilled PSR by BU (MMAD)")
         hide_small_labels(ch, [[tsum(sel(c="Signed", l="labor"), "current", b) for b in topp], [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp], [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp]], 40)
@@ -851,10 +861,8 @@ def build(data, meta, out):
               "Global Mining": GREY, "Building & Infrastructure": RED, "AM": NAVY, "Advisory": PURPLE, "Building & Capabilities": ORANGE, "Power to X": LBLUE}
     utb = sorted([r for r in ut if (r["grand_total"] or 0) > 0.05], key=lambda r: -(r["grand_total"] or 0))
     tb(s, 0.4, 2.6, 6, 0.3, "Unrecognized Revenue by Business Unit", size=13, bold=True, color=NAVY)
-    tb(s, 0.4, 2.88, 6, 0.25, "6% JESA cost + fee markup included (MMAD)" + (f"  ·  Δ vs {prev_s} in brackets" if ur_prev is not None else ""), size=9, color=SLATE)
+    tb(s, 0.4, 2.88, 6, 0.25, "6% JESA cost + fee markup included (MMAD)", size=9, color=SLATE)
     cats = [short(r["bu"]) for r in utb]
-    if ur_prev is not None:
-        cats = [f"{short(r['bu'])}  ({fd(round(r['grand_total'] or 0) - round(r['prev_week_total'] or 0))})" if r.get("prev_week_total") is not None else short(r["bu"]) for r in utb]
     def eqs(r): return sum((r[k] or 0) for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk"))
     def sbs(r): return (r["grand_total"] or 0) - eqs(r)
     ch = bar_chart(s, 0.3, 3.15, 6.3, 3.6, cats, [("Equipment", [eqs(r) for r in utb]), ("Subcontractors", [sbs(r) for r in utb])], [NAVY2, GOLD], horizontal=True, stacked=True, gap=35, cat_size=8.5, label_size=8, label_colors=[WHITE, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM)
@@ -962,7 +970,7 @@ def build(data, meta, out):
     card(s, 0.3, 1.2, cw, 1.1, f"Cash IN Jul–{cam}", f0(cin["cumulative"]), f"OCP {f0(proc['cumulative'])} + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + (cw + 0.1), 1.2, cw, 1.1, f"Cash OUT Jul–{cam}", f0(-(cout["jul"] + cout["aug"] + cout["sep"] + cout["oct_actual"])), f"Suppliers, LC, customs to {cpt}", fill=NAVY2, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 2 * (cw + 0.1), 1.2, cw, 1.1, f"{com} approved supp.", f0(appr_sup), "Approved supplier invoices", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 3 * (cw + 0.1), 1.2, cw, 1.1, f"{com} approved LC", f0(appr_lc), "LC maturities per bank situation", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 3 * (cw + 0.1), 1.2, cw, 1.1, f"LC payments due – {com}", f0(appr_lc), "LC maturities per bank situation", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 4 * (cw + 0.1), 1.2, cw, 1.1, f"{com} pending supp.", f0(pend), "Pending payment approval", fill=ORANGE, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 5 * (cw + 0.1), 1.2, cw, 1.1, "Net after ongoing", fd(net_all), f"Actuals {fd(net_act)} · after approved {fd(net_appr)}", fill=(RED if net_all < 0 else GREEN), value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 6 * (cw + 0.1), 1.2, cw, 1.1, "PSR collected", f0(psr["cumulative"]), f"Jul–{cam}: {f0(psr['jul'])} · {f0(psr['aug'])} · {f0(psr['sep'])} · {f0(psr['oct_actual'])}", fill=SLATE, value_size=20, sub_size=7.5, label_size=8.5)
@@ -978,13 +986,16 @@ def build(data, meta, out):
     rows.append(["Total BUs", f0(tot_r["cash_in"]), f0(-tot_r["cash_out_suppliers"]), f0(-tot_r["cash_out_lc"]), f0(-tot_r["cash_out_customs"]), fd(tot_r["net_actuals"]), f0(t_sup), f0(t_lc), fd(tot_r["net_after_approved"]), f0(-tot_r["oct_pending"]), fd(tot_r["net_all_ongoing"])])
     n = len(rows) - 1
     for j, k in ((5, "net_actuals"), (8, "net_after_approved"), (10, "net_all_ongoing")): colors[(n, j)] = delta_color(tot_r[k], False)
-    table(s, 0.35, 2.75, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved\nsuppliers", f"{com} approved\nLC", "Net after approved", f"{com} pending\nsuppliers", "Net after all ongoing"], rows,
-          col_w=[1.5, 0.9, 1.0, 0.8, 0.9, 0.95, 1.05, 0.95, 1.1, 1.0, 1.15], font_size=8.5, header_size=8, row_h=0.26, header_h=0.4, total_last=True, first_col_bold=True, colors=colors)
-    yb = 2.75 + 0.4 + 0.26 * len(rows) + 0.15
+    table(s, 0.35, 2.75, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved\nsuppliers", f"LC payments\ndue {com}", "Net after approved", f"{com} pending\nsuppliers", "Net after all ongoing"], rows,
+          col_w=[1.5, 0.9, 1.0, 0.8, 0.9, 0.95, 1.05, 0.95, 1.1, 1.0, 1.15], font_size=8.5, header_size=8, row_h=0.225, header_h=0.38, total_last=True, first_col_bold=True, colors=colors)
+    yb = 2.75 + 0.38 + 0.225 * len(rows) + 0.12
     # ---- bottom left: position by month (table)
-    # ---- bottom: net after all ongoing by BU
-    ch = bar_chart(s, 0.3, yb, 12.7, SH - 0.45 - yb, [short(r["bu"]) for r in cbu], [("Net after all ongoing", [r["net_all_ongoing"] for r in cbu])], [GOLD], legend=False, gap=60, cat_size=8, label_size=8, title="Net balance after all ongoing commitments by BU (MMAD)", number_format='+#,##0;−#,##0;0')
-    color_points(ch, 0, [GREEN if (r["net_all_ongoing"] or 0) >= 0 else RED for r in cbu])
+    # ---- bottom: group walk from cash IN to the net position after all ongoing
+    tb(s, 0.4, yb - 0.02, 12.6, 0.26, f"From cash IN to the net position after all {com} commitments – JESA Group (MMAD)", size=11, bold=True, color=NAVY)
+    waterfall(s, 0.3, yb + 0.22, 12.7, SH - 0.45 - (yb + 0.22),
+              ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved suppliers", f"LC payments due", "Net after approved", f"{com} pending suppliers", "Net after all ongoing"],
+              [tot_r["cash_in"], tot_r["cash_out_suppliers"], tot_r["cash_out_lc"], tot_r["cash_out_customs"], tot_r["net_actuals"], t_sup, t_lc, tot_r["net_after_approved"], -tot_r["oct_pending"], tot_r["net_all_ongoing"]],
+              ["total", "delta", "delta", "delta", "total", "delta", "delta", "total", "delta", "total"], label_size=8, cat_size=7.5)
 
     # ------------------------------------------------------------------ 10b. PSR (labor) collections
     D.section = "cash_backup"
