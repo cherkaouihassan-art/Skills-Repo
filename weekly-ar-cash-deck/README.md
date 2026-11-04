@@ -19,6 +19,7 @@ sources (4 files)  ──►  extract_inputs.py  ──►  inputs/weekly_inputs
 | 5 | `UR_Tracking_Consolidation.xlsx` | `Summary UR`, `Summary PO by BU`, `Sheet1` | unrecognized revenue (columns already include the 6% markup) |
 | 5b | `OCP Payments Weekly.xlsx` | `Summary by BU` | monthly collections per OCP payment report (total, PSR, procurement by BU); the current month comes from the cash flow workbook. Feeds the collections slide, the executive summary and the collected-by-BU figures |
 | 6 | `WIP_DSO_calc.xlsx` | `12 Months Trailing`, `Trend`, `DSO Table` | DSO = total AR of the BU ÷ 12-month trailing revenue × 365. The AR side is recomputed every week from the AR extract; the revenue side (per project, trailing 12 months) only changes when a month closes, so a refreshed workbook is needed once a month (the last one is kept in `inputs/dso_calc/`). `Trend` gives the monthly DSO history for the trend slide. The BU meeting PDF is no longer needed for DSO |
+| 6b | `Suspension Log Analysis Projects.xlsx` (when refreshed) | sheet with `Project Node`, `WBS Level 2`, `Final Suspension Status` | project status of the unbilled lines (continue / completed / suspended / rescheduling / hold), shown for the PSR not-signed roll-ups on the signature progress slide |
 | 7 | beginning-of-month AR extract | `AR` | once per month: the first AR extract of the month, path and date in `inputs/month_start.txt` |
 
 Previous-week comparatives (AR, unrecognized revenue, AP, LC, collections) come from `inputs/history/weekly_inputs_<date>.xlsx`
@@ -116,6 +117,8 @@ between the main body and the backup, change its `D.section = ...` tag.
 ## Conventions
 
 * All amounts in MMAD (millions of MAD); AR decreases are shown green, increases red; cash net balances the other way round.
+* Labor vs non-labor on the AR slides follows the AR `TYPE` column (col AJ): anything called labor is labor, the rest is
+  Procurement / non-labor. Collections keep the `PSR/PROC` column, which ties to the BU meeting report.
 * Business-unit names are normalised (`AMT`→AM, `FEC`→Fertilizers & Chemicals, `WEN`→Water & Environment, …) in `extract_inputs.py`.
 * The deck uses a text "JESA" wordmark top-right; drop the logo image on the slide master if preferred.
 

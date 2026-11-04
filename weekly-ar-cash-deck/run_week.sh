@@ -16,7 +16,9 @@ cd "$(dirname "$0")"
 SRC="$1"; ASOF="$2"; ARDATE="$3"; PREVDATE="$4"
 find1() { find "$SRC" -maxdepth 1 -iname "$1" | head -1; }
 AR=$(find1 'AR_PRE*.xlsx'); [ -z "$AR" ] && AR=$(find1 'AR*.zip'); [ -z "$AR" ] && AR=$(find1 'AR*.csv'); [ -z "$AR" ] && AR=$(find1 'AR*.xlsx'); CASH=$(find1 'CASH*flow*.xlsx'); AP=$(find1 'AP*.xlsx'); [ -z "$AP" ] && AP=$(find1 'Supplier*.xlsx')
-LC=$(find1 '*LC*SITUATION*.xlsx'); [ -z "$LC" ] && LC=$(find1 '*LC*.zip'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx'); OCP=$(find1 'OCP*Payments*.xlsx')
+LC=$(find1 '*LC*SITUATION*.xlsx'); [ -z "$LC" ] && LC=$(find1 '*LC*.zip'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx'); OCP=$(find1 'OCP*Payments*.xlsx'); SUSP=$(find1 '*Suspension*.xlsx')
+mkdir -p inputs/suspension_log; if [ -n "$SUSP" ]; then cp "$SUSP" "inputs/suspension_log/Suspension_Log_${ASOF}.xlsx"; fi
+SUSP=$(ls -t inputs/suspension_log/*.xlsx 2>/dev/null | head -1); SUSPARG=(); [ -n "$SUSP" ] && SUSPARG=(--suspension-log "$SUSP")
 mkdir -p inputs/ocp_payments; if [ -n "$OCP" ]; then cp "$OCP" "inputs/ocp_payments/OCP_Payments_Weekly_${ASOF}.xlsx"; fi
 OCP=$(ls -t inputs/ocp_payments/*.xlsx 2>/dev/null | head -1); OCPARG=(); [ -n "$OCP" ] && OCPARG=(--ocp-payments "$OCP")
 # Cash flow workbook: the master maintained by the cash flow refresh kit in this repository (branch CASH_BRANCH),
@@ -39,7 +41,7 @@ MS_FILE=$(sed -n 1p inputs/month_start.txt); MS_DATE=$(sed -n 2p inputs/month_st
 PREV=$(ls -t inputs/history/weekly_inputs_*.xlsx | head -1)
 echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; echo "DSO calc=$DSO"; echo "previous week=$PREV"; echo "month start=$MS_FILE ($MS_DATE)"
 python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseline "$MS_FILE" --ar-baseline-date "$MS_DATE" \
-  --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" --dso-calc "$DSO" "${OCPARG[@]}" \
+  --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" --dso-calc "$DSO" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
   --as-of "$ASOF" --ar-date "$ARDATE" --ar-prev-date "$PREVDATE" --out inputs/weekly_inputs.xlsx
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"

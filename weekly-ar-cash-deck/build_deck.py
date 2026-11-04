@@ -644,10 +644,30 @@ def build(data, meta, out):
               col_w=[1.6, 1.0, 0.95, 0.9, 1.0, 1.1, 1.05], font_size=9, header_size=8.5, row_h=0.3, header_h=0.44, fills=fills, total_last=True)
         for j in (5, 6):
             c_ = gs_.table.cell(0, j); c_.fill.solid(); c_.fill.fore_color.rgb = NS_HDR
-        topp = pb[:9]
-        ch = bar_chart(s, 8.2, 2.6, 4.9, 4.5, [short(b) for b in topp], [("Signed", [tsum(sel(c="Signed", l="labor"), "current", b) for b in topp]), ("Not signed – client / OCP", [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp]), ("Not signed – JESA", [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp])], [GREEN, GOLD, ORANGE], stacked=True, horizontal=True, gap=35, cat_size=8, label_size=7.5, label_colors=[WHITE, DARK, WHITE], legend_pos=XL_LEGEND_POSITION.BOTTOM, title="Unbilled PSR by BU (MMAD)")
-        hide_small_labels(ch, [[tsum(sel(c="Signed", l="labor"), "current", b) for b in topp], [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp], [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp]], 40)
-        tb(s, 0.4, SH - 0.42, 12.6, 0.2, "Signature per finance guideline (reference/status2_signed_mapping.md). PSR = labor scope (PSR/PROC column of the AR extract).", size=7.5, italic=True, color=SLATE)
+        pst = [r for r in data.get("AR_SIGNED_PROJECT_STATUS", []) if r["class"] == "Not signed" and r["split"] == "labor"]
+        if pst:
+            tb(s, 8.2, 2.6, 4.9, 0.3, "PSR not signed – project status (suspension log, MMAD)", size=12, bold=True, color=NAVY)
+            order = ["Continue", "Completed", "Rescheduling", "Full suspension", "Partial suspension", "Hold"]
+            agg = {}
+            for r in pst: agg.setdefault(r["bu"], {})[r["project_status"]] = agg.get(r["bu"], {}).get(r["project_status"], 0) + (r["current"] or 0)
+            def pv(b, st): return agg.get(b, {}).get(st, 0)
+            def pother(b): return sum(v for st, v in agg.get(b, {}).items() if st not in order)
+            pbs = sorted(agg, key=lambda b: -sum(agg[b].values()))
+            rows = []
+            for b in pbs:
+                rows.append([short(b)] + [f0(pv(b, st)) for st in order] + [f0(pother(b)), f0(sum(agg[b].values()))])
+            tots = [sum(pv(b, st) for b in pbs) for st in order]; oth_t = sum(pother(b) for b in pbs); all_t = sum(sum(agg[b].values()) for b in pbs)
+            rows.append(["Total"] + [f0(v) for v in tots] + [f0(oth_t), f0(all_t)])
+            table(s, 8.2, 2.9, 4.9, ["BU", "Cont.", "Compl.", "Resch.", "Full\nsusp.", "Partial\nsusp.", "Hold", "Other", "Total"], rows,
+                  col_w=[1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.45, 0.45, 0.5], font_size=7.5, header_size=7, row_h=0.26, header_h=0.4, total_last=True)
+            ya = 2.9 + 0.4 + 0.26 * len(rows) + 0.08
+            susp = tots[3] + tots[4] + tots[5]
+            tb(s, 8.2, ya, 4.9, 0.9, [[(f"{f0(susp)} MMAD", {"bold": True, "color": RED}), (f" of the PSR not signed sits on suspended, partially suspended or on-hold projects ({susp/(all_t or 1)*100:.0f}%); ", {}), (f"{f0(tots[1])} MMAD", {"bold": True, "color": NAVY}), (" on completed projects. 'Other' = cancelled, closed, not applicable, not in the log.", {})]], size=8, color=DARK, line_spacing=1.05)
+        else:
+            topp = pb[:9]
+            ch = bar_chart(s, 8.2, 2.6, 4.9, 4.5, [short(b) for b in topp], [("Signed", [tsum(sel(c="Signed", l="labor"), "current", b) for b in topp]), ("Not signed – client / OCP", [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp]), ("Not signed – JESA", [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp])], [GREEN, GOLD, ORANGE], stacked=True, horizontal=True, gap=35, cat_size=8, label_size=7.5, label_colors=[WHITE, DARK, WHITE], legend_pos=XL_LEGEND_POSITION.BOTTOM, title="Unbilled PSR by BU (MMAD)")
+            hide_small_labels(ch, [[tsum(sel(c="Signed", l="labor"), "current", b) for b in topp], [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp], [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp]], 40)
+        tb(s, 0.4, SH - 0.42, 12.6, 0.2, "Signature per finance guideline (reference/status2_signed_mapping.md). PSR = labor per the AR 'TYPE' column (anything called labor); the rest is Procurement.", size=7.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 4. AR movement (comparatives)
     D.section = "ar_backup"

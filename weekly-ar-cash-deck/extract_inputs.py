@@ -471,6 +471,24 @@ def compute_dso(dc, ar_bu_total):
         if b in dso and hist: dso[b]["prior"] = hist[-1]
     return dso
 
+# ----------------------------------------------------------------------------- Suspension log (project status)
+def extract_suspension_log(path):
+    """'Project Node', 'WBS Level 2', 'Final Suspension Status' -> {wbs level 2 / project node: normalised status}."""
+    from ar_engine import norm_pstatus
+    wbk = openpyxl.load_workbook(path, data_only=True, read_only=True)
+    ws = next((w for w in wbk.worksheets if any(str(c.value or "").strip() == "Project Node" for row in w.iter_rows(max_row=12) for c in row)), wbk.worksheets[0])
+    rows = [list(r) for r in ws.iter_rows(values_only=True)]
+    hi = next(i for i, r in enumerate(rows) if r and str(r[0] or "").strip() == "Project Node")
+    hdr = [str(h or "").strip().lower() for h in rows[hi]]
+    iw = next((i for i, h in enumerate(hdr) if h.startswith("wbs level 2")), 2); ist = next((i for i, h in enumerate(hdr) if "status" in h), 4)
+    out = {}
+    for r in rows[hi + 1:]:
+        if not r[0]: continue
+        st = norm_pstatus(r[ist])
+        if r[iw]: out[str(r[iw]).strip()] = st
+        out.setdefault(str(r[0]).strip(), st)
+    return out
+
 # ----------------------------------------------------------------------------- OCP payments weekly workbook (collections per OCP payment report)
 def _mlabel(v):
     if isinstance(v, (dt.datetime, dt.date)): return v.strftime("%b")
@@ -711,6 +729,7 @@ def main():
     ap_.add_argument("--collections-to", default=None); ap_.add_argument("--payments-to", default=None); ap_.add_argument("--lc-date", default=None)
     ap_.add_argument("--ap-label", default=None); ap_.add_argument("--week-label", default=None)
     ap_.add_argument("--draft-note", default=None, help="text shown on the title slide when figures are provisional")
+    ap_.add_argument("--suspension-log", default=None, help="Suspension log workbook: project status (continue / suspended / completed …) joined to the unbilled lines by WBS")
     ap_.add_argument("--coll-month", default=None, help="month reported for collections, YYYY-MM (default: the cash workbook's actual month, else the AR snapshot month)")
     ap_.add_argument("--ocp-payments", default=None, help="OCP Payments Weekly workbook ('Summary by BU'): monthly collections per OCP payment report")
     ap_.add_argument("--out", default="inputs/weekly_inputs.xlsx")
@@ -719,7 +738,9 @@ def main():
     as_of = dt.date.fromisoformat(a.as_of); ar_date = dt.date.fromisoformat(a.ar_date); prev_date = dt.date.fromisoformat(a.ar_prev_date)
     from ar_engine import aggregate, bus_in, status_label, owner_of, BUCKETS
     coll_m = dt.date.fromisoformat(a.coll_month + "-15") if a.coll_month else None
-    cur = aggregate(a.ar, ar_date, prev_cutoff=prev_date, coll_month_ref=coll_m)
+    pstat = extract_suspension_log(a.suspension_log) if a.suspension_log else None
+    if pstat: print(f"suspension log: {len(pstat):,} project keys")
+    cur = aggregate(a.ar, ar_date, prev_cutoff=prev_date, coll_month_ref=coll_m, project_status=pstat)
     print("current AR (MMAD):", {k: round(v, 1) for k, v in cur["kpi"].items()})
     if a.ar_prev:
         A = aggregate(a.ar_prev, prev_date, coll_month_ref=coll_m)
@@ -926,6 +947,10 @@ def main():
     write_sheet(wb, "AR_SIGNED_BU", ["bu", "responsibility", "class", "split", "month_start", "prev_week", "current"],
                 [[b, rp, c, l, (sgm.get((b, rp, c, l), 0.0) if MS else None), (sgp.get((b, rp, c, l)) if sgp else None), sg.get((b, rp, c, l), 0.0)] for b in bus_in(cur) for rp, c, l in cells],
                 note="Unbilled by responsibility (Client = action with OCP incl. service sheets postponed, JESA), client signature and PSR (labor) / Procurement (non_labor), per reference/status2_signed_mapping.md. MMAD.", widths=[28, 14, 12, 10, 12, 12, 12])
+    sps = cur.get("signed_pstatus") or {}
+    write_sheet(wb, "AR_SIGNED_PROJECT_STATUS", ["bu", "class", "split", "project_status", "current"],
+                [[b, c, l, st, v] for (b, c, l, st), v in sorted(sps.items(), key=lambda kv: (kv[0][0], kv[0][1], kv[0][2], -kv[1]))],
+                note="Unbilled by BU, client signature, PSR (labor) / Procurement and project status per the suspension log (Final Suspension Status, joined on WBS level 2 / project node). MMAD.", widths=[28, 12, 10, 20, 12])
     ur_sp = P.get("ur_signed_prev") or {}
     write_sheet(wb, "UR_SIGNED_BU", ["bu", "signed_by_client", "signed_prev_week", "attachments_issued", "unrecognized_total"],
                 [[r[0], (r[2] or 0) + (r[7] or 0), ur_sp.get(r[0]), next(((a[11] or 0) for a in ur["attachment"] if a[0] == r[0]), None), r[13]] for r in ur["table"]] if ur else [],

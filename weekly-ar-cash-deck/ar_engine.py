@@ -160,7 +160,28 @@ def signed_class(code, rollup):
         sig = "Signed" if ("signed" in r and "not signed" not in r) else "Not signed"
     return resp, sig
 
-def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
+def labor_type(v):
+    """labor / non_labor from the AR 'TYPE' column (col AJ): anything called labor is labor, the rest is non-labor."""
+    t = str(v or "").strip().lower()
+    return "labor" if ("labor" in t and not t.startswith("non")) else "non_labor"
+
+def norm_pstatus(v):
+    t = " ".join(str(v or "").strip().lower().split())
+    if not t: return "Not in log"
+    if "partial" in t and "suspens" in t: return "Partial suspension"
+    if "suspens" in t: return "Full suspension"
+    if "resched" in t: return "Rescheduling"
+    if t.startswith("continue"): return "Continue"
+    if t.startswith("complet"): return "Completed"
+    if t.startswith("hold"): return "Hold"
+    if t.startswith("cancel"): return "Cancelled"
+    if t.startswith("closed"): return "Closed"
+    if "not applicable" in t: return "Not applicable"
+    if "slow" in t: return "Slow-down"
+    if "not started" in t: return "Not started"
+    return t.title()
+
+def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status=None):
     """Aggregate a raw AR line list. as_of: date of the snapshot (for the current month). prev_cutoff: date (payments up to
     that date count as 'previous week' collections). Returns a dict of plain-python structures (MMAD)."""
     it = iter_ar_rows(path)
@@ -171,7 +192,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
     D = lambda: collections.defaultdict(float)
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
-    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); signed_bu = D(); signed_st = D()
+    nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
     coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
     cm_ref = coll_month_ref or as_of   # month reported for collections / deposited invoices (date inside that month)
     cur_m = (cm_ref.year, cm_ref.month)
@@ -214,10 +235,10 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
         if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue
         kpi[comp] += amt; bu[(b, comp)] += amt
         y = str(g(r, "Year") or "").strip(); year[y if y[:2] == "20" else "No year (advance lines)"] += amt
-        labor[(comp, "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor")] += amt
+        labor[(comp, labor_type(g(r, "TYPE")))] += amt
         c1 = str(g(r, "Client 1") or "").strip().upper(); is_non = c1.startswith("NON OCP"); ocp["NON OCP" if is_non else "OCP"] += amt
         pname = str(g(r, "Project Name") or "").strip(); wbs = str(g(r, "New WBS") or g(r, "Project") or "").strip()
-        lab = "labor" if str(g(r, "PSR/PROC") or "").strip().upper() == "PSR" else "non_labor"
+        lab = labor_type(g(r, "TYPE"))   # stock split: AR 'TYPE' column (col AJ)
         if is_non and comp in ("Unbilled", "Unpaid"):
             nonocp[(b, comp)] += amt; key = (b, wbs, pname)
             nonocp_proj[(key, comp)] += amt; nonocp_meta.setdefault(key, (str(g(r, "Project Client") or "").strip(), status_label(code)))
@@ -225,7 +246,11 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
             jesa_unb[(b, lab)] += amt; jesa_unb_st[(code, lab)] += amt
         if comp == "Unbilled":
             sc = signed_class(code, g(r, "Rollup status"))
-            if sc: signed_bu[(b, sc[0], sc[1], lab)] += amt; signed_st[(code, sc[0], sc[1])] += amt
+            if sc:
+                signed_bu[(b, sc[0], sc[1], lab)] += amt; signed_st[(code, sc[0], sc[1])] += amt
+                if project_status is not None:
+                    ps = project_status.get(wbs) or project_status.get(str(g(r, "New Project") or "").strip()) or project_status.get(wbs[:8]) or "Not in log"
+                    signed_ps[(b, sc[1], lab, ps)] += amt
             owner[(b, owner_of(code))] += amt; st_tot[code] += amt; st_bu[(b, code)] += amt
             agu[(b, bucket(g(r, "Category Unbilled")))] += amt
             proj[(b, "Unbilled", wbs, pname)] += amt; st_proj.setdefault((b, "Unbilled", wbs, pname), code)
@@ -249,7 +274,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
             "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st),
-            "signed_bu": dict(signed_bu), "signed_status": dict(signed_st),
+            "signed_bu": dict(signed_bu), "signed_status": dict(signed_st), "signed_pstatus": dict(signed_ps),
             "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
 
 def bus_in(agg):
