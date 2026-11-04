@@ -994,10 +994,11 @@ def build(data, meta, out):
     # ---- bottom left: position by month (table)
     # ---- bottom: group walk from cash IN to the net position after all ongoing
     tb(s, 0.4, yb - 0.02, 12.6, 0.26, f"From cash IN to the net position after all {com} commitments – JESA Group (MMAD)", size=11, bold=True, color=NAVY)
-    waterfall(s, 0.3, yb + 0.2, 12.7, SH - 0.38 - (yb + 0.2),
-              ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved suppliers", f"LC payments due", "Net after approved", f"{com} pending suppliers", "Net after all ongoing"],
-              [tot_r["cash_in"], tot_r["cash_out_suppliers"], tot_r["cash_out_lc"], tot_r["cash_out_customs"], tot_r["net_actuals"], t_sup, t_lc, tot_r["net_after_approved"], -tot_r["oct_pending"], tot_r["net_all_ongoing"]],
-              ["total", "delta", "delta", "delta", "total", "delta", "delta", "total", "delta", "total"], label_size=8, cat_size=7.5)
+    wcats = ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "= Net actuals", f"{com} approved suppliers", "LC payments due", "= Net after approved", f"{com} pending suppliers", "= Net after all ongoing"]
+    wvals = [tot_r["cash_in"], tot_r["cash_out_suppliers"], tot_r["cash_out_lc"], tot_r["cash_out_customs"], tot_r["net_actuals"], t_sup, t_lc, tot_r["net_after_approved"], -tot_r["oct_pending"], tot_r["net_all_ongoing"]]
+    wkind = ["total", "delta", "delta", "delta", "total", "delta", "delta", "total", "delta", "total"]
+    ch = bar_chart(s, 0.3, yb + 0.2, 12.7, SH - 0.38 - (yb + 0.2), wcats, [("MMAD", wvals)], [NAVY], legend=False, gap=45, cat_size=7.5, label_size=8, number_format='+#,##0;−#,##0;0', label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+    color_points(ch, 0, [NAVY if k == "total" else (RED if v < 0 else GREEN) for v, k in zip(wvals, wkind)])
 
     # ------------------------------------------------------------------ 10b. PSR (labor) collections
     D.section = "cash_backup"
