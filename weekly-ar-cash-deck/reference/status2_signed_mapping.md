@@ -1,4 +1,4 @@
-# Status 2 → responsibility and client signature (reference, finance guideline of 4 Nov 2026 – v2: at-risk lines also follow the roll-up status)
+# Status 2 → responsibility and client signature (reference, finance guideline of 4 Nov 2026 – v3: at-risk lines follow the roll-up status; service sheets postponed are under client responsibility)
 
 Responsibility: `Client` = action with the client / OCP, `JESA` = action with JESA. Signature: whether the attachment or service
 sheet has been signed by the client. `Depends` = read the roll-up status column of the AR file: it is **signed** when that
@@ -28,7 +28,7 @@ column contains the word "signed" (and not "not signed"), otherwise **not signed
 | J-1-f Pending LC by PC | JESA | NOT signed | |
 | J-2-a Pending JESA PM approval | JESA | NOT signed | |
 | J-3-a Signed by client, pending JESA SS submission | JESA | Signed | |
-| J-3-c SSS postponed | JESA | Signed | |
+| J-3-c SSS postponed | Client | Signed | service sheets postponed sit with the client |
 | J-4-a Ongoing invoicing | JESA | Signed | |
 | J-5-a Rejected from client | JESA | N/A | usually under unpaid |
 | J-6-a Unearned on LS | JESA | N/A | excluded from AR figures |

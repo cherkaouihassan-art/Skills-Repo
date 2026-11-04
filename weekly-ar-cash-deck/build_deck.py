@@ -578,7 +578,7 @@ def build(data, meta, out):
         rows.append(["Total JESA", f0(cC), fd(dwC) if dwC is not None else "n/a", fd(dmC), f0(cJ), fd(dwJ) if dwJ is not None else "n/a", fd(dmJ), f0(cC + cJ)])
         n = len(rows) - 1; colors[(n, 2)] = delta_color(dwC); colors[(n, 3)] = delta_color(dmC); colors[(n, 5)] = delta_color(dwJ); colors[(n, 6)] = delta_color(dmJ)
         table(s, 0.4, 2.95, 6.6, ["BU", "Client / OCP", "Δ WoW", "Δ vs MS", "JESA", "Δ WoW", "Δ vs MS", "Unbilled"], rows, col_w=[1.4, 0.85, 0.7, 0.75, 0.75, 0.7, 0.75, 0.8], font_size=8.5, header_size=8, row_h=0.285, header_h=0.32, colors=colors, total_last=True)
-        tb(s, 0.4, 2.95 + 0.32 + 0.285 * len(rows) + 0.08, 6.6, 0.45, f"Client / OCP = C-* statuses (action with the client, incl. at risk); JESA = J-* statuses (incl. service sheets postponed). Excludes {f0((unb['current'] or 0) - cC - cJ)} MMAD of rejected and unearned lines.", size=8, italic=True, color=SLATE)
+        tb(s, 0.4, 2.95 + 0.32 + 0.285 * len(rows) + 0.08, 6.6, 0.45, f"Client / OCP = C-* statuses (action with the client, incl. at risk) and service sheets postponed; JESA = the other J-* statuses. Excludes {f0((unb['current'] or 0) - cC - cJ)} MMAD of rejected and unearned lines.", size=8, italic=True, color=SLATE)
         # ---- section B: signature by BU and responsibility
         tb(s, 7.25, 2.65, 5.8, 0.3, "B · Client signature by business unit and responsibility (MMAD)", size=12, bold=True, color=NAVY)
         rows, colors = [], {}

@@ -135,7 +135,7 @@ def iter_ar_rows(path):
         if not any(c.strip() for c in row): continue
         yield [_csv_cell(v, date_cols[i] if i < len(date_cols) else False) for i, v in enumerate(row)]
 
-# Client signature and responsibility of unbilled lines — finance guideline of 4 Nov 2026, v2 (reference/status2_signed_mapping.md).
+# Client signature and responsibility of unbilled lines — finance guideline of 4 Nov 2026, v3 (reference/status2_signed_mapping.md).
 # value: (responsibility, signature); signature 'Depends' = look at the roll-up status column; None = not part of unbilled AR.
 SIGNED_MAP = {
     "c-1.a": ("Client", "Depends"), "c-1.b": ("Client", "Depends"), "c-1.c": ("Client", "Depends"), "c-1.d": ("Client", "Depends"),
@@ -144,7 +144,7 @@ SIGNED_MAP = {
     "c-7.a": None, "c-7.b": None, "pdr": ("Client", "Depends"),
     "j-1.a": ("JESA", "Not signed"), "j-1.b": ("JESA", "Not signed"), "j-1.c": ("JESA", "Not signed"), "j-1.d": ("JESA", "Not signed"),
     "j-1.e": ("JESA", "Not signed"), "j-1.f": ("JESA", "Not signed"), "j-2.a": ("JESA", "Not signed"),
-    "j-3.a": ("JESA", "Signed"), "j-3.c": ("JESA", "Signed"), "j-4.a": ("JESA", "Signed"),
+    "j-3.a": ("JESA", "Signed"), "j-3.c": ("Client", "Signed"), "j-4.a": ("JESA", "Signed"),
     "j-5.a": None, "j-6.a": None, "j-6.b": None, "j-6.c": None, "j-6.d": None, "j-7.a": ("JESA", "Not signed"),
 }
 def signed_class(code, rollup):
