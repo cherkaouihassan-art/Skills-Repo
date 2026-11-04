@@ -160,7 +160,7 @@ def signed_class(code, rollup):
         sig = "Signed" if ("signed" in r and "not signed" not in r) else "Not signed"
     return resp, sig
 
-def aggregate(path, as_of, prev_cutoff=None):
+def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None):
     """Aggregate a raw AR line list. as_of: date of the snapshot (for the current month). prev_cutoff: date (payments up to
     that date count as 'previous week' collections). Returns a dict of plain-python structures (MMAD)."""
     it = iter_ar_rows(path)
@@ -173,8 +173,9 @@ def aggregate(path, as_of, prev_cutoff=None):
     proj = D(); adv_bu = D(); st_proj = {}
     nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); signed_bu = D(); signed_st = D()
     coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
-    cur_m = (as_of.year, as_of.month)
-    prior_m = ((as_of.replace(day=1) - dt.timedelta(days=1)).year, (as_of.replace(day=1) - dt.timedelta(days=1)).month)
+    cm_ref = coll_month_ref or as_of   # month reported for collections / deposited invoices (date inside that month)
+    cur_m = (cm_ref.year, cm_ref.month)
+    prior_m = ((cm_ref.replace(day=1) - dt.timedelta(days=1)).year, (cm_ref.replace(day=1) - dt.timedelta(days=1)).month)
     for r in it:
         if not any(v is not None for v in r): continue
         s1 = str(g(r, "Status 1") or "").strip().lower()
@@ -194,7 +195,7 @@ def aggregate(path, as_of, prev_cutoff=None):
                     if nonp: coll_bu[(b, "ytd_nonocp")] += inv
                     if prev_cutoff and pdd <= prev_cutoff: coll_bu[(b, "ytd_prev")] += inv
                     if (pdd.year, pdd.month) == cur_m:
-                        coll_bu[(b, "month")] += inv
+                        coll_bu[(b, "month")] += inv; coll_bu[(b, f"month_{lab}")] += inv
                         if nonp: coll_bu[(b, "month_nonocp")] += inv
                         if prev_cutoff and pdd <= prev_cutoff:
                             coll_bu[(b, "month_prev")] += inv

@@ -2,17 +2,18 @@
  "meta": {
   "as_of_date": "2026-11-04",
   "week_label": "November W1",
-  "draft_note": "AR figures as of 28-Oct, pending the 03-Nov AR extract",
+  "draft_note": "",
   "cash_actual_month": "Oct",
   "cash_actual_note": "(closed)",
   "cash_ongoing_month": "Nov",
   "cash_payments_to": "30/10",
   "cash_collections_to": "02/11",
-  "ar_current_date": "2026-10-28",
-  "ar_prev_date": "2026-10-20",
+  "coll_month": "2026-10",
+  "ar_current_date": "2026-11-03",
+  "ar_prev_date": "2026-10-28",
   "ar_month_start_date": "2026-10-07",
   "cash_data_as_of": "2026-11-02",
-  "collections_to": "28/10",
+  "collections_to": "03/11",
   "payments_to": "30/10",
   "lc_date": "19/10",
   "ap_label": "Nov W1 (03/11)",
@@ -20,6 +21,7 @@
   "units": "MMAD (millions of MAD)",
   "ur_prev_source": "last week's inputs",
   "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
-  "deposited_month": 233.04901141264463
+  "deposited_month": 268.99419017514464,
+  "coll_month_name": "October"
  }
 }

@@ -1,0 +1,6 @@
+{"_note": "DSO excl. advances from the BU meeting report of 03-Nov-2026 (October column; prior = September). Computed values from the DSO workbook agree except JESA Technologies (workbook override 92).",
+ "JESA Group": {"current": 278, "prior": 285},
+ "Water & Environment": {"current": 322, "prior": 318}, "Fertilizers & Chemicals": {"current": 371, "prior": 336},
+ "SP2M Ad Hoc Program": {"current": 295, "prior": 268}, "AM": {"current": 121, "prior": 135}, "Global Mining": {"current": 254, "prior": 218},
+ "Building & Infrastructure": {"current": 462, "prior": 418}, "Energy Operations": {"current": 187, "prior": 174},
+ "Advisory": {"current": 181, "prior": 203}, "JESA Technologies": {"current": 92, "prior": 107}, "Building & Capabilities": {"current": 323, "prior": 317}}

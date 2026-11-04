@@ -449,11 +449,13 @@ def build(data, meta, out):
     def oget(b, k): return (ocp_map.get(b) or {}).get(k) or 0
     def cget(b, k): return (coll_map.get(b) or {}).get(k) or 0
     jul_tot = sum(cget(b, "since_jul") for b in coll_map); jul_lab = sum(cget(b, "since_jul_labor") for b in coll_map); jul_nl = sum(cget(b, "since_jul_non_labor") for b in coll_map)
+    m_lab = sum(cget(b, "month_labor") for b in coll_map); m_nl = sum(cget(b, "month_non_labor") for b in coll_map)
     paid_m = sum(cget(b, "month_current") for b in coll_map); paid_m_pw = sum(cget(b, "month_prev_week") for b in coll_map)
     paid_ytd = sum(cget(b, "ytd_current") for b in coll_map); dep_m = sum(cget(b, "deposited_month") for b in coll_map)
     nonocp_m = sum(cget(b, "nonocp_month_current") for b in coll_map); nonocp_m_pw = sum(cget(b, "nonocp_month_prev_week") for b in coll_map)
     nonocp_ytd = sum(cget(b, "nonocp_ytd") for b in coll_map); nonocp_prior = sum(cget(b, "nonocp_prior_month") for b in coll_map)
-    month_name = datef(meta["ar_current_date"], "%B"); prior_name = (dt.date.fromisoformat(str(meta["ar_current_date"])[:10]).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
+    _cm = (str(meta.get("coll_month") or str(meta["ar_current_date"])[:7]) + "-15")
+    month_name = dt.date.fromisoformat(_cm).strftime("%B"); prior_name = (dt.date.fromisoformat(_cm).replace(day=1) - dt.timedelta(days=1)).strftime("%B")
     cam = meta.get("cash_actual_month") or month_name[:3]; can = meta.get("cash_actual_note") or f"to {meta['payments_to']}"
     com = meta.get("cash_ongoing_month") or month_name[:3]; cpt = meta.get("cash_payments_to") or meta["payments_to"]; cct = meta.get("cash_collections_to") or meta["collections_to"]
     com_full = next((m for m in ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December") if m.startswith(com)), com)
@@ -533,8 +535,7 @@ def build(data, meta, out):
     gdso = dso.get("JESA Group", {}); gdso_v = (f"{int(float(gdso['dso_current']))} days" if gdso.get("dso_current") not in (None, "") else "n/a")
     minis = [("OCP share of AR", f"{ocp/(ocp+nocp)*100:.0f}%", f"OCP {f0(ocp)}  ·  non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", BLUE),
              ("DSO JESA Group", gdso_v, ("prior month " + str(int(float(gdso["dso_prior_month"]))) + " days") if gdso.get("dso_prior_month") not in (None, "") else "excl. advances, BU meeting report", NAVY),
-             ((f"Collections {cam}", f"{f0(ocp_tot)} MDH", f"{cam}: procurement {f0(ocp_proc)} · PSR {f0(ocp_psr)}  |  since July (AR): {f0(jul_tot)} – PSR {f0(jul_lab)} · Proc {f0(jul_nl)}", TEAL) if ocpb else
-              (f"Paid in {month_name[:3]} to {cur_s}", f"{f0(paid_m)} MDH", f"deposited in {month_name[:3]} {f0(dep_m)}  ·  YTD paid {f0(paid_ytd)}", TEAL))]
+             (f"Payments received {month_name[:3]} (AR)", f"{f0(paid_m)} MDH", f"{month_name[:3]}: PSR {f0(m_lab)} · Proc {f0(m_nl)}  |  since July: {f0(jul_tot)} – PSR {f0(jul_lab)} · Proc {f0(jul_nl)}", TEAL)]
     for i, (lab, val, sub, col) in enumerate(minis):
         x0 = 5.3 + i * (mw + 0.12)
         rect(s, x0, 2.75, mw, 1.05, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, x0, 2.75, 0.07, 1.05, col)
@@ -701,7 +702,7 @@ def build(data, meta, out):
 
     # ------------------------------------------------------------------ 5. AR by BU
     s = D.slide("AR Position by Business Unit", f"This week vs last week and vs the month-start baseline ({ms_s}), MMAD; DSO excl. advances in days (BU meeting report)")
-    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", (f"Collected\n{cam}" if ocpb else f"Paid\n{month_name[:3]}"), "DSO\n(days)"]
+    hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", f"Paid\n{month_name[:3]}", "DSO\n(days)"]
     rows, colors = [], {}
     bus = [b for b in BU_ORDER if b in arbu]
     sums = {k: 0.0 for k in ("ms", "pw", "cu", "ub", "ubp", "up", "upp", "ad", "un")}
@@ -709,12 +710,12 @@ def build(data, meta, out):
         t_, u_, p_, a_ = arbu[b]["Total AR"], arbu[b]["Unbilled"], arbu[b]["Unpaid"], arbu[b]["Advance"]
         un = (arbu[b].get("Unrecognized") or {}).get("current") or 0
         dr = dso.get(b, {}); dsv = (str(int(float(dr["dso_current"]))) if dr.get("dso_current") not in (None, "") else "–")
-        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un), f0(oget(b, "total") if ocpb else cget(b, "month_current")), dsv])
+        rows.append([short(b), f0(t_["month_start"]), f0(t_["prev_week"]), f0(t_["current"]), fd(dwow(t_)), fd(dms(t_)), f0(u_["current"]), fd(dwow(u_)), f0(p_["current"]), fd(dwow(p_)), f0(a_["current"]), f0(un), f0(t_["current"] + un), f0(cget(b, "month_current")), dsv])
         colors[(i, 4)] = delta_color(dwow(t_)); colors[(i, 5)] = delta_color(dms(t_)); colors[(i, 7)] = delta_color(dwow(u_)); colors[(i, 9)] = delta_color(dwow(p_))
         sums["ms"] += t_["month_start"] or 0; sums["pw"] += t_["prev_week"] or 0; sums["cu"] += t_["current"] or 0; sums["ub"] += u_["current"] or 0; sums["ubp"] += u_["prev_week"] or 0
         sums["up"] += p_["current"] or 0; sums["upp"] += p_["prev_week"] or 0; sums["ad"] += a_["current"] or 0; sums["un"] += un
     gd = dso.get("JESA Group", {}); gdv = (str(int(float(gd["dso_current"]))) if gd.get("dso_current") not in (None, "") else "–")
-    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"]), f0(ocp_tot if ocpb else paid_m), gdv])
+    rows.append(["Total JESA", f0(sums["ms"]), f0(sums["pw"]), f0(sums["cu"]), fd(sums["cu"] - sums["pw"]), fd(sums["cu"] - sums["ms"]), f0(sums["ub"]), fd(sums["ub"] - sums["ubp"]), f0(sums["up"]), fd(sums["up"] - sums["upp"]), f0(sums["ad"]), f0(sums["un"]), f0(sums["cu"] + sums["un"]), f0(paid_m), gdv])
     n = len(rows) - 1
     colors[(n, 4)] = delta_color(sums["cu"] - sums["pw"]); colors[(n, 5)] = delta_color(sums["cu"] - sums["ms"]); colors[(n, 7)] = delta_color(sums["ub"] - sums["ubp"]); colors[(n, 9)] = delta_color(sums["up"] - sums["upp"])
     table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.55, 0.9, 0.9, 0.9, 0.75, 0.85, 0.85, 0.75, 0.8, 0.75, 0.75, 0.85, 0.9, 0.7, 0.65], font_size=8.5, header_size=8, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
@@ -900,34 +901,31 @@ def build(data, meta, out):
     oct_cur = sum(r["month_current"] or 0 for r in cb); oct_pw = sum(r["month_prev_week"] or 0 for r in cb); prior = sum(r["prior_month"] or 0 for r in cb)
     ytd = sum(r["ytd_current"] or 0 for r in cb); ytd_pw = sum(r["ytd_prev_week"] or 0 for r in cb); ninv = sum(int(r["invoices_ytd"] or 0) for r in cb)
     dep = sum((r.get("deposited_month") or 0) for r in cb)
-    if ocpb:
-        cam_full = next((m for m in ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December") if m.startswith(cam)), cam)
-        d_tot = (round(ocp_tot) - round(ocp_prev)) if ocp_prev is not None else None
-        prev_lab = "previous report"
-        s = D.slide("Collections", f"{cam_full} {f0(ocp_tot)} MMAD: procurement {f0(ocp_proc)} + PSR {f0(ocp_psr)}" + (f" ({fd(d_tot)} vs {prev_lab})" if d_tot is not None else "") + f"; {f0(jul_tot)} MMAD received since July (AR report)")
+    if True:
+        d_tot = round(oct_cur) - round(oct_pw)
+        s = D.slide("Collections", f"{month_name} payments received {f0(oct_cur)} MMAD: PSR {f0(m_lab)} + Procurement {f0(m_nl)} ({fd(d_tot)} vs {prev_s}); since July {f0(jul_tot)} MMAD (AR report)")
         cw = (SW - 0.6 - 0.12 * 4) / 5
-        pp = sum((r["prev_report_total"] or 0) for r in ocpb) if ocp_prev is not None else None
-        kpi_card(s, 0.3, 1.25, cw, 1.15, f"{cam_full} – procurement", ocp_proc, good_when_negative=False, value_size=20)
-        kpi_card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{cam_full} – PSR (labor)", ocp_psr, good_when_negative=False, value_size=20)
-        kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, f"{cam_full} – total collections", ocp_tot, value_size=20)
-        if d_tot is not None: tb(s, 0.3 + 2 * (cw + 0.12) + 0.15, 1.25 + 1.15 - 0.32, cw - 0.3, 0.26, [[(f"vs {prev_lab} ({f0(ocp_prev)})  ", {"size": 8.5, "color": SLATE}), (fd(d_tot), {"size": 10, "bold": True, "color": delta_color(d_tot, False)})]], size=8.5)
-        kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Received since July (AR report)", jul_tot, value_size=20)
+        kpi_card(s, 0.3, 1.25, cw, 1.15, f"{month_name} – Procurement", m_nl, value_size=20)
+        kpi_card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{month_name} – PSR (labor)", m_lab, value_size=20)
+        kpi_card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, f"{month_name} – total received", oct_cur, delta_wow=d_tot, good_when_negative=False, value_size=20)
+        kpi_card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "Received since July", jul_tot, value_size=20)
         tb(s, 0.3 + 3 * (cw + 0.12) + 0.15, 1.25 + 1.15 - 0.32, cw - 0.3, 0.26, f"PSR {f0(jul_lab)} · Procurement {f0(jul_nl)}", size=8, color=SLATE)
         kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, f"Invoices deposited in {month_name[:3]}", dep, value_size=20)
-        tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.25 + 1.15 - 0.32, cw - 0.3, 0.26, "AR extract, reception date", size=8, color=SLATE)
-        jm = [r for r in cm if r["month"] in ("Jul", "Aug", "Sep", "Oct", "Nov", "Dec") and ((r["labor"] or 0) + (r["non_labor"] or 0)) > 0]
-        tb(s, 0.4, 2.6, 7.3, 0.3, f"Payments received since July – AR report, by payment date (MMAD); {month_name} to {cur_s}", size=12, bold=True, color=NAVY)
+        tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.25 + 1.15 - 0.32, cw - 0.3, 0.26, "reception date", size=8, color=SLATE)
+        _mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        jm = [r for r in cm if r["month"] in _mon and 6 <= _mon.index(r["month"]) <= _mon.index(month_name[:3]) and ((r["labor"] or 0) + (r["non_labor"] or 0)) > 0]
+        tb(s, 0.4, 2.6, 7.3, 0.3, f"Payments received since July – AR report, by payment date (MMAD); to {cur_s}", size=12, bold=True, color=NAVY)
         ch = bar_chart(s, 0.3, 2.9, 7.3, 4.2, [r["month"] for r in jm], [("PSR (labor)", [r["labor"] for r in jm]), ("Procurement (non-labor)", [r["non_labor"] for r in jm])], [BLUE, ORANGE], stacked=True, gap=60, label_size=8, label_colors=[WHITE, DARK])
         hide_small_labels(ch, [[r["labor"] for r in jm], [r["non_labor"] for r in jm]], 30)
-        tb(s, 7.85, 2.6, 5.2, 0.3, f"{cam_full} by business unit (MMAD)", size=13, bold=True, color=NAVY)
+        tb(s, 7.85, 2.6, 5.2, 0.3, f"{month_name} by business unit (MMAD)", size=13, bold=True, color=NAVY)
         rows, colors = [], {}
-        obs = sorted([r for r in ocpb if abs(r["total"] or 0) > 0.05 or (r.get("ytd_total") or 0) > 0.05], key=lambda r: -(r["total"] or 0))
+        obs = sorted([r for r in cb if abs(r["month_current"] or 0) > 0.05 or (r.get("since_jul") or 0) > 0.05], key=lambda r: -(r["month_current"] or 0))
         for i, r in enumerate(obs):
-            d1 = (round(r["total"] or 0) - round(r["prev_report_total"] or 0)) if ocp_prev is not None else None
-            rows.append([short(r["bu"]), f0(r["procurement"]), f0(r["psr"]), f0(r["total"]), fd(d1) if d1 is not None else "n/a", f0(cget(r["bu"], "since_jul")), (f"{cget(r['bu'], 'since_jul')/(jul_tot or 1)*100:.0f}%")]); colors[(i, 4)] = delta_color(d1, False)
-        rows.append(["Total", f0(ocp_proc), f0(ocp_psr), f0(ocp_tot), fd(d_tot) if d_tot is not None else "n/a", f0(jul_tot), "100%"])
-        table(s, 7.85, 2.9, 5.2, ["BU", "Procurement", "PSR", "Total", f"Δ vs prev.\nreport", "Since July\n(AR)", "%"], rows, col_w=[1.35, 0.85, 0.65, 0.7, 0.75, 0.75, 0.5], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
-        tb(s, 7.85, 2.9 + 0.42 + 0.26 * len(rows) + 0.08, 5.2, 0.5, f"{cam_full} columns: cash flow workbook (collections to {cct}); since July: AR report, invoices paid by payment date (all clients).", size=7.5, italic=True, color=SLATE)
+            d1 = round(r["month_current"] or 0) - round(r["month_prev_week"] or 0)
+            rows.append([short(r["bu"]), f0(r.get("month_non_labor")), f0(r.get("month_labor")), f0(r["month_current"]), fd(d1), f0(r.get("since_jul")), f"{(r.get('since_jul') or 0)/(jul_tot or 1)*100:.0f}%"]); colors[(i, 4)] = delta_color(d1, False)
+        rows.append(["Total", f0(m_nl), f0(m_lab), f0(oct_cur), fd(d_tot), f0(jul_tot), "100%"])
+        table(s, 7.85, 2.9, 5.2, ["BU", "Procurement", "PSR", "Total", f"Δ vs\n{prev_s}", "Since July", "%"], rows, col_w=[1.35, 0.85, 0.65, 0.7, 0.75, 0.75, 0.5], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
+        tb(s, 7.85, 2.9 + 0.42 + 0.26 * len(rows) + 0.08, 5.2, 0.5, f"AR report: invoices paid by payment date, all clients; {month_name} compared with the position of the previous AR extract ({prev_s}).", size=7.5, italic=True, color=SLATE)
     else:
         s = D.slide("Payments Received (Collections)", f"{f0(oct_cur)} MMAD of invoices paid in {month_name} to {cur_s} ({fd(oct_cur-oct_pw)} vs {prev_s}); {ytd/1000:,.2f} Bn MAD year to date")
         cw = (SW - 0.6 - 0.12 * 5) / 6
@@ -1233,8 +1231,8 @@ def build(data, meta, out):
         colors[(4, 4)] = delta_color((unr_c - unr_p) if unr_p is not None else None); colors[(4, 5)] = delta_color((unr_c - unr_m) if unr_m is not None else None)
         table(s, 0.4, 5.3, 4.5, ["", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs MS"], rows, col_w=[1.1, 0.75, 0.65, 0.65, 0.65, 0.7], font_size=8, header_size=7.5, row_h=0.235, header_h=0.3, colors=colors, bold_rows=(3,))
         pm, pmp = cget(b, "month_current"), cget(b, "month_prev_week")
-        if ocpb:
-            tb(s, 0.4, 6.8, 4.5, 0.3, [[("Collections: ", {"bold": True, "color": NAVY}), (f"{cam} {f0(oget(b, 'total'))} MMAD (procurement {f0(oget(b, 'procurement'))}, PSR {f0(oget(b, 'psr'))}) · since July {f0(cget(b, 'since_jul'))} (AR report)", {})]], size=8.5, color=DARK)
+        if True:
+            tb(s, 0.4, 6.8, 4.5, 0.3, [[("Payments received: ", {"bold": True, "color": NAVY}), (f"{month_name[:3]} {f0(pm)} MMAD (PSR {f0(cget(b, 'month_labor'))}, Procurement {f0(cget(b, 'month_non_labor'))}; {fd(round(pm) - round(pmp))} vs {prev_s}) · since July {f0(cget(b, 'since_jul'))}", {})]], size=8.5, color=DARK)
         else:
           tb(s, 0.4, 6.8, 4.5, 0.3, [[("Paid: ", {"bold": True, "color": NAVY}), (f"{month_name[:3]} to {cur_s} {f0(pm)} MMAD (", {}), (fd(round(pm) - round(pmp)), {"bold": True, "color": delta_color(round(pm) - round(pmp), False)}), (f" vs {prev_s}) · {prior_name[:3]} {f0(cget(b, 'prior_month'))} · YTD {f0(cget(b, 'ytd_current'))}" + (f" · non-OCP {month_name[:3]} {f0(cget(b, 'nonocp_month_current'))}" if cget(b, "nonocp_month_current") else ""), {})]], size=8.5, color=DARK)
         # aging buckets (bottom middle)
