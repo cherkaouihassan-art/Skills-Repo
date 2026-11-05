@@ -35,11 +35,11 @@ The two ledgers were matched at line level (invoice numbers, advance-invoice num
 | U1 | OCP migrated GR/IR items dated 2016-2021 (Jacobs legacy), no JESA counterpart | -293.9 M | OCP: clean-up |
 | U2 | OCP receptions (SES) accepted, not yet invoiced | -1,772.9 M | both: SES release / invoicing |
 | **Advance gap** (JESA 4421 vs OCP 3411) | | **1,218.7 M** | |
-| A1 | Advance invoices matched to OCP payments (by reference or identical amount), residual | -55.7 M | both |
+| A1 | Advance invoices matched to OCP payments (by reference or identical amount), residual | 4.8 M | both |
 | A1u | JESA advance invoices with no open advance left at OCP (unpaid, incl. B2, or already fully cleared by OCP) | -1,402.9 M | OCP: confirm payment / reference |
-| A2a | OCP payments of JESA progress invoices carried by OCP as down-payments | 551.7 M | OCP: clear 3411 against the invoice |
+| A2a | OCP payments of JESA progress invoices carried by OCP as down-payments | 549.6 M | OCP: clear 3411 against the invoice |
 | A2c | Advance invoices paid by OCP, fully recovered by JESA, still carried in full by OCP | 234.8 M | OCP: post the regularisations |
-| A2b | OCP down-payment lines JESA cannot identify (unreferenced, pre-2022 legacy, AUX residuals) | 181.8 M | OCP: provide settled JESA document numbers |
+| A2b | OCP down-payment lines JESA cannot identify (unreferenced, pre-2022 legacy, AUX residuals) | 123.3 M | OCP: provide settled JESA document numbers |
 | A3u | Advance recoveries made by JESA on progress invoices OCP has no record of | 2,229.1 M | OCP: process the invoices and post KA |
 | A3f | Advance recoveries made by JESA on invoices OCP has booked, recovery not posted by OCP | 1,044.0 M | OCP: post KA regularisations |
 | A4 | Advance recoveries / reversals already booked by OCP | -1,564.0 M | info |
@@ -52,7 +52,7 @@ The two ledgers were matched at line level (invoice numbers, advance-invoice num
 
 2. **Advance mechanics drive 1,218.7 M of the gap.** JESA has recovered 3,273.0 M of advances through its progress invoices (the recovery is deducted on the invoice, so most of these invoices needed no cash and never show as "unpaid"). On OCP's side, 1,564.0 M of regularisations are posted and, in addition, advance invoices of 1,402.9 M are fully cleared in OCP's 3411 while their credit is still open in JESA's 4421 (A1u). Net of both, OCP's recognition of recoveries lags JESA's by 306.1 M. The point to note is that 2,229.1 M of JESA's recoveries sit on 1,448 progress invoices that have no trace at all in OCP's ledger: OCP has cleared its advances against other documents, so a document-by-document matching of the recoveries is required (tabs "A3u", "A3f", "A1u", one line per invoice).
 
-3. **OCP's 3411 also contains 968.2 M that are not advances.** 551.7 M are payments of JESA progress invoices that OCP booked as acomptes ("OCP_E-INVOICE Invoice With PO") without ever recording the invoice; JESA applied that cash to the invoices, so there is nothing left to recover. 234.8 M are advance invoices JESA has fully recovered through progress invoices and OCP never regularised. 181.8 M are residual lines (unreferenced payments, pre-2022 legacy, AUX splits) OCP should identify.
+3. **OCP's 3411 also contains 907.8 M that are not advances.** 549.6 M are payments of JESA progress invoices that OCP booked as acomptes ("OCP_E-INVOICE Invoice With PO") without ever recording the invoice; JESA applied that cash to the invoices, so there is nothing left to recover. 234.8 M are advance invoices JESA has fully recovered through progress invoices and OCP never regularised. 123.3 M are residual lines (unreferenced payments, pre-2022 legacy, AUX splits) OCP should identify.
 
 4. **542.1 M of JESA invoices are not in OCP's books at all** (tab "B1"). 326.9 M are dated 2026 and are the normal e-invoicing / SES pipeline; the older ones (2021-2024) need to be re-submitted or confirmed as received by OCP. Conversely 187.2 M appear settled by OCP but are still open at JESA: OCP's payment advice is needed to apply the cash (payments made around 30/09 are likely in transit).
 
@@ -90,7 +90,7 @@ The per-project explanation sentence and the AR status of the unbilled amounts a
 
 **OCP SA**
 1. Record the 847 JESA invoices in tab "B1" (542.1 M) and match, invoice by invoice, the 1,448 recovery invoices in tab "A3u" against the regularisations OCP has posted (tabs "A1u" / "A4"), so that each advance invoice shows the same remaining balance on both sides.
-2. Record the invoices behind the 551.7 M of 3411 items that settled progress invoices and clear them (tab "A2"), post the regularisations on the 234.8 M of fully recovered advances, and document the 181.8 M of residual lines.
+2. Record the invoices behind the 549.6 M of 3411 items that settled progress invoices and clear them (tab "A2"), post the regularisations on the 234.8 M of fully recovered advances, and document the 123.3 M of residual lines.
 3. Post the missing KA regularisations on invoices already booked (1,044.0 M, tab "A3f") and match the REGUL lines in 4411 with 3411 (77.8 M, tab "B5").
 4. Clean the 2016-2021 migrated GR/IR (293.9 M, tab "U1") and provide payment advices for the invoices in tab "B4".
 
