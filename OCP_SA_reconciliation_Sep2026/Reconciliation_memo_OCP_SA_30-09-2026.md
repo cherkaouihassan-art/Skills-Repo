@@ -68,21 +68,21 @@ The two ledgers were matched at line level (invoice numbers, advance-invoice num
 
 | Project | BU | Description | JESA net | OCP net | Difference | Billing gap | Unbilled gap | Advance gap |
 |---|---|---|---:|---:|---:|---:|---:|---:|
-| QC.01546 | SPM |  CENTRAL AXIS-MPH OSBL  | -71.6 M | -707.0 M | 635.3 M | 182.9 M | 290.4 M | 162.0 M |
-| QC.01547 | SPM |  SP2M PAP_Construction & Commssioning  | 13.2 M | -586.7 M | 600.0 M | 44.0 M | 560.0 M | -4.0 M |
+| QC.01546 | SPM |  CENTRAL AXIS-MPH OSBL  | -71.6 M | -707.0 M | 635.3 M | 182.9 M | 272.3 M | 180.1 M |
+| QC.01547 | SPM |  SP2M PAP_Construction & Commssioning  | 13.2 M | -586.8 M | 600.1 M | 44.0 M | 560.0 M | -3.9 M |
 | QC.01717 | SPM |  Safi Existing Site and ES-SPH Corridor  | 72.5 M | -184.1 M | 256.6 M | 6.5 M | 215.4 M | 34.7 M |
 | QC.01466 | FEC | New TSP Hub (2 units) | 206.6 M | -2.4 M | 209.0 M | 5.4 M | 125.4 M | 78.2 M |
-| QC.01432 | WEN | Water Emergency Program C + F CA2E | 137.2 M | -25.9 M | 163.0 M | 19.7 M | 93.8 M | 49.5 M |
+| QC.01432 | WEN | Water Emergency Program C + F CA2E | 137.2 M | -25.9 M | 163.0 M | 19.7 M | 92.2 M | 51.1 M |
+| QC.01715 | SPM |  Central Axis-MS  | 43.0 M | -118.4 M | 161.3 M | 0.0 M | 152.7 M | 8.6 M |
 | QC.01725 | SPM |  Central Axis- Louta Mine  | -376.8 M | -530.9 M | 154.2 M | -4.7 M | 139.4 M | 19.5 M |
-| QC.01715 | SPM |  Central Axis-MS  | 43.0 M | -104.7 M | 147.6 M | 0.0 M | 152.7 M | -5.1 M |
+| QC.01627 | SPM |  Central Axis - NSP-SPH Platform  | -102.7 M | -238.8 M | 136.0 M | 1.7 M | 56.7 M | 77.7 M |
 | QC.01866 | FEC | Molten Sulfur Project U363 | 20.4 M | -106.5 M | 127.0 M | -12.3 M | -73.3 M | 212.5 M |
 | QC.01548 | SPM |  SP2M SAP - Construction  | -9.3 M | -126.2 M | 116.9 M | 0.0 M | 86.6 M | 30.3 M |
+| QC.01160 | AMT | Jorf Lasfar North Fertilizers Plant Y3 | 99.4 M | -15.9 M | 115.3 M | 10.8 M | 44.3 M | 60.2 M |
 | QC.01746 | FEC | TSP Hub Handling and Storage C+F | 64.9 M | -45.3 M | 110.2 M | 0.0 M | 83.5 M | 26.7 M |
-| QC.01483 | SPM |  CENTRAL AXIS-MPH MASTER PLAN  | 47.7 M | -54.7 M | 102.4 M | 0.0 M | 9.0 M | 93.4 M |
-| QC.01683 | FEC | Global Cost + Fee for PAT//PPA/MAPc | -191.8 M | -289.8 M | 98.0 M | 10.0 M | 56.2 M | 31.7 M |
+| QC.01483 | SPM |  CENTRAL AXIS-MPH MASTER PLAN  | 47.7 M | -54.7 M | 102.4 M | 0.0 M | 8.8 M | 93.6 M |
 | QC.01694 | ENE | MPH Electrical project | 2.4 M | -88.7 M | 91.1 M | 5.3 M | 65.0 M | 20.7 M |
-| QC.01545 | SPM |  Central Axis-Louta Beneficiation  | -370.7 M | -452.6 M | 81.9 M | 0.0 M | 84.0 M | -2.1 M |
-| QC.01536 | AMT | 3 MT DAP News Lines (107 D,E & F) | 59.2 M | -20.3 M | 79.5 M | 37.4 M | 4.4 M | 37.7 M |
+| QC.01683 | FEC | Global Cost + Fee for PAT//PPA/MAPc | -191.8 M | -282.2 M | 90.4 M | 2.4 M | 56.2 M | 31.7 M |
 
 The per-project explanation sentence and the AR status of the unbilled amounts are in the "By project" tab; 29 projects explain 80% of the absolute difference.
 
