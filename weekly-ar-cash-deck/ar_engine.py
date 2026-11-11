@@ -197,6 +197,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     def g(r, name):
         i = I.get(name); return r[i] if i is not None else None
     D = lambda: collections.defaultdict(float)
+    period = D()   # AR by (component, posting period YYYY-MM)
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
     nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); jesa_unb_bs = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
@@ -241,6 +242,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
         if comp == "Unbilled" and code == "j-6.a": continue  # unearned on LS is not unbilled AR; C-3.a (DP clearing) stays in unbilled, as in the BU meeting report
         if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue
         kpi[comp] += amt; bu[(b, comp)] += amt
+        _pp = g(r, "Period"); period[(comp, f"{_pp.year}-{_pp.month:02d}" if isinstance(_pp, (dt.datetime, dt.date)) else "n/a")] += amt
         y = str(g(r, "Year") or "").strip(); year[y if y[:2] == "20" else "No year (advance lines)"] += amt
         labor[(comp, labor_type(g(r, "TYPE")))] += amt
         c1 = str(g(r, "Client 1") or "").strip().upper(); is_non = c1.startswith("NON OCP"); ocp["NON OCP" if is_non else "OCP"] += amt
@@ -279,7 +281,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     for key, (client, st) in nonocp_meta.items():
         nproj.append([key[0], client, key[1], key[2], nonocp_proj.get((key, "Unbilled"), 0.0), nonocp_proj.get((key, "Unpaid"), 0.0), st])
     nproj.sort(key=lambda r: -(r[4] + r[5]))
-    return {"kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
+    return {"period": dict(period), "kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
             "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st), "jesa_unbilled_bu_status": dict(jesa_unb_bs),

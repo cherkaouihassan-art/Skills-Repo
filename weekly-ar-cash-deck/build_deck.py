@@ -7,7 +7,7 @@ Usage:
 
 Everything on the slides comes from the input workbook (see extract_inputs.py / README.md).
 """
-import argparse, datetime as dt, copy
+import argparse, datetime as dt, copy, re
 import openpyxl
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -130,7 +130,10 @@ def card(slide, x, y, w, h, label, value, sub=None, fill=NAVY, fg=WHITE, value_s
     if sub:
         tb(slide, x + 0.1, y + h - 0.3, w - 0.2, 0.28, sub, size=sub_size, color=sub_color or fg)
 
+MS_SAME = False   # True when the month-start baseline is the current extract (first weeks of a month): the vs-month-start pill is not drawn
+
 def kpi_card(slide, x, y, w, h, label, value, delta_wow=None, delta_ms=None, fill=WHITE, border=LBLUE, good_when_negative=True, value_size=22, ms_label="vs baseline", accent=None):
+    if MS_SAME: delta_ms = None
     rect(slide, x, y, w, h, fill, line=border, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.1)
     rect(slide, x, y + 0.12, 0.07, h - 0.24, accent or GOLD)
     tb(slide, x + 0.15, y + 0.07, w - 0.2, 0.28, label.upper(), size=9, bold=True, color=SLATE)
@@ -153,6 +156,15 @@ def circle_num(slide, x, y, d, n, fill=NAVY2):
 def table(slide, x, y, w, header, rows, col_w=None, font_size=9, header_size=9, row_h=0.26, header_h=0.34,
           align=None, bold_rows=(), fills=None, colors=None, zebra=True, header_fill=NAVY, total_last=False, first_col_bold=False):
     """rows: list of lists of str. colors: dict (r,c)->RGB. fills: dict r->RGB."""
+    if MS_SAME:
+        drop = [j for j, hname in enumerate(header) if re.search(r"vs\s*MS|month\s*start|m\.\s*start", re.sub(r"\s+", " ", str(hname)), re.I)]
+        if drop:
+            keep = [j for j in range(len(header)) if j not in drop]; remap = {j: k for k, j in enumerate(keep)}
+            header = [header[j] for j in keep]; rows = [[r[j] for j in keep if j < len(r)] for r in rows]
+            if col_w: col_w = [col_w[j] for j in keep]
+            if align: align = [align[j] for j in keep]
+            if colors: colors = {(r, remap[c]): v for (r, c), v in colors.items() if c in remap}
+            if fills: fills = {(k if not isinstance(k, tuple) else (k[0], remap[k[1]])): v for k, v in fills.items() if not isinstance(k, tuple) or k[1] in remap}
     nr, nc = len(rows) + 1, len(header)
     h = header_h + row_h * len(rows)
     gs = slide.shapes.add_table(nr, nc, Inches(x), Inches(y), Inches(w), Inches(h))
@@ -427,6 +439,8 @@ def build(data, meta, out):
     adv, unb, unp, tot = K("Advance"), K("Unbilled"), K("Unpaid"), K("Total AR")
     unrec, newar = K("Unrecognized"), K("Total NEW AR")
     ap_dp, ap_pk, ap_44, ap_lc, ap_tot = K("AP Downpayment"), K("AP Parked"), K("AP Invoices 4411"), K("LC"), K("Total Payables")
+    global MS_SAME
+    MS_SAME = datef(meta["ar_current_date"]) == datef(meta["ar_month_start_date"])
     cur_d, prev_d, ms_d = datef(meta["ar_current_date"]), datef(meta["ar_prev_date"]), datef(meta["ar_month_start_date"])
     cur_s, prev_s, ms_s = datef(meta["ar_current_date"], "%d-%b"), datef(meta["ar_prev_date"], "%d-%b"), datef(meta["ar_month_start_date"], "%d-%b")
     ms_label = "vs month start"
@@ -517,7 +531,10 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 3. AR executive summary
     D.section = "ar"
     pct_unb = unb["current"] / tot["current"] * 100
-    s = D.slide("AR Executive Summary", ("DRAFT (AR as of " + cur_s + "). " if meta.get("draft_note") else "") + f"Unbilled is {pct_unb:.0f}% of total AR; AR {fd(dwow(tot))} MMAD week on week and {fd(dms(tot))} vs the month-start baseline ({ms_s})")
+    _pc, _pp = meta.get("posted_cur"), meta.get("posted_prev")
+    post_d = (round(float(_pc)) - round(float(_pp))) if (_pc not in (None, "") and _pp not in (None, "")) else None
+    post_sub = f" (of which {fd(post_d)} on lines posted in the {meta.get('posted_period')} period)" if (post_d is not None and abs(post_d) >= 50) else ""
+    s = D.slide("AR Executive Summary", ("DRAFT (AR as of " + cur_s + "). " if meta.get("draft_note") else "") + f"Unbilled is {pct_unb:.0f}% of total AR; AR {fd(dwow(tot))} MMAD week on week{post_sub}" + ("" if MS_SAME else f" and {fd(dms(tot))} vs the month-start baseline ({ms_s})"))
     cw = (SW - 0.6 - 0.12 * 5) / 6
     for i, (lab, r, gwn) in enumerate([("Gross exposure", newar, True), ("Unrecognized revenue", unrec, True), ("Total AR", tot, True),
                                         ("Unbilled", unb, True), ("Unpaid", unp, True), ("Advance", adv, True)]):
@@ -537,7 +554,7 @@ def build(data, meta, out):
     mw = (7.7 - 0.24) / 3
     gdso = dso.get("JESA Group", {}); gdso_v = (f"{int(float(gdso['dso_current']))} days" if gdso.get("dso_current") not in (None, "") else "n/a")
     minis = [("OCP share of AR", f"{ocp/(ocp+nocp)*100:.0f}%", f"OCP {f0(ocp)}  ·  non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", BLUE),
-             ("DSO JESA Group", gdso_v, ("prior month " + str(int(float(gdso["dso_prior_month"]))) + " days") if gdso.get("dso_prior_month") not in (None, "") else "excl. advances, BU meeting report", NAVY),
+             ("DSO JESA Group", gdso_v, (meta.get("dso_prior_label") or "prior month") + " " + str(int(float(gdso["dso_prior_month"]))) + " days" if gdso.get("dso_prior_month") not in (None, "") else "excl. advances, BU meeting report", NAVY),
              (f"Payments received (AR report)", f"{f0(paid_m)} MDH", None, TEAL)]
     _cmm = {r["month"]: r for r in data["COLLECTIONS_MONTHLY"]}; _pr = _cmm.get(prior_name[:3], {"labor": 0, "non_labor": 0})
     pay_lines = [[(f"{month_name[:3]} {f0(paid_m)}", {"bold": True, "color": DARK}), (f" (PSR {f0(m_lab)} / Proc {f0(m_nl)})", {})],
@@ -586,12 +603,12 @@ def build(data, meta, out):
         def dlt(cs, bu=None): return ((round(tsum(cs, "current", bu)) - round(tsum(cs, "prev_week", bu))) if has_sprev else None, round(tsum(cs, "current", bu)) - round(tsum(cs, "month_start", bu)))
         U = tsum(cells, "current"); cC, cJ = tsum(sel("Client"), "current"), tsum(sel("JESA"), "current"); sS, sN = tsum(sel(c="Signed"), "current"), tsum(sel(c="Not signed"), "current")
         dwU, dmU = dlt(cells)
-        s = D.slide("Unbilled – Responsibility & Client Signature", f"Unbilled {f0(U)} MMAD ({fd(dwU) if dwU is not None else 'n/a'} WoW, {fd(dmU)} vs MS): client {f0(cC)} vs JESA {f0(cJ)}; signed {f0(sS)} ({sS/(U or 1)*100:.0f}%) vs not signed {f0(sN)}")
+        s = D.slide("Unbilled – Responsibility & Client Signature", f"Unbilled {f0(U)} MMAD ({fd(dwU) if dwU is not None else 'n/a'} WoW{'' if MS_SAME else ', ' + fd(dmU) + ' vs MS'}): client {f0(cC)} vs JESA {f0(cJ)}; signed {f0(sS)} ({sS/(U or 1)*100:.0f}%) vs not signed {f0(sN)}")
         cw = (SW - 0.6 - 0.12 * 3) / 4
         # level 1: total unbilled
         rect(s, 0.3, 1.12, SW - 0.6, 0.62, NAVY, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.15)
         tb(s, 0.5, 1.12, 12.4, 0.62, [[("TOTAL UNBILLED  ", {"size": 10, "bold": True, "color": LBLUE}), (f"{f0(U)} MMAD", {"size": 20, "bold": True, "color": WHITE}),
-                                       (f"     WoW {fd(dwU) if dwU is not None else 'n/a'}   ·   vs month start {fd(dmU)}   ·   PSR {f0(tsum(sel(l='labor'), 'current'))} · Procurement {f0(tsum(sel(l='non_labor'), 'current'))}", {"size": 10, "color": WHITE})]], anchor=MSO_ANCHOR.MIDDLE)
+                                       (f"     WoW {fd(dwU) if dwU is not None else 'n/a'}" + ("" if MS_SAME else f"   ·   vs month start {fd(dmU)}") + f"   ·   PSR {f0(tsum(sel(l='labor'), 'current'))} · Procurement {f0(tsum(sel(l='non_labor'), 'current'))}", {"size": 10, "color": WHITE})]], anchor=MSO_ANCHOR.MIDDLE)
         for i in range(4):  # connectors to level 2
             rect(s, 0.3 + i * (cw + 0.12) + cw / 2 - 0.01, 1.74, 0.02, 0.14, GREY)
         boxes = (("Under client responsibility", sel("Client"), True, NAVY2), ("Under JESA responsibility", sel("JESA"), True, NAVY2), ("Signed by client", sel(c="Signed"), False, GREEN), ("Not signed by client", sel(c="Not signed"), True, GOLD))
@@ -630,8 +647,9 @@ def build(data, meta, out):
         NS_FILL = RGBColor(0xFA, 0xEF, 0xD6); NS_HDR = RGBColor(0xA6, 0x7C, 0x1F)
         fills = {(i, j): NS_FILL for i in range(len(rows)) for j in (6, 7)}
         gs_ = table(s, 6.95, 3.66, 6.1, ["BU", "Signed", "% signed", "Δ WoW", "Δ vs MS", "Not signed", "Not signed\nunder Client", "Not signed\nunder JESA"], rows, col_w=[1.25, 0.72, 0.62, 0.62, 0.66, 0.78, 0.75, 0.7], font_size=8.5, header_size=7.5, row_h=0.24, header_h=0.36, colors=colors, fills=fills, total_last=True, header_fill=GREEN)
-        for j in (6, 7):
-            c_ = gs_.table.cell(0, j); c_.fill.solid(); c_.fill.fore_color.rgb = NS_HDR
+        for j in range(len(gs_.table.columns)):
+            c_ = gs_.table.cell(0, j)
+            if c_.text.startswith("Not signed\n"): c_.fill.solid(); c_.fill.fore_color.rgb = NS_HDR
         tb(s, 6.95, 3.66 + 0.36 + 0.24 * len(rows) + 0.05, 6.1, 0.4, "Signed = C-3.a/b, C-5.a, J-3.a, J-3.c, J-4.a, plus at-risk, pending-PO and VAT-exemption lines whose roll-up status or PA comment says signed (finance guideline).", size=7.5, italic=True, color=SLATE)
 
         # ---- Unbilled under JESA responsibility: status by BU (backup to slide 5)
@@ -744,7 +762,7 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 4. AR movement (comparatives)
     D.section = "ar_backup"
     s = D.slide("AR Movement – week on week and vs baseline",
-                f"This week {cur_s} vs last week {prev_s} and vs the month-start baseline ({ms_s} AR position)")
+                f"This week {cur_s} vs last week {prev_s}" + (f"; {ms_s} is the new month-start baseline" if MS_SAME else f" and vs the month-start baseline ({ms_s} AR position)"))
     hdr = ["Component", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ% WoW", "Δ vs\nmonth start", "Δ% vs\nmonth start"]
     rows, colors = [], {}
     comp_rows = [("Advance", adv), ("Unbilled", unb), ("Unpaid", unp), ("Total AR", tot), ("Unrecognized revenue", unrec), ("Gross exposure", newar)]
@@ -786,14 +804,14 @@ def build(data, meta, out):
     tb(s, 8.3, 1.25, 4.7, 0.3, "AR aging by year of origin", size=13, bold=True, color=NAVY)
     table(s, 8.3, 1.6, 4.7, ["Year", f"M. start\n{ms_s}", prev_s, cur_s, "Δ WoW", "Δ vs\nm. start"], ag_rows, col_w=[1.4, 0.9, 0.9, 0.9, 0.8, 0.9], font_size=9, colors=ag_col, total_last=True, row_h=0.28)
     # chart deltas by component
-    for k, (ttl, fn) in enumerate(((f"Δ vs last week ({prev_s})", dwow), (f"Δ vs month start ({ms_s})", dms))):
+    for k, (ttl, fn) in enumerate(((f"Δ vs last week ({prev_s})", dwow),) + (() if MS_SAME else ((f"Δ vs month start ({ms_s})", dms),))):
         vals = [fn(adv), fn(unb), fn(unp), fn(tot)]
-        ch = bar_chart(s, 8.2 + k * 2.5, 3.75, 2.4, 3.1, ["Advance", "Unbilled", "Unpaid", "Total AR"], [(ttl, vals)], [BLUE], legend=False, gap=45, number_format='+#,##0;−#,##0;0', title=ttl, label_size=8, cat_size=7.5)
+        ch = bar_chart(s, 8.2 + k * 2.5, 3.75, (4.9 if MS_SAME else 2.4), 3.1, ["Advance", "Unbilled", "Unpaid", "Total AR"], [(ttl, vals)], [BLUE], legend=False, gap=45, number_format='+#,##0;−#,##0;0', title=ttl, label_size=8, cat_size=7.5)
         color_points(ch, 0, [delta_color(v) if abs(v) >= 0.5 else GREY for v in vals])
     tb(s, 8.2, 6.85, 4.9, 0.25, "Movement by component (MMAD): green = AR decreased, red = AR increased", size=8, italic=True, color=SLATE, align=PP_ALIGN.CENTER)
 
     # ------------------------------------------------------------------ 5. AR by BU
-    s = D.slide("AR Position by Business Unit", f"This week vs last week and vs the month-start baseline ({ms_s}), MMAD; DSO excl. advances in days (BU meeting report)")
+    s = D.slide("AR Position by Business Unit", "This week vs last week" + ("" if MS_SAME else f" and vs the month-start baseline ({ms_s})") + ", MMAD; DSO excl. advances in days (BU meeting report)")
     hdr = ["Business Unit", f"Month start\n{ms_s}", f"Last week\n{prev_s}", f"This week\n{cur_s}", "Δ WoW", "Δ vs\nmonth start", "Unbilled", "Δ WoW", "Unpaid", "Δ WoW", "Advance", "Unrecog.\nrevenue", "Gross\nexposure", f"Paid\n{month_name[:3]}", "DSO\n(days)"]
     rows, colors = [], {}
     bus = [b for b in BU_ORDER if b in arbu]
@@ -813,8 +831,8 @@ def build(data, meta, out):
     table(s, 0.35, 1.25, 12.65, hdr, rows, col_w=[1.55, 0.9, 0.9, 0.9, 0.75, 0.85, 0.85, 0.75, 0.8, 0.75, 0.75, 0.85, 0.9, 0.7, 0.65], font_size=8.5, header_size=8, row_h=0.265, header_h=0.5, total_last=True, first_col_bold=True)
     yb = 1.25 + 0.5 + 0.265 * len(rows) + 0.2
     hb = SH - 0.45 - yb
-    bar_chart(s, 0.3, yb, 6.3, hb, [short(b) for b in bus[:9]], [("Δ WoW", [dwow(arbu[b]["Total AR"]) for b in bus[:9]])], [BLUE], legend=False, number_format='+#,##0;−#,##0;0', title="Total AR – Δ week on week by BU (MMAD)", cat_size=8, gap=50)
-    bar_chart(s, 6.75, yb, 6.3, hb, [short(b) for b in bus[:9]], [(f"Δ vs {ms_s}", [dms(arbu[b]["Total AR"]) for b in bus[:9]])], [GOLD], legend=False, number_format='+#,##0;−#,##0;0', title=f"Total AR – Δ vs month start ({ms_s}) by BU (MMAD)", cat_size=8, gap=50)
+    bar_chart(s, 0.3, yb, (12.75 if MS_SAME else 6.3), hb, [short(b) for b in bus[:9]], [("Δ WoW", [dwow(arbu[b]["Total AR"]) for b in bus[:9]])], [BLUE], legend=False, number_format='+#,##0;−#,##0;0', title="Total AR – Δ week on week by BU (MMAD)", cat_size=8, gap=50)
+    if not MS_SAME: bar_chart(s, 6.75, yb, 6.3, hb, [short(b) for b in bus[:9]], [(f"Δ vs {ms_s}", [dms(arbu[b]["Total AR"]) for b in bus[:9]])], [GOLD], legend=False, number_format='+#,##0;−#,##0;0', title=f"Total AR – Δ vs month start ({ms_s}) by BU (MMAD)", cat_size=8, gap=50)
 
     # ------------------------------------------------------------------ 5b. DSO trend (backup)
     dtr = data.get("DSO_TREND", [])
@@ -878,7 +896,7 @@ def build(data, meta, out):
     def nv(b, c, k): return ((no.get(b, {}).get(c) or {}).get(k)) or 0
     n_unb = sum(nv(b, "Unbilled", "current") for b in no); n_unp = sum(nv(b, "Unpaid", "current") for b in no)
     n_unb_ms = sum(nv(b, "Unbilled", "month_start") for b in no); n_unp_ms = sum(nv(b, "Unpaid", "month_start") for b in no)
-    s = D.slide("Non-OCP Clients – unbilled & unpaid", f"Non-OCP receivables of {f0(n_unb + n_unp)} MMAD ({(n_unb+n_unp)/tot['current']*100:.1f}% of AR): unbilled {f0(n_unb)}, unpaid {f0(n_unp)}; {fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))} vs month start")
+    s = D.slide("Non-OCP Clients – unbilled & unpaid", f"Non-OCP receivables of {f0(n_unb + n_unp)} MMAD ({(n_unb+n_unp)/tot['current']*100:.1f}% of AR): unbilled {f0(n_unb)}, unpaid {f0(n_unp)}" + ("" if MS_SAME else f"; {fd(round(n_unb+n_unp)-round(n_unb_ms+n_unp_ms))} vs month start"))
     cw = (SW - 0.6 - 0.12 * 4) / 5
     kpi_card(s, 0.3 + 4 * (cw + 0.12), 1.2, cw, 1.1, f"Non-OCP paid in {month_name[:3]} to {cur_s}", nonocp_m, delta_wow=round(nonocp_m) - round(nonocp_m_pw), good_when_negative=False, value_size=20)
     tb(s, 0.3 + 4 * (cw + 0.12) + 0.15, 1.2 + 1.1 - 0.32, cw - 0.3, 0.26, f"{prior_name[:3]} {f0(nonocp_prior)}  ·  YTD {f0(nonocp_ytd)}", size=8.5, color=SLATE, align=PP_ALIGN.RIGHT)
@@ -914,7 +932,7 @@ def build(data, meta, out):
     j_lab = sum(jv(b, "labor", "current") for b in ju); j_nl = sum(jv(b, "non_labor", "current") for b in ju); j_tot = j_lab + j_nl
     j_lab_ms = sum(jv(b, "labor", "month_start") for b in ju); j_nl_ms = sum(jv(b, "non_labor", "month_start") for b in ju)
     j_prev = sum(jv(b, sp, "prev_week") for b in ju for sp in ("labor", "non_labor")) if any((ju[b].get(sp) or {}).get("prev_week") is not None for b in ju for sp in ("labor", "non_labor")) else None
-    s = D.slide("Unbilled under JESA responsibility", f"{f0(j_tot)} MMAD of unbilled sits with JESA ({j_tot/unb['current']*100:.0f}% of unbilled): PSR {f0(j_lab)} / Procurement {f0(j_nl)}; {fd(round(j_tot)-round(j_lab_ms+j_nl_ms))} vs month start" + (f", {fd(round(j_tot)-round(j_prev))} WoW" if j_prev is not None else ""))
+    s = D.slide("Unbilled under JESA responsibility", f"{f0(j_tot)} MMAD of unbilled sits with JESA ({j_tot/unb['current']*100:.0f}% of unbilled): PSR {f0(j_lab)} / Procurement {f0(j_nl)}" + ("" if MS_SAME else f"; {fd(round(j_tot)-round(j_lab_ms+j_nl_ms))} vs month start") + (f"; {fd(round(j_tot)-round(j_prev))} WoW" if j_prev is not None else ""))
     cw = (SW - 0.6 - 0.12 * 3) / 4
     kpi_card(s, 0.3, 1.2, cw, 1.2, "Unbilled under JESA", j_tot, delta_wow=(round(j_tot) - round(j_prev)) if j_prev is not None else None, delta_ms=round(j_tot) - round(j_lab_ms + j_nl_ms), value_size=20, ms_label="vs month start")
     kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.2, "PSR (labor)", j_lab, delta_ms=round(j_lab) - round(j_lab_ms), value_size=20, ms_label="vs month start")
@@ -946,9 +964,9 @@ def build(data, meta, out):
     ur_rev = unrec["current"] or 0; ur_cost = ur_rev / MK
     ur_prev, ur_ms = unrec.get("prev_week"), unrec.get("month_start")
     sub_txt = f"Unrecognized revenue of {f0(ur_rev)} MMAD = supplier balance ({f0(ur_cost)}) plus a 6% markup; {fd(dwow(unrec))} vs {prev_s}"
-    if ur_ms is not None: sub_txt += f", {fd(dms(unrec))} vs month start"
+    if ur_ms is not None and not MS_SAME: sub_txt += f", {fd(dms(unrec))} vs month start"
     s = D.slide("Unrecognized Revenue & Suppliers", sub_txt)
-    card(s, 0.4, 1.3, 6.1, 1.15, "Unrecognized revenue", f"{f0(ur_rev)} MMAD", f"= unrecognized supplier cost × {MK} cost-and-fee markup  ·  {prev_s}: {f0(ur_prev)}" + (f"  ·  month start: {f0(ur_ms)}" if ur_ms is not None else ""), fill=BLUE, value_size=24, sub_size=8.5)
+    card(s, 0.4, 1.3, 6.1, 1.15, "Unrecognized revenue", f"{f0(ur_rev)} MMAD", f"= unrecognized supplier cost × {MK} cost-and-fee markup  ·  {prev_s}: {f0(ur_prev)}" + (f"  ·  month start: {f0(ur_ms)}" if (ur_ms is not None and not MS_SAME) else ""), fill=BLUE, value_size=24, sub_size=8.5)
     card(s, 6.85, 1.3, 6.15, 1.15, "Unrecognized suppliers — cost", f"{f0(ur_cost)} MMAD", "Executed but unbooked supplier & equipment scope (HT, excl. DP)", fill=SLATE, value_size=24, sub_size=8.5)
     # by business unit (revenue incl. markup), one colour per BU
     BU_COL = {"SP2M Ad Hoc Program": GOLD, "Water & Environment": NAVY2, "Fertilizers & Chemicals": TEAL, "Energy Operations": GREEN, "JESA Technologies": BLUE,
@@ -1016,7 +1034,17 @@ def build(data, meta, out):
             rows.append([short(r["bu"]), f0(r.get("month_non_labor")), f0(r.get("month_labor")), f0(r["month_current"]), fd(d1), f0(r.get("since_jul")), f"{(r.get('since_jul') or 0)/(jul_tot or 1)*100:.0f}%"]); colors[(i, 4)] = delta_color(d1, False)
         rows.append(["Total", f0(m_nl), f0(m_lab), f0(oct_cur), fd(d_tot), f0(jul_tot), "100%"])
         table(s, 7.85, 2.9, 5.2, ["BU", "Procurement", "PSR", "Total", f"Δ vs\n{prev_s}", "Since July", "%"], rows, col_w=[1.35, 0.85, 0.65, 0.7, 0.75, 0.75, 0.5], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
-        tb(s, 7.85, 2.9 + 0.42 + 0.26 * len(rows) + 0.08, 5.2, 0.5, f"AR report: invoices paid by payment date, all clients; {month_name} compared with the position of the previous AR extract ({prev_s}).", size=7.5, italic=True, color=SLATE)
+        yn = 2.9 + 0.42 + 0.26 * len(rows) + 0.08
+        tb(s, 7.85, yn, 5.2, 0.4, f"AR report: invoices paid by payment date, all clients; {month_name} compared with the position of the previous AR extract ({prev_s}).", size=7.5, italic=True, color=SLATE)
+        # bridge to the cash position slide (OCP payment report only)
+        _cm = {r["line"]: r for r in data["CASH_MONTHLY"]}
+        _same = (meta.get("cash_ongoing_month") or "")[:3] == month_name[:3]
+        ocp_rep = ((_cm["Procurement collections (OCP payment report)"].get("oct_ongoing" if _same else "oct_actual") or 0) + (_cm["PSR collections (labor)"].get("oct_ongoing" if _same else "oct_actual") or 0)) if (_same or (meta.get("cash_actual_month") or "")[:3] == month_name[:3]) else None
+        non_m = sum(cget(b, "nonocp_month_current") for b in coll_map)
+        if ocp_rep is not None and abs(oct_cur - ocp_rep) >= 1:
+            rest = oct_cur - ocp_rep - non_m
+            tb(s, 7.85, yn + 0.42, 5.2, 0.75, [[(f"{month_name} {f0(oct_cur)} MMAD in the AR report = ", {"bold": True, "color": NAVY}), (f"{f0(ocp_rep)} per the OCP payment report", {"bold": True}), (" (the basis of the cash position slide) + ", {}), (f"{f0(non_m)} from non-OCP clients", {"bold": True}),
+                                                   ((f" + {f0(rest)} from subsidiaries paid outside the OCP report" if rest >= 0.5 else (f" − {f0(-rest)} timing difference" if rest <= -0.5 else "")), {}), (".", {})]], size=8.5, color=DARK, line_spacing=1.1)
     else:
         s = D.slide("Payments Received (Collections)", f"{f0(oct_cur)} MMAD of invoices paid in {month_name} to {cur_s} ({fd(oct_cur-oct_pw)} vs {prev_s}); {ytd/1000:,.2f} Bn MAD year to date")
         cw = (SW - 0.6 - 0.12 * 5) / 6
@@ -1058,13 +1086,14 @@ def build(data, meta, out):
     net_act = tot_r["net_actuals"]; net_appr = tot_r["net_after_approved"]; net_all = tot_r["net_all_ongoing"]
     s = D.slide("Cash Position – Procurement (JESA Group incl. AM)", f"Jul–{cam} 2026: cash IN {f0(cin['cumulative'])} vs cash OUT paid {f0(-(cout['jul'] + cout['aug'] + cout['sep'] + cout['oct_actual']))} → {fd(net_act)} MMAD; {fd(net_appr)} after approved {com} payments, {fd(net_all)} after pending")
     cw = (SW - 0.6 - 0.1 * 6) / 7
-    card(s, 0.3, 1.2, cw, 1.1, f"Cash IN Jul–{cam}", f0(cin["cumulative"]), f"OCP {f0(proc['cumulative'])} + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=20, sub_size=7.5, label_size=8.5)
+    in_ong = cin.get("oct_ongoing") or 0; nov_paid = float(meta.get("cash_ongoing_paid") or 0); nov_paid_lab = meta.get("cash_ongoing_paid_label") or ""
+    card(s, 0.3, 1.2, cw, 1.1, f"Cash IN Jul–{cam}" + (f" + {com} to {cct}" if in_ong > 0.5 else ""), f0(cin["cumulative"]), f"OCP {f0(proc['cumulative'])}" + (f" (incl. {com} {f0(in_ong)})" if in_ong > 0.5 else "") + f" + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=20, sub_size=7.5, label_size=(7.5 if in_ong > 0.5 else 8.5))
     card(s, 0.3 + (cw + 0.1), 1.2, cw, 1.1, f"Cash OUT Jul–{cam}", f0(-(cout["jul"] + cout["aug"] + cout["sep"] + cout["oct_actual"])), f"Suppliers, LC, customs to {cpt}", fill=NAVY2, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 2 * (cw + 0.1), 1.2, cw, 1.1, f"{com} approved supp.", f0(appr_sup), "Approved supplier invoices", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 2 * (cw + 0.1), 1.2, cw, 1.1, f"{com} approved supp.", f0(appr_sup), "Approved supplier invoices" + (f", incl. {f0(nov_paid)} paid {nov_paid_lab}" if nov_paid >= 0.5 else ""), fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 3 * (cw + 0.1), 1.2, cw, 1.1, f"LC payments due – {com}", f0(appr_lc), "LC maturities per bank situation", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 4 * (cw + 0.1), 1.2, cw, 1.1, f"{com} pending supp.", f0(pend), "Pending payment approval", fill=ORANGE, value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 5 * (cw + 0.1), 1.2, cw, 1.1, "Net after ongoing", fd(net_all), f"Actuals {fd(net_act)} · after approved {fd(net_appr)}", fill=(RED if net_all < 0 else GREEN), value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 6 * (cw + 0.1), 1.2, cw, 1.1, "PSR collected", f0(psr["cumulative"]), f"Jul–{cam}: {f0(psr['jul'])} · {f0(psr['aug'])} · {f0(psr['sep'])} · {f0(psr['oct_actual'])}", fill=SLATE, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 6 * (cw + 0.1), 1.2, cw, 1.1, "PSR collected", f0(psr["cumulative"]), f"Jul–{cam}: {f0(psr['jul'])} · {f0(psr['aug'])} · {f0(psr['sep'])} · {f0(psr['oct_actual'])}" + (f" · {com} {f0(psr.get('oct_ongoing'))}" if (psr.get('oct_ongoing') or 0) > 0.05 else ""), fill=SLATE, value_size=20, sub_size=7.5, label_size=8.5)
     # ---- cumulative position by BU (EXEC Summary section 5)
     tb(s, 0.4, 2.38, 12.6, 0.3, f"Cumulative position Jul–{cam} by business unit – actuals, {com} approved (suppliers / LC) and pending commitments (MMAD)", size=11.5, bold=True, color=NAVY)
     lc_ong = {r["bu"]: (r["oct_ongoing_lc"] or 0) for r in data.get("CASH_BU_OCT", [])}
@@ -1093,25 +1122,29 @@ def build(data, meta, out):
     D.section = "cash_backup"
     pbu = sorted(data.get("CASH_PSR_BU", []), key=lambda r: -(r["cumulative"] or 0))
     am_p = cmo.get("PSR provision – AM ring-fence"); we_p = cmo.get("PSR provision – W&E reserve"); oh = cmo.get("Overhead payments (FYI, not deducted)")
-    s = D.slide("PSR (Labor) Collections", f"Jul–{cam} 2026: PSR collections {f0(psr['cumulative'])} MMAD, provisions {f0(-prov['cumulative'])} (AM ring-fence {f0(-(am_p['cumulative'] if am_p else 0))}, W&E reserve {f0(-(we_p['cumulative'] if we_p else 0))}) → {fd(npsr['cumulative'])} MMAD available")
+    psr_ong = psr.get("oct_ongoing") or 0; has_we = bool(we_p) and abs(we_p["cumulative"] or 0) >= 0.05
+    psr_span = f"Jul–{com} (to {cct})" if psr_ong > 0.05 else f"Jul–{cam}"
+    s = D.slide("PSR (Labor) Collections", f"{psr_span} 2026: PSR collections {f0(psr['cumulative'])} MMAD" + (f", provisions {f0(-prov['cumulative'])} (AM ring-fence {f0(-(am_p['cumulative'] if am_p else 0))}, W&E reserve {f0(-(we_p['cumulative'] if we_p else 0))}) → {fd(npsr['cumulative'])} MMAD available" if has_we else f", of which AM ring-fenced {f0(-(am_p['cumulative'] if am_p else 0))} → {fd(npsr['cumulative'])} MMAD after the AM exclusion"))
     cw = (SW - 0.6 - 0.12 * 4) / 5
-    card(s, 0.3, 1.25, cw, 1.15, "PSR collections Jul–Oct", f0(psr["cumulative"]), "Labor collections per OCP payment report", fill=TEAL, value_size=22)
+    card(s, 0.3, 1.25, cw, 1.15, f"PSR collections {psr_span}", f0(psr["cumulative"]), "Labor collections per OCP payment report", fill=TEAL, value_size=22)
     card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.15, f"{cam} {can}", f0(psr["oct_actual"]), f"Sep {f0(psr['sep'])}  ·  Aug {f0(psr['aug'])}  ·  Jul {f0(psr['jul'])}", fill=NAVY2, value_size=22)
     card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.15, "AM ring-fence", f0(-(am_p["cumulative"] if am_p else 0)), "AM PSR collections cover AM PSR costs", fill=GOLD, value_size=22)
-    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "W&E reserve provision", f0(-(we_p["cumulative"] if we_p else 0)), "100 MDH provision, 33.3 per month Jul–Sep", fill=GOLD, value_size=22)
-    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, "Available after provisions", fd(npsr["cumulative"]), (f"Overheads paid {f0(-oh['cumulative'])} MMAD (FYI, not deducted)" if oh else "Collections less provisions"), fill=(GREEN if npsr["cumulative"] >= 0 else RED), value_size=22)
+    if has_we: card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, "W&E reserve provision", f0(-(we_p["cumulative"] if we_p else 0)), "100 MDH provision, 33.3 per month Jul–Sep", fill=GOLD, value_size=22)
+    else: card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.15, f"{com} to {cct}", f0(psr_ong), f"{com_full} PSR collections to date", fill=SLATE, value_size=22)
+    card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.15, ("Available after provisions" if has_we else "After AM exclusion"), fd(npsr["cumulative"]), (f"Overheads paid {f0(-oh['cumulative'])} MMAD (FYI, not deducted)" if oh else "Collections less provisions"), fill=(GREEN if npsr["cumulative"] >= 0 else RED), value_size=22)
     tb(s, 0.4, 2.6, 6.6, 0.3, "PSR collections by business unit (MMAD)", size=13, bold=True, color=NAVY)
     rows, colors = [], {}
     for i, r in enumerate(pbu):
-        rows.append([short(r["bu"]), f0(r["jul"]), f0(r["aug"]), f0(r["sep"]), f0(r["oct_actual"]), f0(r["cumulative"]), f"{(r['cumulative'] or 0)/(psr['cumulative'] or 1)*100:.0f}%"])
-    rows.append(["Total PSR collections", f0(psr["jul"]), f0(psr["aug"]), f0(psr["sep"]), f0(psr["oct_actual"]), f0(psr["cumulative"]), "100%"])
+        rows.append([short(r["bu"]), f0(r["jul"]), f0(r["aug"]), f0(r["sep"]), f0(r["oct_actual"])] + ([f0(r.get("oct_ongoing"))] if psr_ong > 0.05 else []) + [f0(r["cumulative"]), f"{(r['cumulative'] or 0)/(psr['cumulative'] or 1)*100:.0f}%"])
+    pk = ["jul", "aug", "sep", "oct_actual"] + (["oct_ongoing"] if psr_ong > 0.05 else []) + ["cumulative"]
+    rows.append(["Total PSR collections"] + [f0(psr[k]) for k in pk] + ["100%"])
     nt = len(rows) - 1
-    if am_p: rows.append(["AM ring-fence", f0(am_p["jul"]), f0(am_p["aug"]), f0(am_p["sep"]), f0(am_p["oct_actual"]), f0(am_p["cumulative"]), ""])
-    if we_p: rows.append(["W&E reserve provision", f0(we_p["jul"]), f0(we_p["aug"]), f0(we_p["sep"]), f0(we_p["oct_actual"]), f0(we_p["cumulative"]), ""])
-    rows.append(["Available after provisions", fd(npsr["jul"]), fd(npsr["aug"]), fd(npsr["sep"]), fd(npsr["oct_actual"]), fd(npsr["cumulative"]), ""])
+    if am_p: rows.append(["AM ring-fence"] + [f0(am_p[k]) for k in pk] + [""])
+    if has_we: rows.append(["W&E reserve provision"] + [f0(we_p[k]) for k in pk] + [""])
+    rows.append([("Available after provisions" if has_we else "After AM exclusion")] + [fd(npsr[k]) for k in pk] + [""])
     na = len(rows) - 1
-    for j, k in enumerate(("jul", "aug", "sep", "oct_actual", "cumulative"), start=1): colors[(na, j)] = delta_color(npsr[k], good_when_negative=False)
-    table(s, 0.4, 2.9, 6.6, ["MMAD", "Jul", "Aug", "Sep", f"{cam} {can}", "Cumul.", "%"], rows, col_w=[2.1, 0.7, 0.7, 0.7, 0.9, 0.8, 0.6], font_size=8.5, header_size=8, bold_rows=(nt, na), fills={nt: LBLUE, na: LIGHT}, row_h=0.255, header_h=0.34, first_col_bold=True)
+    for j, k in enumerate(pk, start=1): colors[(na, j)] = delta_color(npsr[k], good_when_negative=False)
+    table(s, 0.4, 2.9, 6.6, ["MMAD", "Jul", "Aug", "Sep", f"{cam} {can}"] + ([f"{com} to {cct}"] if psr_ong > 0.05 else []) + ["Cumul.", "%"], rows, col_w=[2.1, 0.7, 0.7, 0.7, 0.9] + ([0.8] if psr_ong > 0.05 else []) + [0.8, 0.6], font_size=8.5, header_size=8, bold_rows=(nt, na), fills={nt: LBLUE, na: LIGHT}, row_h=0.255, header_h=0.34, first_col_bold=True)
     tb(s, 7.3, 2.6, 5.8, 0.3, f"Cumulative PSR collections by BU, Jul–{month_name[:3]} (MMAD)", size=13, bold=True, color=NAVY)
     top_p = [r for r in pbu if (r["cumulative"] or 0) > 0.05][:9]
     ch = bar_chart(s, 7.2, 2.9, 5.9, SH - 0.45 - 2.9 - 0.4, [short(r["bu"]) for r in top_p], [("Cumulative", [r["cumulative"] for r in top_p])], [TEAL], legend=False, horizontal=True, gap=40, cat_size=9, label_size=9)
@@ -1162,7 +1195,7 @@ def build(data, meta, out):
         rows.append(["Total approved supplier payments", str(int(tl_tot["lines"] or 0)), f1(tl_tot["amount"]), "100%"])
         table(s, 6.95, 4.45, 6.1, ["Tracking-log status", "Lines", "MMAD", "%"], rows, col_w=[3.6, 0.7, 0.9, 0.7], font_size=8.5, header_size=8, row_h=0.22, header_h=0.3, total_last=True)
     else:
-        tb(s, 6.95, 1.9, 6.1, 0.8, "Payment tracking-log status not available this week (sheet 'Approved vs Tracking log' missing from the cash flow workbook).", size=10, italic=True, color=SLATE)
+        tb(s, 6.95, 1.9, 6.1, 0.8, "Tracking-log status of the approved invoices is not reported this week.", size=10, italic=True, color=SLATE)
     pri = [r for r in data["ONGOING"] if str(r["bucket"]).startswith("Priority list")]
     pri_tot = next((r["amount"] for r in pri if "total approved" in str(r["bucket"])), None)
     pri_cls = [r for r in pri if str(r["bucket"]).startswith("Priority list – P")]
@@ -1190,7 +1223,7 @@ def build(data, meta, out):
     bm = {(r["origin"], r["bucket"]): r["amount"] or 0 for r in bk}
     buckets = [b for b in buckets if any(bm.get((o, b), 0) > 0.05 for o in origins)]
     ap_file_tot = sum(bm.values()); overdue = sum(bm.get((o, "Overdue"), 0) for o in origins)
-    tb(s, 7.2, 2.45, 5.9, 0.3, f"Open supplier invoices by due date – AP file {meta['ap_label']} (MMAD)", size=13, bold=True, color=NAVY)
+    tb(s, 7.2, 2.45, 5.9, 0.3, "Open supplier invoices by due date (MMAD)", size=13, bold=True, color=NAVY)
     tb(s, 7.2, 2.75, 5.9, 0.3, f"{f0(ap_file_tot)} MMAD of open lines, of which {f0(overdue)} MMAD ({overdue/ap_file_tot*100:.0f}%) past due at {asof}", size=9.5, color=SLATE)
     ch = bar_chart(s, 7.1, 3.0, 6.0, 2.45, buckets, [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=True, gap=50, cat_size=8.5, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM, label_colors=[WHITE, WHITE, DARK])
     hide_small_labels(ch, [[bm.get((o, b), 0) for b in buckets] for o in origins], 30)
@@ -1261,7 +1294,7 @@ def build(data, meta, out):
         unr = arbu[b].get("Unrecognized") or {"current": 0, "prev_week": None, "month_start": None}
         unr_c = unr["current"] or 0; unr_p = unr["prev_week"]; unr_m = unr.get("month_start")
         tc = t_["current"] or 1
-        s = D.slide(f"Zoom – {b}", f"Total AR {f0(t_['current'])} MMAD ({fd(dwow(t_))} WoW, {fd(dms(t_))} vs month start); unbilled {u_['current']/tc*100:.0f}% / unpaid {p_['current']/tc*100:.0f}% / advance {a_['current']/tc*100:.0f}%" + (f" · DSO {dso_txt(b)}" if dso_txt(b) else ""))
+        s = D.slide(f"Zoom – {b}", f"Total AR {f0(t_['current'])} MMAD ({fd(dwow(t_))} WoW{'' if MS_SAME else ', ' + fd(dms(t_)) + ' vs month start'}); unbilled {u_['current']/tc*100:.0f}% / unpaid {p_['current']/tc*100:.0f}% / advance {a_['current']/tc*100:.0f}%" + (f" · DSO {dso_txt(b)}" if dso_txt(b) else ""))
         cw = (SW - 0.6 - 0.12 * 5) / 6
         kpi_card(s, 0.3, 1.2, cw, 1.15, "Gross exposure", t_["current"] + unr_c, delta_wow=(dwow(t_) + (unr_c - unr_p)) if unr_p is not None else None, delta_ms=(dms(t_) + (unr_c - unr_m)) if (unr_m is not None and dms(t_) is not None) else None, value_size=20, ms_label="vs month start")
         kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.15, "Unrecognized revenue", unr_c, delta_wow=(round(unr_c) - round(unr_p)) if unr_p is not None else None, delta_ms=(round(unr_c) - round(unr_m)) if unr_m is not None else None, value_size=20, ms_label="vs month start")
@@ -1271,7 +1304,7 @@ def build(data, meta, out):
         ub = u_["current"] or 1
         zsg = [r for r in data.get("AR_SIGNED_BU", []) if r["bu"] == b and "split" in r]
         def zs(k, rp=None, c=None, l=None): return sum((r[k] or 0) for r in zsg if (rp is None or r["responsibility"] == rp) and (c is None or r["class"] == c) and (l is None or r["split"] == l))
-        zprev = any(r.get("prev_week") is not None for r in zsg); zms = any(r.get("month_start") is not None for r in zsg)
+        zprev = any(r.get("prev_week") is not None for r in zsg); zms = (not MS_SAME) and any(r.get("month_start") is not None for r in zsg)
         tb(s, 0.4, 2.5, 4.5, 0.3, "Unbilled – responsibility & client signature", size=12, bold=True, color=NAVY)
         zboxes = [("Under client responsibility", dict(rp="Client"), NAVY2), ("Under JESA responsibility", dict(rp="JESA"), NAVY2), ("Signed by client", dict(c="Signed"), GREEN), ("Not signed by client", dict(c="Not signed"), GOLD)]
         for i, (lab, sel_, acc) in enumerate(zboxes):
@@ -1412,7 +1445,7 @@ def build(data, meta, out):
             ("Unpaid", "invoiced, not yet collected; split current / past due / rejected and by client processing phase."),
             ("Unrecognized revenue", "supplier and equipment scope executed but not yet booked as AR, including the 6% JESA cost + fee."),
             ("Gross exposure", "total AR + unrecognized revenue."),
-            ("Week on week / vs month start", f"position at {cur_s} compared with {prev_s} and with the first AR position of the month ({ms_s})."),
+            ("Week on week / vs month start", (f"position at {cur_s} compared with {prev_s}. The {ms_s} position, the first that includes October revenue, is the new month-start baseline: month-start comparisons resume next week." if MS_SAME else f"position at {cur_s} compared with {prev_s} and with the first AR position of the month ({ms_s}).")),
             ("Payments received", "invoices paid by payment date, on the amount-invoiced basis used in the BU meeting report."),
             ("Cash position", "procurement (non-labor) cash in and out for the JESA Group including AM; PSR (labor) collections shown net of the AM ring-fence and the Water & Environment reserve."),
             ("DSO", "days sales outstanding excluding advances, as reported in the BU meeting report.")]

@@ -15,7 +15,7 @@ All amounts are written in MMAD (millions of MAD). Every tab of the output workb
 before running build_deck.py (e.g. to adjust the key messages).
 """
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import argparse, datetime as dt, json, re, collections
+import argparse, calendar, datetime as dt, json, re, collections
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -205,9 +205,12 @@ def extract_cash(path):
     act, ong = str(h[6] or ""), str(h[7] or "")
     m1 = re.search(r"([A-Z][a-z]{2})-\d\d", act); m2 = re.search(r"([A-Z][a-z]{2})-\d\d", ong)
     out["cash_actual_month"] = m1.group(1) if m1 else "Oct"; out["cash_ongoing_month"] = m2.group(1) if m2 else out["cash_actual_month"]
-    pt = re.search(r"payments to (\d\d/\d\d)", act); ct = re.search(r"collections to (\d\d/\d\d)", act)
-    out["cash_payments_to"] = pt.group(1) if pt else None; out["cash_collections_to"] = ct.group(1) if ct else None
-    out["cash_actual_note"] = "(closed)" if "closed" in act.lower() else (f"to {pt.group(1)}" if pt else "to date")
+    pt = re.search(r"payments to (\d\d/\d\d)", act); ct = re.search(r"collections to (\d\d/\d\d)", act) or re.search(r"collections to (\d\d/\d\d)", ong)
+    closed = "closed" in act.lower() or (m1 and m2 and m1.group(1) != m2.group(1) and not pt)   # the actual month is a full month once the next month has its own column
+    _mi = MONTHS.index(next((m for m in MONTHS if m.startswith(out["cash_actual_month"])), "October")) + 1
+    out["cash_payments_to"] = pt.group(1) if pt else (f"{calendar.monthrange(dt.date.today().year, _mi)[1]:02d}/{_mi:02d}" if closed else None)
+    out["cash_collections_to"] = ct.group(1) if ct else None
+    out["cash_actual_note"] = "(closed)" if closed else (f"to {pt.group(1)}" if pt else "to date")
     probe = ex[find_row(ex, "NET POSITION", col=2)]
     if all(v is None for v in probe[3:9]):
         raise SystemExit("cash flow workbook has no cached values (saved by a script, not by Excel): open it in Excel, save, and drop it in the inbox, or deliver it through the cash flow refresh kit's Excel save step")
@@ -249,13 +252,24 @@ def extract_cash(path):
 
     # Section 5 by BU
     s5 = find_row(ex, "5.   PROCUREMENT NET BALANCE BY BU", col=2) + 2
-    bu = []
+    h5 = [re.sub(r"\s+", " ", str(c or "")).strip().lower() for c in ex[s5 - 1]]
+    # a 'Nov actuals (paid 01–09/11)' column may sit between 'NET BALANCE actuals' and the approved payments: it is added to the
+    # approved column, as in the workbook headline ('APPROVED PMTS' = paid in the ongoing month + approved), and kept apart as a memo
+    paid_c = next((c for c in range(3, len(h5)) if "actuals (paid" in h5[c]), None)
+    cols = [c for c in range(3, len(h5)) if h5[c] and c != paid_c][:9]
+    bu = []; paid_bu = {}
     i = s5
     while ex[i][2] and not str(ex[i][2]).strip().lower().startswith("total"):
         row = ex[i]; b = canon_bu(row[2])
-        if b: bu.append([b] + [num(row[c], 1e6) for c in range(3, 12)])
+        if b:
+            vals = [num(row[c], 1e6) for c in cols]
+            if paid_c is not None:
+                paid_bu[b] = num(row[paid_c], 1e6); vals[5] += paid_bu[b]
+            bu.append([b] + vals)
         i += 1
-    out["cash_bu"] = bu
+    out["cash_bu"] = bu; out["ongoing_paid_bu"] = paid_bu; out["ongoing_paid_total"] = sum(paid_bu.values())
+    pm = re.search(r"paid ([\d–\-/]+)", h5[paid_c]) if paid_c is not None else None
+    out["ongoing_paid_label"] = pm.group(1) if pm else ""
     # Section 4B Oct supplier payments by BU (actual to date) and 4A Oct collections
     def block(label):
         i = find_row(ex, label, col=2) + 1; d = {}
@@ -330,7 +344,9 @@ def extract_lc(path):
 
 # ----------------------------------------------------------------------------- Supplier invoices (AP)
 def extract_ap(path, as_of):
-    rows = load(path, "4411 - Parked - Downpayment")
+    names = openpyxl.load_workbook(path, read_only=True).sheetnames
+    sheet = next((n for n in ("4411 - Parked - Downpayment", "Invoices") if n in names), names[0])   # sheet name changed to 'Invoices' on 10-Nov (status columns added to the right)
+    rows = load(path, sheet)
     hdr_i = find_row(rows, "Legal entity", col=0)
     data = [r for r in rows[hdr_i + 1:] if r[2] is not None]
     by_bu_origin = collections.defaultdict(float); cnt = collections.defaultdict(int)
@@ -476,11 +492,19 @@ def extract_suspension_log(path):
     """'Project Node', 'WBS Level 2', 'Final Suspension Status' -> {wbs level 2 / project node: normalised status}."""
     from ar_engine import norm_pstatus
     wbk = openpyxl.load_workbook(path, data_only=True, read_only=True)
-    ws = next((w for w in wbk.worksheets if any(str(c.value or "").strip() == "Project Node" for row in w.iter_rows(max_row=12) for c in row)), wbk.worksheets[0])
+    def _hdr(w):
+        for row in w.iter_rows(max_row=12, values_only=True):
+            if row and str(row[0] or "").strip() == "Project Node": return [re.sub(r"\s+", " ", str(h or "")).strip().lower() for h in row]
+        return None
+    cands = [(w, _hdr(w)) for w in wbk.worksheets]; cands = [(w, h) for w, h in cands if h]
+    # the log sheet is the one carrying 'Final Suspension Status' (the full workbook also holds working tabs with other status columns)
+    ws = next((w for w, h in cands if any(x.startswith("final suspension status") for x in h)), cands[0][0] if cands else wbk.worksheets[0])
     rows = [list(r) for r in ws.iter_rows(values_only=True)]
     hi = next(i for i, r in enumerate(rows) if r and str(r[0] or "").strip() == "Project Node")
-    hdr = [str(h or "").strip().lower() for h in rows[hi]]
-    iw = next((i for i, h in enumerate(hdr) if h.startswith("wbs level 2")), 2); ist = next((i for i, h in enumerate(hdr) if "status" in h), 4)
+    hdr = [re.sub(r"\s+", " ", str(h or "")).strip().lower() for h in rows[hi]]
+    iw = next((i for i, h in enumerate(hdr) if h == "wbs level 2"), next((i for i, h in enumerate(hdr) if h.startswith("wbs level 2")), 2))
+    ist = next((i for i, h in enumerate(hdr) if h.startswith("final suspension status")), next((i for i, h in enumerate(hdr) if "suspension status" in h), next((i for i, h in enumerate(hdr) if "status" in h), 4)))
+    print(f"suspension log: sheet {ws.title.strip()!r}, status column {rows[hi][ist]!r}".replace("\n", " "))
     out = {}
     for r in rows[hi + 1:]:
         if not r[0]: continue
@@ -600,6 +624,11 @@ def default_messages(ar, cash, lc, ap, meta):
     def d(x): return "0" if abs(x) < 0.5 else f"{x:+,.0f}".replace("-", "−")
     def dd(m): return d(round(m[3]) - round(m[2]))
     def dm(m): return d(round(m[3]) - round(m[1])) if m[1] else "n/a"
+    same_ms = bool(meta.get("ar_month_start_date")) and meta.get("ar_month_start_date") == meta.get("ar_current_date")
+    def dmx(m): return "" if same_ms else f", {dm(m)} vs MS"   # month-start comparison is omitted when the baseline is the current extract
+    pc, pp_ = meta.get("posted_cur"), meta.get("posted_prev")
+    post_d = (round(pc) - round(pp_)) if (pc is not None and pp_ is not None) else None
+    post_txt = (f" (of which {d(post_d)} on lines posted in the {meta['posted_period']} period)" if (post_d is not None and abs(post_d) >= 50) else "")
     ms_lab = meta["ar_month_start_date"].strftime("%d %b") if meta.get("ar_month_start_date") else "month start"
     pw_lab = meta["ar_prev_date"].strftime("%d %b"); cw_lab = meta["ar_current_date"].strftime("%d %b")
     cm = {r[0]: r for r in cash["cash_monthly"]}
@@ -626,20 +655,21 @@ def default_messages(ar, cash, lc, ap, meta):
     cmonth = meta.get("coll_month_name") or cmonth
     pay_msg = f"payments received in {cmonth} {oct_cur:,.0f} MMAD"
     return [
-        [f"Gross exposure {new[3]:,.0f} MMAD: {dd(new)} WoW, {dm(new)} vs MS; {pay_msg}",
+        [f"Gross exposure {new[3]:,.0f} MMAD: {dd(new)} WoW{dmx(new)}; {pay_msg}",
          f"Total AR {tot[3]:,.0f} + unrecognized revenue {unrec[3]:,.0f}; {cmonth} payments split PSR {m_lab:,.0f} / Procurement {m_nl:,.0f}; received since July {jul_tot:,.0f} MMAD (PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}), per the AR report."],
-        [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} WoW, {dm(tot)} vs MS",
-         f"**Unbilled {unb[3]:,.0f}** ({dd(unb)} WoW, {dm(unb)} vs MS), **unpaid {unp[3]:,.0f}** ({dd(unp)} WoW, {dm(unp)} vs MS), advance {adv[3]:,.0f} ({dd(adv)} WoW)."],
+        [f"Total AR {tot[3]:,.0f} MMAD: {dd(tot)} WoW{dmx(tot)}{post_txt}",
+         f"**Unbilled {unb[3]:,.0f}** ({dd(unb)} WoW{dmx(unb)}), **unpaid {unp[3]:,.0f}** ({dd(unp)} WoW{dmx(unp)}), advance {adv[3]:,.0f} ({dd(adv)} WoW)."
+         + (f" Excluding lines posted in the {meta['posted_period']} period, total AR moves {d(round(tot[3]) - round(tot[2]) - post_d)} WoW." if (post_d is not None and abs(post_d) >= 50) else "")],
         [f"Signed roll-ups: {sg.get('Signed', 0):,.0f} MMAD of unbilled signed by the client ({sg.get('Signed', 0)/(unb[3] or 1)*100:.0f}%), {sg.get('Not signed', 0):,.0f} not signed ({sg.get('Not signed', 0)/(unb[3] or 1)*100:.0f}%)",
          f"Signed: PSR {sl.get(('Signed', 'labor'), 0):,.0f} / Procurement {sl.get(('Signed', 'non_labor'), 0):,.0f}; not signed: PSR {sl.get(('Not signed', 'labor'), 0):,.0f} / Procurement {sl.get(('Not signed', 'non_labor'), 0):,.0f}. "
-         f"Under client / OCP responsibility {sr.get(('Client', 'Signed'), 0):,.0f} signed and {sr.get(('Client', 'Not signed'), 0):,.0f} not signed; under JESA {sr.get(('JESA', 'Signed'), 0):,.0f} signed and {sr.get(('JESA', 'Not signed'), 0):,.0f} not signed."],
-        [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW, {dm(unrec)} vs MS)" + (f"; signed by the client {urs:,.0f}" + (f" of {ura:,.0f} that can be signed ({urs/ura*100:.0f}%)" if ura else "") if urs is not None else ""),
+         f"Under client responsibility {sr.get(('Client', 'Signed'), 0):,.0f} signed and {sr.get(('Client', 'Not signed'), 0):,.0f} not signed; under JESA {sr.get(('JESA', 'Signed'), 0):,.0f} signed and {sr.get(('JESA', 'Not signed'), 0):,.0f} not signed."],
+        [f"Unrecognized revenue {unrec[3]:,.0f} MMAD ({dd(unrec)} WoW{dmx(unrec)})" + (f"; signed by the client {urs:,.0f}" + (f" of {ura:,.0f} that can be signed ({urs/ura*100:.0f}%)" if ura else "") if urs is not None else ""),
          f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee" + (f"; {ura:,.0f} MMAD of attachments can be signed by the client, of which {urs:,.0f} are signed." if ura and urs is not None else ".")],
         [f"Payments received in {cmonth}: {oct_cur:,.0f} MMAD (PSR {m_lab:,.0f}, Procurement {m_nl:,.0f}; {d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {jul_tot:,.0f} MMAD since July",
-         f"Since July: PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}. Invoices deposited in {cmonth}: {dep:,.0f} MMAD (AR report, by payment / reception date)."],
+         (f"Of the {cmonth} amount, {sum(c[9] for c in coll):,.0f} MMAD comes from non-OCP clients. " if sum(c[9] for c in coll) >= 5 else "") + f"Since July: PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}. Invoices deposited in {cmonth}: {dep:,.0f} MMAD (AR report, by payment / reception date)."],
         [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
-         f"Cash IN {cin[6]:,.0f} MMAD vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
-         f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities) bring the position to {d(net_appr)} MMAD; "
+         f"Cash IN {cin[6]:,.0f} MMAD" + (f" (incl. {cin[5]:,.0f} of {com} collections to {cash.get('cash_collections_to') or meta['collections_to']})" if abs(cin[5]) >= 0.5 else "") + f" vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
+         f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities" + (f" and {abs(cash['ongoing_paid_total']):,.0f} already paid {cash.get('ongoing_paid_label') or 'in ' + com}" if abs(cash.get('ongoing_paid_total') or 0) >= 0.5 else "") + f") bring the position to {d(net_appr)} MMAD; "
          f"pending payments of {pend:,.0f} MMAD bring it to {d(net_all)} MMAD."],
         [f"Supplier payables {ap_tot:,.0f} MMAD ({ap_over:,.0f} past due); letters of credit {lc_all:,.0f} MMAD, {lc_open:,.0f} on opened LCs",
          f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD. "
@@ -724,6 +754,8 @@ def main():
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
     ap_.add_argument("--ur-ms", default=None, help="JSON {bu: MMAD} with month-start unrecognized revenue by BU")
     ap_.add_argument("--dso", default=None, help="JSON {bu: {current, prior}} DSO in days (manual override, e.g. from the BU meeting report)")
+    ap_.add_argument("--dso-table", default=None, help="weekly DSO table (xlsx: PU, 12 Months Trailing, Unbilled/Unpaid, DSO Exc ADV, Month revenue); prior = DSO of the previous weekly inputs")
+    ap_.add_argument("--baseline-note", default=None, help="sentence explaining the month-start baseline on the sources slide")
     ap_.add_argument("--dso-calc", default=None, help="WIP_DSO_calc.xlsx: 12-month trailing revenue per BU and DSO trend; DSO is then computed from the AR extract")
     ap_.add_argument("--ur-prev", default=None, help="JSON {bu: MMAD} with last week's unrecognized revenue by BU (overrides the UR file's 'previous BU update' and the prev inputs)")
     ap_.add_argument("--as-of", required=True, help="deck date YYYY-MM-DD")
@@ -782,6 +814,8 @@ def main():
         ur["prev"] = P["ur_prev"]; ur["prev_source"] = "last week's inputs"
     elif ur: ur["prev_source"] = "UR file previous BU update (incl. markup)"
     ur_ms = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_ms)).items()} if a.ur_ms else (P.get("ur_ms") or {})
+    if ur and a.ar_baseline_date and a.ar_baseline_date == a.ar_date and not a.ur_ms:
+        ur_ms = {canon_bu(r[0]) or r[0]: r[13] for r in ur["table"]}   # new month: the month-start unrecognized revenue is this week's position
     dso = {}; dso_trend = None
     if a.dso_calc:
         dc = extract_dso_calc(a.dso_calc, as_of)
@@ -792,6 +826,14 @@ def main():
             ref = dc["table"].get(b)
             if ref is not None and abs(ref - v["current"]) >= 2: print(f"NOTE DSO {b}: computed {v['current']} days vs {ref:.0f} in the DSO workbook table")
         print("DSO (days):", {b: v["current"] for b, v in dso.items()})
+    elif a.dso_table:
+        wsd = openpyxl.load_workbook(a.dso_table, data_only=True, read_only=True).worksheets[0]
+        for r_ in wsd.iter_rows(min_row=2, values_only=True):
+            if not r_[0] or r_[3] is None: continue
+            nm = "JESA Group" if str(r_[0]).strip().lower() == "total" else (canon_bu(r_[0]) or str(r_[0]).strip())
+            prv = (P.get("dso", {}).get(nm) or {}).get("current")
+            dso[nm] = {"current": float(r_[3]), "prior": prv, "ar": (r_[2] or 0) / 1e6, "rev12": (r_[1] or 0) / 1e6}
+        print("DSO table (days):", {b: v["current"] for b, v in dso.items()})
     elif a.dso:
         for k, v in json.load(open(a.dso)).items():
             if k.startswith("_"): continue
@@ -878,6 +920,10 @@ def main():
             detail.append([b, "advance_status", lab, mv("advance_status", b, lab), pv("advance_status", b, lab, lab), cur["advance_status"].get((b, lab), 0.0)])
     projects = [[b, t, w, n, v, st] for (b, t), lst in cur["top_projects"].items() for (w, n, v, st) in lst]
 
+    _pm = ar_date.replace(day=1) - dt.timedelta(days=1); _pk = f"{_pm.year}-{_pm.month:02d}"
+    def _pt(agg): return round(sum(v for (c_, k_), v in agg["period"].items() if k_ == _pk), 1) if agg and agg.get("period") else None
+    posted = {"posted_period": _pm.strftime("%B"), "posted_cur": _pt(cur), "posted_prev": _pt(P)}
+    if posted["posted_cur"] is not None and posted["posted_prev"] is not None: print(f"AR on lines posted in {posted['posted_period']}: {posted['posted_prev']:,.1f} -> {posted['posted_cur']:,.1f}")
     meta = {"as_of_date": as_of, "week_label": a.week_label or f"{as_of.strftime('%B')} W{(as_of.day - 1) // 7 + 1}", "draft_note": a.draft_note or "",
             "cash_actual_month": cash.get("cash_actual_month"), "cash_actual_note": cash.get("cash_actual_note"), "cash_ongoing_month": cash.get("cash_ongoing_month"),
             "cash_payments_to": cash.get("cash_payments_to") or a.payments_to, "cash_collections_to": cash.get("cash_collections_to") or a.collections_to,
@@ -885,7 +931,11 @@ def main():
             "ar_month_start_date": ms_date, "cash_data_as_of": cash["data_as_of"].date() if cash["data_as_of"] else None,
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
-            "deposited_month": cur["deposited_total"]}
+            "deposited_month": cur["deposited_total"],
+            "cash_ongoing_paid": abs(cash.get("ongoing_paid_total") or 0), "cash_ongoing_paid_label": cash.get("ongoing_paid_label") or "",
+            "cash_in_ongoing_month": next((r[5] for r in cash["cash_monthly"] if r[0] == "Total cash IN (procurement)"), 0),
+            "dso_prior_label": ("last week" if a.dso_table else "prior month"), "baseline_note": a.baseline_note or "",
+            **posted}
 
     ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
     ar["nonocp_tot"] = sum(cur["nonocp"].values())

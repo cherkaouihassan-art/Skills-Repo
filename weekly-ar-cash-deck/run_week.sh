@@ -35,13 +35,15 @@ if [ -z "$CASH" ]; then
 fi
 for v in AR CASH AP LC UR; do [ -n "${!v}" ] || { echo "missing source file for $v in $SRC"; exit 1; }; done
 mkdir -p inputs/dso_calc
-if [ -n "$DSO" ]; then cp "$DSO" "inputs/dso_calc/DSO_calc_${ASOF}.xlsx"; fi
+# a weekly 'DSO Table' workbook (PU, 12 months trailing, AR, DSO, month revenue) is used as is; the full DSO calculation workbook is recomputed on the AR extract
+if [ -n "$DSO" ]; then case "$(basename "$DSO" | tr 'A-Z' 'a-z')" in *table*) cp "$DSO" "inputs/dso_calc/DSO_Table_${ASOF}.xlsx";; *) cp "$DSO" "inputs/dso_calc/DSO_calc_${ASOF}.xlsx";; esac; fi
 DSO=$(ls -t inputs/dso_calc/*.xlsx 2>/dev/null | head -1); [ -n "$DSO" ] || { echo "no DSO calculation workbook (inputs/dso_calc/ empty and none in $SRC)"; exit 1; }
+case "$(basename "$DSO")" in DSO_Table*) DSOARG=(--dso-table "$DSO");; *) DSOARG=(--dso-calc "$DSO");; esac
 MS_FILE=$(sed -n 1p inputs/month_start.txt); MS_DATE=$(sed -n 2p inputs/month_start.txt)
 PREV=$(ls -t inputs/history/weekly_inputs_*.xlsx | head -1)
 echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; echo "DSO calc=$DSO"; echo "previous week=$PREV"; echo "month start=$MS_FILE ($MS_DATE)"
 python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseline "$MS_FILE" --ar-baseline-date "$MS_DATE" \
-  --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" --dso-calc "$DSO" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
+  --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
   --as-of "$ASOF" --ar-date "$ARDATE" --ar-prev-date "$PREVDATE" --out inputs/weekly_inputs.xlsx
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"

@@ -23,7 +23,7 @@ Required (matched by name pattern, case-insensitive):
 |---|---|
 | `AR*.zip`, `AR*.csv` or `AR*.xlsx` | raw AR line list (sheet `AR`, or that sheet as CSV, zipped). On Google Drive it is the zipped CSV: the connector refuses files above 10 MB |
 | cash flow workbook | **from the repository, not the drop folder**: `run_week.sh` pulls the newest `cashflow-bu/outputs/*/*.xlsx` (else `cashflow-bu/workbook/CASH_FLOW_ANALYSIS_-_BUs.xlsx`) from branch `claude/laughing-wright-x02plq`, maintained by the `cashflow-bu-update` skill. A `CASH*.xlsx` in the drop folder overrides it. If the extractor stops with "no cached values", the master was saved by a script: ask for the Excel-saved version or run the cash kit's delivery step |
-| `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` |
+| `AP*.xlsx` or `Supplier*.xlsx` | supplier invoices, sheet `4411 - Parked - Downpayment` (named `Invoices` from 10-Nov, same first 17 columns) |
 | `*LC*SITUATION*.xlsx` | bank LC situation, sheet `LC avec echéance` |
 | `UR*Tracking*.xlsx` | unrecognized revenue consolidation |
 | `*Suspension*.xlsx` (when refreshed) | suspension log: project status joined to the unbilled lines (kept in `inputs/suspension_log/`) |
@@ -50,7 +50,21 @@ week's `AP_KPI` values, and the LC file date in its name must be the latest avai
   this run becomes the new baseline: copy it to `inputs/baseline/AR_Beg_of_the_month_<YYYY-MM>.xlsx`, upload it to the
   `Baseline` folder, and update `month_start.txt`.
 
+## 2b. New month (first extract that carries the previous month's revenue)
+
+The month-start baseline is the first AR extract of the month **that includes the previous month's revenue** (for
+November 2026: the 10-Nov extract, not 03-Nov). On that run: copy the extract to
+`inputs/baseline/AR_Beg_of_the_month_<YYYY-MM>.xlsx`, update `inputs/month_start.txt`, and run. Because baseline and
+current extract are the same file, the deck drops the "vs MS" pills, columns and wording by itself and states on the
+sources slide that month-start comparisons resume the following week. The executive summary and key message 2 isolate
+the week-on-week movement on lines posted in the previous month's period ("of which +762 on lines posted in the October
+period"): do not call it "revenue booked" and do not tie it to the P&L (some projects post cumulative figures).
+
 ## 3. DSO
+
+A weekly `DSO Table` workbook (columns PU, 12 months trailing, Unbilled/Unpaid, DSO Exc ADV, Month revenue) takes
+precedence when dropped (`*DSO*Table*.xlsx`): its DSO figures are used as published (BU meeting basis) and the previous
+deck's DSO is shown as "last week". Without it, the rule below applies.
 
 DSO is computed, not typed: total AR of the BU (from this week's AR extract) ÷ 12-month trailing revenue × 365.
 The revenue side comes from the DSO calculation workbook (`WIP_DSO_calc.xlsx`, sheets `12 Months Trailing` and
@@ -98,6 +112,10 @@ traceback must be fixed before delivering (the extractor is label-anchored: comp
 - The signed / not signed and client / JESA responsibility classification of unbilled lines follows
   `weekly-ar-cash-deck/reference/status2_signed_mapping.md` (finance guideline). Change it only when finance changes the guideline.
 
+- Cash position slide = the COO cash file headline, never overridden. When its by-BU table carries a "paid in the
+  ongoing month" column, that amount is added to the approved payments (as in the file's headline) and mentioned on the card.
+- The collections slide is on the AR report basis (all clients). It carries a one-line bridge to the OCP payment report
+  amount used on the cash slide (difference = non-OCP clients and subsidiaries paid outside the OCP report).
 - Never change the aggregation rules in `ar_engine.py` to make a number match; report the difference instead.
 - Changes requested by the reviewer are applied in `build_deck.py` / `extract_inputs.py`, committed and pushed,
   so the next weekly run carries them.
