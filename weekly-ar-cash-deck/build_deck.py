@@ -494,16 +494,18 @@ def build(data, meta, out):
     # note when the week-on-week increase comes from the previous month's revenue being posted in this extract
     _tc, _tp = meta.get("posted_cur"), meta.get("posted_prev")
     _td = (round(float(_tc)) - round(float(_tp))) if (_tc not in (None, "") and _tp not in (None, "")) else None
-    if _td is not None and _td >= 50 and dwow(tot) > 0:
-        rect(s, 0.3, 5.02, SW - 0.6, 0.4, RGBColor(0xFD, 0xF3, 0xDC), line=GOLD, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
-        tb(s, 0.45, 5.02, SW - 0.9, 0.4, [[("Note:  ", {"bold": True, "color": NAVY}), (f"the increase in AR this week ({fd(dwow(tot))} MDH vs {prev_s}) is mainly driven by the {meta.get('posted_period')} revenue posted in this AR position ", {"color": DARK}),
-                                            (f"({fd(_td)} MDH)", {"bold": True, "color": NAVY}), (f"; excluding it, total AR moves {fd(dwow(tot) - _td)} MDH.", {"color": DARK})]], size=11, anchor=MSO_ANCHOR.MIDDLE)
+    has_note = _td is not None and _td >= 50 and dwow(tot) > 0
+    cy = 5.3 if has_note else 5.55   # the cards move up to leave room for the note below them
+    if has_note:
+        rect(s, 0.3, 6.8, SW - 1.2, 0.4, RGBColor(0xFD, 0xF3, 0xDC), line=GOLD, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
+        tb(s, 0.45, 6.8, SW - 1.5, 0.4, [[("Note:  ", {"bold": True, "color": NAVY}), (f"the increase in AR this week ({fd(dwow(tot))} MDH vs {prev_s}) is mainly driven by the {meta.get('posted_period')} revenue posted in this AR position ", {"color": DARK}),
+                                            (f"({fd(_td)} MDH)", {"bold": True, "color": NAVY}), (f"; excluding it, total AR moves {fd(dwow(tot) - _td)} MDH.", {"color": DARK})]], size=10, anchor=MSO_ANCHOR.MIDDLE)
     for i, (lab, r, col) in enumerate(cards):
         x0 = 0.3 + i * (cw + 0.12)
-        card(s, x0, 5.55, cw, 1.35, lab, f0(r["current"]), fill=col, value_size=24)
+        card(s, x0, cy, cw, 1.35, lab, f0(r["current"]), fill=col, value_size=24)
         d = dwow(r)
-        rect(s, x0 + 0.1, 5.55 + 1.35 - 0.45, cw - 0.2, 0.34, WHITE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
-        tb(s, x0 + 0.1, 5.55 + 1.35 - 0.45, cw - 0.2, 0.34, [[(f"vs {prev_s}  ", {"size": 9, "color": SLATE}), (f"{fd(d)} MDH", {"size": 11, "bold": True, "color": delta_color(d)})]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        rect(s, x0 + 0.1, cy + 1.35 - 0.45, cw - 0.2, 0.34, WHITE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
+        tb(s, x0 + 0.1, cy + 1.35 - 0.45, cw - 0.2, 0.34, [[(f"vs {prev_s}  ", {"size": 9, "color": SLATE}), (f"{fd(d)} MDH", {"size": 11, "bold": True, "color": delta_color(d)})]], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
 
     # ------------------------------------------------------------------ 1b. Agenda
     s = D.slide("Agenda", f"Weekly review – {asof}")
