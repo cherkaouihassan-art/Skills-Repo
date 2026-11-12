@@ -48,5 +48,13 @@ python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseli
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"
 python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out "$OUT"
+# one-page snapshot for the body of the cover email (same inputs), with a PNG when LibreOffice is available
+SNAP="output/JESA_AR_Cash_Snapshot_${WK}_${ASOF}.pptx"
+python3 build_onepager.py --inputs inputs/weekly_inputs.xlsx --out "$SNAP"
+SOFFICE="../.claude/skills/pptx/scripts/office/soffice.py"
+if [ -f "$SOFFICE" ] && command -v pdftoppm >/dev/null 2>&1; then
+  TMPD=$(mktemp -d); python3 "$SOFFICE" --headless --convert-to pdf --outdir "$TMPD" "$SNAP" >/dev/null 2>&1 || true
+  PDF="$TMPD/$(basename "${SNAP%.pptx}").pdf"; [ -f "$PDF" ] && pdftoppm -r 200 -png -singlefile "$PDF" "${SNAP%.pptx}"; rm -rf "$TMPD"
+fi
 cp inputs/weekly_inputs.xlsx "inputs/history/weekly_inputs_${ASOF}.xlsx"
-echo "done: $OUT"
+echo "done: $OUT"; echo "snapshot: $SNAP"

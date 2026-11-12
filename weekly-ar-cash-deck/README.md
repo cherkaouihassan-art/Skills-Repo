@@ -123,3 +123,10 @@ between the main body and the backup, change its `D.section = ...` tag.
 * The deck uses a text "JESA" wordmark top-right; drop the logo image on the slide master if preferred.
 
 Dependencies: `python3`, `openpyxl`, `python-pptx` (`pip install openpyxl python-pptx`).
+
+## One-page snapshot for the cover email
+
+`build_onepager.py` builds a single executive slide from the same `inputs/weekly_inputs.xlsx`
+(`output/JESA_AR_Cash_Snapshot_<Mon>_W<n>_<as-of>.pptx`, plus a PNG for the body of the email). `run_week.sh` runs it
+after the deck. Layout, email template and reviewer preferences are in `.claude/skills/weekly-ar-deck/SKILL.md`
+(sections 7 and 8).

@@ -102,10 +102,70 @@ traceback must be fixed before delivering (the extractor is label-anchored: comp
 1. `run_week.sh` already copied the inputs to `inputs/history/weekly_inputs_<as-of>.xlsx`; keep it (it is next
    week's previous-week source).
 2. Commit `inputs/`, `output/*.pptx` and any code fix on the working branch and push.
-3. Upload the deck to the delivery location (Google Drive folder `AR Cash Deck/Output` unless told otherwise) and
-   send the file in the conversation.
+3. Upload the deck and the snapshot (pptx + png) to the delivery location (Google Drive folder `AR Cash Deck/Output`
+   unless told otherwise) and send the files in the conversation when the reviewer asks for them, with the short
+   cover email text of section 7.
 4. Summary (short): the six headline figures with WoW and vs-month-start deltas, which source files were used and
    their dates, DSO source, warnings, anything left for a human (missing file, wording to confirm).
+
+## 7. Cover email: one-page snapshot and short text
+
+`run_week.sh` also builds `output/JESA_AR_Cash_Snapshot_<Mon>_W<n>_<as-of>.pptx` and `.png` with `build_onepager.py`
+(same inputs). The PNG goes in the body of the cover email, the deck is attached. Layout agreed with the reviewer, do not
+rearrange it:
+
+- KPI boxes, in this order: gross exposure, unrecognized, total AR, unbilled, unpaid, DSO, cash received in the month
+  (with the PSR / Proc split, and the prior month with its split), invoices billed in the month vs the prior month
+  (billed = invoices deposited, by reception date, as in the BU meeting dashboard).
+- Left panel: unbilled roll-ups, signed / not signed with the client (external) / not signed with JESA (internal).
+- Middle panel: unrecognized revenue, equipment vs services totals, then signed vs not signed for equipment, services
+  and total (bars drawn as shapes so every figure is readable).
+- Right panel: "Cash position (Procurement Back to Back)" as a waterfall: cash IN, paid, approved suppliers, LC due,
+  balance after approved, not approved, balance after all. The intermediate positive balance is not shown.
+- Bottom: the previous-month revenue note (only in the weeks it applies) and the priority line.
+
+Email text: short, bullet points only, amounts in MDH, no explanations (everything is in the deck). Template:
+
+```
+Please find attached this week's AR, Cash & Payables presentation.
+
+Key figures as of <AR date>:
+- Total AR: … MDH (… vs last week)
+- Unbilled: … MDH (…% of AR)
+- Unpaid: … MDH
+- Unrecognized revenue: … MDH
+- DSO: … days
+- Collections <month> to date: … MDH
+- Procurement cash: … MDH on actuals, … MDH after approved and pending payments
+- Supplier payables: … MDH, of which … MDH past due
+
+Roll-ups:
+- Signed by the client: … MDH (…% of unbilled)
+- Not signed: … MDH (PSR … MDH / Procurement … MDH)
+- External, pending with the client: … MDH, mainly <top BUs>
+- Internal, pending with JESA: … MDH, mainly <top BUs>
+- Main internal blocker: … MDH <largest J status>
+
+Priority remains to secure the client's sign-off on completed work (roll-ups / attachments) and to clear the internal
+backlog, to unlock cash for PSR and critical suppliers.
+```
+
+## 8. Reviewer preferences (apply every week without being asked)
+
+- Do not send files unless asked ("send me the presentation"); when the reviewer says "do not send", only confirm the change.
+- No notes that reveal tooling: no file paths, script or guideline document names, no "previous slide" references.
+- Say "client", not "OCP", for responsibility and signature wording. Abbreviations "WoW" and "vs MS" in key messages.
+- Title slide: variance pills in MDH; when the AR increase comes from the previous month's revenue being posted, the
+  note sits **below** the six boxes (automatic).
+- The "Signed RU status" workbook (`Signed_RU_status.xlsb`) is a tracker of physical copies only: never use it for the
+  signed / not signed totals. It can be quoted as a follow-up list of physical copies outstanding.
+- Signed roll-up rule stays on the status mapping plus PA comments (`reference/status2_signed_mapping.md`).
+- LC figures stay on the last bank LC situation received (19-Oct) until a new one is dropped; the LC payments due on
+  the cash slide come from the COO cash file.
+- Check whether the UR consolidation was really refreshed (compare totals by BU with last week); say so when it was not.
+- If the COO cash file is re-sent during the week, re-run with it and report what moved (approved, pending, balances).
+- Collections: AR report basis (all clients); explain the gap to the COO file as non-OCP clients and subsidiaries paid
+  outside the OCP payment report when asked.
 
 ## Rules
 
