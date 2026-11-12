@@ -83,15 +83,17 @@ def build(data, meta, out):
     ut = data.get("UNRECOGNIZED", [])
     def U(key): return sum((r.get("eq_" + key) or 0) + (r.get("sub_" + key) or 0) for r in ut)
     u_tot = unrec["current"] or 0; u_sub, u_app, u_sig, u_cn, u_risk = U("pending_submission"), U("pending_approval"), U("signed_by_client"), U("under_cn"), U("at_risk")
-    panel(xb, wb_, f"Unrecognized revenue – {f0(u_tot)} MDH", f"Executed scope not yet booked as AR, by status (MDH); {fd(dw(unrec))} vs {prev_s}")
-    ucat = [("Pending JESA submission", u_sub, ORANGE), ("Pending client approval", u_app, GOLD), ("Signed by the client", u_sig, GREEN), ("Under change notice", u_cn, SLATE), ("At risk", u_risk, RED)]
-    chb = bar_chart(s, xb + 0.05, py + 0.62, wb_ - 0.1, 2.1, [c[0] for c in ucat], [("MDH", [c[1] for c in ucat])], [NAVY], horizontal=True, legend=False, gap=45, cat_size=9, label_size=9.5)
-    color_points(chb, 0, [c[2] for c in ucat])
+    panel(xb, wb_, f"Unrecognized revenue – {f0(u_tot)} MDH", f"By business unit, 6% JESA cost + fee markup included (MDH); {fd(dw(unrec))} vs {prev_s}")
+    def eqs(r): return sum((r.get(k) or 0) for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk"))
+    utb = sorted([r for r in ut if (r.get("grand_total") or 0) > 0.5], key=lambda r: -(r.get("grand_total") or 0))[:8]
+    ev = [eqs(r) for r in utb]; sv = [(r.get("grand_total") or 0) - eqs(r) for r in utb]
+    chb = bar_chart(s, xb + 0.05, py + 0.62, wb_ - 0.1, 2.42, [short(r["bu"]) for r in utb], [("Equipment", ev), ("Subcontractors", sv)], [NAVY2, GOLD], horizontal=True, stacked=True, gap=35,
+                    cat_size=8.5, label_size=8, label_colors=[WHITE, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM)
+    B.hide_small_labels(chb, [ev, sv], max(80, u_tot * 0.02))
     att = data.get("UR_ATTACHMENT_STATUS", [])
     can = sum((r.get("total") or 0) for r in att) if att else (u_app + u_sig)   # attachments that can be signed, same basis as the deck's key message
-    top = sorted([r for r in ut if (r.get("grand_total") or 0) > 0.5], key=lambda r: -(r.get("grand_total") or 0))[:3]
-    tb(s, xb + 0.18, py + 2.78, wb_ - 0.36, 0.85, [[("Signed by the client: ", {"bold": True, "color": NAVY}), (f"{f0(u_sig)} MDH", {"bold": True, "color": GREEN}), (f" of {f0(can)} MDH that can be signed ({u_sig/(can or 1)*100:.0f}%).", {})],
-                                                    [("Largest: ", {"bold": True, "color": NAVY}), ("  ·  ".join(f"{short(r['bu'])} {f0(r['grand_total'])}" for r in top), {})]], size=9, color=DARK, line_spacing=1.25)
+    tb(s, xb + 0.18, py + 3.06, wb_ - 0.36, 0.3, [[("Signed by the client: ", {"bold": True, "color": NAVY}), (f"{f0(u_sig)}", {"bold": True, "color": GREEN}), (f" of {f0(can)} MDH that can be signed ({u_sig/(can or 1)*100:.0f}%).", {})]], size=9, color=DARK)
+    tb(s, xb + 0.18, py + 3.36, wb_ - 0.36, 0.28, "No revenue recognition has been booked on these balances to date.", size=8.5, bold=True, color=RED)
     # C. procurement cash position
     xc, wc = 9.1, 3.93
     panel(xc, wc, "Cash position (Procurement Back to Back)", f"Cumulative since July, after {com} commitments (MDH)")
