@@ -133,10 +133,20 @@ def build(data, meta, out):
         rect(s, bx, py + 0.72, hw, 0.78, col, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.1)
         tb(s, bx + 0.1, py + 0.75, hw - 0.2, 0.24, lab.upper(), size=7.5, bold=True, color=WHITE)
         tb(s, bx + 0.1, py + 0.96, hw - 0.2, 0.45, [[(f0(v), {"size": 19, "bold": True, "color": WHITE}), (f"   {v/(u_tot or 1)*100:.0f}%", {"size": 9.5, "color": WHITE})]])
-    cats = ["Equipment", "Services", "Total"]; sig = [eq_sig, sv_sig, eq_sig + sv_sig]; nsg = [eq_tot - eq_sig, sv_tot - sv_sig, u_tot - eq_sig - sv_sig]
-    chb = bar_chart(s, xb + 0.05, py + 1.56, wb_ - 0.1, 1.5, cats, [("Signed by the client", sig), ("Not signed", nsg)], [GREEN, ORANGE], horizontal=True, stacked=True, gap=40,
-                    cat_size=8.5, label_size=8.5, label_colors=[DARK, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM)
-    B.hide_small_labels(chb, [sig, nsg], u_tot * 0.04)
+    # bars drawn as shapes so that every figure stays readable, whatever the size of the signed part
+    rows_ = [("Equipment", eq_sig, eq_tot - eq_sig), ("Services", sv_sig, sv_tot - sv_sig), ("Total", eq_sig + sv_sig, u_tot - eq_sig - sv_sig)]
+    bx0, bw, rh, ry0 = xb + 0.95, 1.75, 0.28, py + 1.64
+    for i, (lab, sg_v, ns_v) in enumerate(rows_):
+        yy = ry0 + i * (rh + 0.1); is_tot = lab == "Total"
+        tb(s, xb + 0.15, yy, 0.78, rh, lab, size=9, bold=is_tot, color=NAVY if is_tot else DARK, anchor=MSO_ANCHOR.MIDDLE)
+        w_sg = max(sg_v / (u_tot or 1) * bw, 0.04) if sg_v > 0.5 else 0.0; w_ns = max(ns_v, 0) / (u_tot or 1) * bw
+        if w_sg: rect(s, bx0, yy, w_sg, rh, GREEN)
+        rect(s, bx0 + w_sg, yy, w_ns, rh, ORANGE)
+        if w_ns >= 0.45: tb(s, bx0 + w_sg, yy, w_ns, rh, f0(ns_v), size=9, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        tb(s, bx0 + w_sg + w_ns + 0.06, yy, xb + wb_ - 0.1 - (bx0 + w_sg + w_ns + 0.06), rh, [[(f0(sg_v), {"bold": True, "color": GREEN, "size": 9.5}), (" signed", {"color": SLATE, "size": 8})]], anchor=MSO_ANCHOR.MIDDLE)
+    ly = ry0 + 3 * (rh + 0.1) + 0.02
+    rect(s, xb + 0.95, ly + 0.05, 0.12, 0.12, GREEN); tb(s, xb + 1.1, ly - 0.02, 1.3, 0.26, "Signed by the client", size=8, color=DARK)
+    rect(s, xb + 2.35, ly + 0.05, 0.12, 0.12, ORANGE); tb(s, xb + 2.5, ly - 0.02, 1.0, 0.26, "Not signed", size=8, color=DARK)
     att = data.get("UR_ATTACHMENT_STATUS", [])
     can = sum((r.get("total") or 0) for r in att) if att else None   # attachments that can be signed, same basis as the deck's key message
     tb(s, xb + 0.15, py + 3.1, wb_ - 0.3, 0.26, [[("Signed by the client: ", {"bold": True, "color": NAVY}), (f"{f0(eq_sig + sv_sig)} MDH", {"bold": True, "color": GREEN}), (f" (equipment {f0(eq_sig)}, services {f0(sv_sig)}).", {})]], size=8.5, color=DARK)
