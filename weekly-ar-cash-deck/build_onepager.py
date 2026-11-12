@@ -41,16 +41,23 @@ def build(data, meta, out):
         rect(s, x0 + 0.1, y0 + ch_ - 0.43, cw - 0.2, 0.32, WHITE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
         tb(s, x0 + 0.1, y0 + ch_ - 0.43, cw - 0.2, 0.32, [parts], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     def wow(d): return [(f"vs {prev_s}  ", {"size": 8.5, "color": SLATE}), (f"{fd(d)}", {"size": 10.5, "bold": True, "color": delta_color(d)})]
-    kp = [("Total AR", f0(tot["current"]), SLATE, wow(dw(tot))),
-          ("Unbilled", f0(unb["current"]), TEAL, [(f"{unb['current']/tot['current']*100:.0f}% of AR  ", {"size": 8.5, "color": SLATE}), (fd(dw(unb)), {"size": 10.5, "bold": True, "color": delta_color(dw(unb))})]),
-          ("Unpaid", f0(unp["current"]), GOLD, wow(dw(unp))),
-          ("Unrecognized revenue", f0(unrec["current"]), BLUE, wow(dw(unrec))),
+    def cs(key): return sum((r.get(key) or 0) for r in coll)
+    m_psr, m_proc, p_psr, p_proc = cs("month_labor"), cs("month_non_labor"), cs("prior_labor"), cs("prior_non_labor")
+    import datetime as _dt
+    _cm = _dt.date.fromisoformat((meta.get("coll_month") or str(meta["ar_current_date"])[:7]) + "-01"); prior_s = (_cm - _dt.timedelta(days=1)).strftime("%b")
+    dep_m = float(meta.get("deposited_month") or 0); dep_p = float(meta.get("deposited_prior_labor") or 0) + float(meta.get("deposited_prior_non_labor") or 0)
+    S85 = {"size": 8.5, "color": SLATE}; B105 = {"size": 10.5, "bold": True, "color": DARK}
+    kp = [("Total AR", f0(tot["current"]), SLATE, wow(dw(tot)), None),
+          ("Unbilled", f0(unb["current"]), TEAL, [(f"{unb['current']/tot['current']*100:.0f}% of AR  ", S85), (fd(dw(unb)), {"size": 10.5, "bold": True, "color": delta_color(dw(unb))})], None),
+          ("Unpaid", f0(unp["current"]), GOLD, wow(dw(unp)), None),
           ("DSO (days)", (f"{int(float(dso['dso_current']))}" if dso.get("dso_current") not in (None, "") else "n/a"), NAVY2,
-           [((meta.get("dso_prior_label") or "prior") + "  ", {"size": 8.5, "color": SLATE}), (f"{int(float(dso['dso_prior_month']))}" if dso.get("dso_prior_month") not in (None, "") else "–", {"size": 10.5, "bold": True, "color": DARK})]),
-          (f"Collections – {month[:3]}", f0(c_m), GREEN, [("prior month  ", {"size": 8.5, "color": SLATE}), (f0(c_prior), {"size": 10.5, "bold": True, "color": DARK})])]
-    for i, (lab, val, col, parts) in enumerate(kp):
+           [((meta.get("dso_prior_label") or "prior") + "  ", S85), (f"{int(float(dso['dso_prior_month']))}" if dso.get("dso_prior_month") not in (None, "") else "–", B105)], None),
+          (f"Cash received – {month[:3]}", f0(c_m), GREEN, [(f"{prior_s} ", S85), (f0(c_prior), B105), (f"  PSR {f0(p_psr)} · Proc {f0(p_proc)}", {"size": 8, "color": SLATE})], f"PSR {f0(m_psr)}\nProc {f0(m_proc)}"),
+          (f"Invoices billed – {month[:3]}", f0(dep_m), BLUE, [(f"{prior_s}  ", S85), (f0(dep_p), B105)], "deposited\nto date")]
+    for i, (lab, val, col, parts, side) in enumerate(kp):
         x0 = 0.3 + i * (cw + 0.12)
         card(s, x0, y0, cw, ch_, lab, val, fill=col, value_size=26, label_size=9)
+        if side: tb(s, x0 + cw - 1.05, y0 + 0.36, 0.95, 0.45, [[(t, {})] for t in side.split("\n")], size=9, bold=True, color=WHITE, align=PP_ALIGN.RIGHT, line_spacing=1.0)
         pill(x0, parts)
 
     # ---- three panels
@@ -71,18 +78,23 @@ def build(data, meta, out):
         tb(s, xa + 2.54, yy - 0.03, 1.5, 0.26, lab, size=8.5, bold=True, color=NAVY)
         tb(s, xa + 2.54, yy + 0.2, 1.5, 0.3, [[(f0(v), {"size": 13, "bold": True, "color": DARK}), (f"   {v/(scope or 1)*100:.0f}%", {"size": 9, "color": SLATE})]])
     tb(s, xa + 0.15, py + ph - 0.62, wa - 0.3, 0.55, [[("Not signed: ", {"bold": True, "color": NAVY}), (f"{f0(ns_c + ns_j)} MDH", {"bold": True, "color": RED}), (f" – {f0(ns_c)} external (client) and {f0(ns_j)} internal (JESA).", {})]], size=9, color=DARK, line_spacing=1.05)
-    # B. not signed by business unit
+    # B. unrecognized revenue by status
     xb, wb_ = 4.5, 4.45
-    panel(xb, wb_, "Not signed by business unit", "Who holds the unsigned roll-ups (MDH)")
-    bus = sorted({r["bu"] for r in sg}, key=lambda b: -(S("Client", "Not signed", b) + S("JESA", "Not signed", b)))
-    bus = [b for b in bus if S("Client", "Not signed", b) + S("JESA", "Not signed", b) >= 20][:7]
-    chb = bar_chart(s, xb + 0.05, py + 0.6, wb_ - 0.1, ph - 0.7, [short(b) for b in bus],
-                    [("With the client", [S("Client", "Not signed", b) for b in bus]), ("With JESA", [max(S("JESA", "Not signed", b), 0) for b in bus])], [GOLD, ORANGE],
-                    stacked=True, horizontal=True, gap=40, cat_size=9, label_size=8.5, label_colors=[DARK, DARK], legend_pos=XL_LEGEND_POSITION.BOTTOM)
-    B.hide_small_labels(chb, [[S("Client", "Not signed", b) for b in bus], [max(S("JESA", "Not signed", b), 0) for b in bus]], 60)
+    ut = data.get("UNRECOGNIZED", [])
+    def U(key): return sum((r.get("eq_" + key) or 0) + (r.get("sub_" + key) or 0) for r in ut)
+    u_tot = unrec["current"] or 0; u_sub, u_app, u_sig, u_cn, u_risk = U("pending_submission"), U("pending_approval"), U("signed_by_client"), U("under_cn"), U("at_risk")
+    panel(xb, wb_, f"Unrecognized revenue – {f0(u_tot)} MDH", f"Executed scope not yet booked as AR, by status (MDH); {fd(dw(unrec))} vs {prev_s}")
+    ucat = [("Pending JESA submission", u_sub, ORANGE), ("Pending client approval", u_app, GOLD), ("Signed by the client", u_sig, GREEN), ("Under change notice", u_cn, SLATE), ("At risk", u_risk, RED)]
+    chb = bar_chart(s, xb + 0.05, py + 0.62, wb_ - 0.1, 2.1, [c[0] for c in ucat], [("MDH", [c[1] for c in ucat])], [NAVY], horizontal=True, legend=False, gap=45, cat_size=9, label_size=9.5)
+    color_points(chb, 0, [c[2] for c in ucat])
+    att = data.get("UR_ATTACHMENT_STATUS", [])
+    can = sum((r.get("total") or 0) for r in att) if att else (u_app + u_sig)   # attachments that can be signed, same basis as the deck's key message
+    top = sorted([r for r in ut if (r.get("grand_total") or 0) > 0.5], key=lambda r: -(r.get("grand_total") or 0))[:3]
+    tb(s, xb + 0.18, py + 2.78, wb_ - 0.36, 0.85, [[("Signed by the client: ", {"bold": True, "color": NAVY}), (f"{f0(u_sig)} MDH", {"bold": True, "color": GREEN}), (f" of {f0(can)} MDH that can be signed ({u_sig/(can or 1)*100:.0f}%).", {})],
+                                                    [("Largest: ", {"bold": True, "color": NAVY}), ("  ·  ".join(f"{short(r['bu'])} {f0(r['grand_total'])}" for r in top), {})]], size=9, color=DARK, line_spacing=1.25)
     # C. procurement cash position
     xc, wc = 9.1, 3.93
-    panel(xc, wc, "Procurement cash position", f"Cumulative since July, after {com} commitments (MDH)")
+    panel(xc, wc, "Cash position (Procurement Back to Back)", f"Cumulative since July, after {com} commitments (MDH)")
     vals = [net_act, net_appr, net_all]
     chc = bar_chart(s, xc + 0.05, py + 0.6, wc - 0.1, 2.05, ["On actuals", f"After approved\n{com} payments", "After pending\npayments"], [("MDH", vals)], [NAVY], legend=False, gap=55, cat_size=8, label_size=10,
                     number_format='+#,##0;−#,##0;0', label_pos=XL_LABEL_POSITION.OUTSIDE_END)

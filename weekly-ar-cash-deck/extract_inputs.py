@@ -932,6 +932,8 @@ def main():
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"],
+            "deposited_month_labor": cur.get("deposited_x", {}).get(("cur", "labor"), 0.0), "deposited_month_non_labor": cur.get("deposited_x", {}).get(("cur", "non_labor"), 0.0),
+            "deposited_prior_labor": cur.get("deposited_x", {}).get(("prior", "labor"), 0.0), "deposited_prior_non_labor": cur.get("deposited_x", {}).get(("prior", "non_labor"), 0.0),
             "cash_ongoing_paid": abs(cash.get("ongoing_paid_total") or 0), "cash_ongoing_paid_label": cash.get("ongoing_paid_label") or "",
             "cash_in_ongoing_month": next((r[5] for r in cash["cash_monthly"] if r[0] == "Total cash IN (procurement)"), 0),
             "dso_prior_label": ("last week" if a.dso_table else "prior month"), "baseline_note": a.baseline_note or "",

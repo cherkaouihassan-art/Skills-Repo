@@ -201,7 +201,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
     nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); jesa_unb_bs = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
-    coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0
+    coll_month = D(); coll_bu = D(); coll_cnt = collections.Counter(); dep_bu = D(); dep_tot = 0.0; dep_x = D()   # dep_x: invoices deposited by ('cur' | 'prior', labor | non_labor), reception date
     cm_ref = coll_month_ref or as_of   # month reported for collections / deposited invoices (date inside that month)
     cur_m = (cm_ref.year, cm_ref.month)
     prior_m = ((cm_ref.replace(day=1) - dt.timedelta(days=1)).year, (cm_ref.replace(day=1) - dt.timedelta(days=1)).month)
@@ -233,11 +233,13 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
                         coll_bu[(b, "prior")] += inv; coll_bu[(b, f"prior_{lab}")] += inv
                         if nonp: coll_bu[(b, "prior_nonocp")] += inv
             rd = g(r, "Reception date")
-            if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m and (rd.date() if isinstance(rd, dt.datetime) else rd) <= as_of: dep_bu[b] += amt; dep_tot += amt
+            if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m and (rd.date() if isinstance(rd, dt.datetime) else rd) <= as_of: dep_bu[b] += amt; dep_tot += amt; dep_x[("cur", labor_type(g(r, "TYPE")))] += amt
+            if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == prior_m: dep_x[("prior", labor_type(g(r, "TYPE")))] += amt
             continue
         comp = "Advance" if s1.startswith("advance") else ("Unbilled" if s1.startswith("unbilled") else ("Unpaid" if s1.startswith("unpaid") else None))
         rd = g(r, "Reception date")
-        if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt
+        if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt; dep_x[("cur", labor_type(g(r, "TYPE")))] += amt
+        if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == prior_m: dep_x[("prior", labor_type(g(r, "TYPE")))] += amt
         if comp is None: continue
         if comp == "Unbilled" and code == "j-6.a": continue  # unearned on LS is not unbilled AR; C-3.a (DP clearing) stays in unbilled, as in the BU meeting report
         if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue
@@ -286,7 +288,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
             "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st), "jesa_unbilled_bu_status": dict(jesa_unb_bs),
             "signed_bu": dict(signed_bu), "signed_status": dict(signed_st), "signed_pstatus": dict(signed_ps),
-            "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
+            "coll_month": dict(coll_month), "coll_bu": dict(coll_bu), "coll_cnt": dict(coll_cnt), "deposited_x": dict(dep_x), "deposited_bu": dict(dep_bu), "deposited_total": dep_tot}
 
 def bus_in(agg):
     return [b for b in BU_ORDER if any(k[0] == b for k in agg["bu"])] + sorted({k[0] for k in agg["bu"]} - set(BU_ORDER))
