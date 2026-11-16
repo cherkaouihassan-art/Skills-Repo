@@ -130,6 +130,7 @@ def card(slide, x, y, w, h, label, value, sub=None, fill=NAVY, fg=WHITE, value_s
     if sub:
         tb(slide, x + 0.1, y + h - 0.3, w - 0.2, 0.28, sub, size=sub_size, color=sub_color or fg)
 
+NO_UR = False     # True for the variant without unrecognized revenue (and therefore without gross exposure): --no-unrecognized
 MS_SAME = False   # True when the month-start baseline is the current extract (first weeks of a month): the vs-month-start pill is not drawn
 
 def kpi_card(slide, x, y, w, h, label, value, delta_wow=None, delta_ms=None, fill=WHITE, border=LBLUE, good_when_negative=True, value_size=22, ms_label="vs baseline", accent=None):
@@ -156,6 +157,19 @@ def circle_num(slide, x, y, d, n, fill=NAVY2):
 def table(slide, x, y, w, header, rows, col_w=None, font_size=9, header_size=9, row_h=0.26, header_h=0.34,
           align=None, bold_rows=(), fills=None, colors=None, zebra=True, header_fill=NAVY, total_last=False, first_col_bold=False):
     """rows: list of lists of str. colors: dict (r,c)->RGB. fills: dict r->RGB."""
+    if NO_UR:
+        pat = r"unrecog|gross\s*exposure"
+        dropc = [j for j, hname in enumerate(header) if re.search(pat, re.sub(r"\s+", " ", str(hname)), re.I)]
+        dropr = [i for i, r in enumerate(rows) if r and re.match(r"\s*(unrecogni[sz]ed|gross exposure)", str(r[0]), re.I)]
+        if dropc or dropr:
+            keepc = [j for j in range(len(header)) if j not in dropc]; cm = {j: k for k, j in enumerate(keepc)}
+            keepr = [i for i in range(len(rows)) if i not in dropr]; rm = {i: k for k, i in enumerate(keepr)}
+            header = [header[j] for j in keepc]; rows = [[rows[i][j] for j in keepc if j < len(rows[i])] for i in keepr]
+            if col_w: col_w = [col_w[j] for j in keepc]
+            if align: align = [align[j] for j in keepc]
+            if colors: colors = {(rm[r], cm[c]): v for (r, c), v in colors.items() if r in rm and c in cm}
+            if fills: fills = {((rm[k[0]], cm[k[1]]) if isinstance(k, tuple) else rm[k]): v for k, v in fills.items() if (k[0] in rm and k[1] in cm if isinstance(k, tuple) else k in rm)}
+            bold_rows = tuple(rm[i] for i in bold_rows if i in rm)
     if MS_SAME:
         drop = [j for j, hname in enumerate(header) if re.search(r"vs\s*MS|month\s*start|m\.\s*start", re.sub(r"\s+", " ", str(hname)), re.I)]
         if drop:
@@ -388,6 +402,12 @@ class Deck:
             y += 0.18
         return s
 
+    def remove_section(self, sec):
+        """drop every slide built under section 'sec' (used by the variants that leave a topic out)."""
+        lst = self.prs.slides._sldIdLst; ids = list(lst)
+        for i in reversed([i for i, e in enumerate(self.entries) if e[1] == sec]):
+            self.prs.part.drop_rel(ids[i].rId); lst.remove(ids[i]); del self.entries[i]
+
     def reorder(self, order):
         """stable re-sort of the slides by section rank, then renumber the page boxes."""
         rank = {sec: i for i, sec in enumerate(order)}
@@ -439,7 +459,8 @@ def build(data, meta, out):
     adv, unb, unp, tot = K("Advance"), K("Unbilled"), K("Unpaid"), K("Total AR")
     unrec, newar = K("Unrecognized"), K("Total NEW AR")
     ap_dp, ap_pk, ap_44, ap_lc, ap_tot = K("AP Downpayment"), K("AP Parked"), K("AP Invoices 4411"), K("LC"), K("Total Payables")
-    global MS_SAME
+    global MS_SAME, NO_UR
+    NO_UR = bool(meta.get("_no_unrecognized"))
     MS_SAME = datef(meta["ar_current_date"]) == datef(meta["ar_month_start_date"])
     cur_d, prev_d, ms_d = datef(meta["ar_current_date"]), datef(meta["ar_prev_date"]), datef(meta["ar_month_start_date"])
     cur_s, prev_s, ms_s = datef(meta["ar_current_date"], "%d-%b"), datef(meta["ar_prev_date"], "%d-%b"), datef(meta["ar_month_start_date"], "%d-%b")
@@ -490,7 +511,8 @@ def build(data, meta, out):
         rect(s, 0.9, 4.45, 7.4, 0.42, RGBColor(0xFB, 0xE6, 0xE2), shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
         tb(s, 1.0, 4.45, 7.2, 0.42, f"DRAFT – {meta['draft_note']}", size=12, bold=True, color=RED, anchor=MSO_ANCHOR.MIDDLE)
     cards = [("Gross exposure", newar, RED), ("Unrecognized revenue", unrec, BLUE), ("Total AR", tot, SLATE), ("Unbilled", unb, TEAL), ("Unpaid", unp, GOLD), ("Advance", adv, NAVY2)]
-    cw = (SW - 0.6 - 0.12 * 5) / 6
+    if NO_UR: cards = cards[2:]
+    cw = (SW - 0.6 - 0.12 * (len(cards) - 1)) / len(cards)
     # note when the week-on-week increase comes from the previous month's revenue being posted in this extract
     _tc, _tp = meta.get("posted_cur"), meta.get("posted_prev")
     _td = (round(float(_tc)) - round(float(_tp))) if (_tc not in (None, "") and _tp not in (None, "")) else None
@@ -517,6 +539,10 @@ def build(data, meta, out):
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
              ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
              ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled under JESA responsibility detail, unbilled & unpaid status view, PSR collections, payments, LC and AP detail, sources")]
+    if NO_UR:
+        items = [(n, t, d_.replace("AR, unrecognized revenue, collections", "AR, collections").replace("signature progress on PSR and unrecognized", "signature progress on PSR").replace("projects and unrecognized revenue", "largest projects"))
+                 for n, t, d_ in items if not t.startswith("Unrecognized")]
+        items = [(str(i + 1), t, d_) for i, (n, t, d_) in enumerate(items)]
     y0 = 1.3; step = (SH - 0.6 - y0) / len(items)
     for i, (n, t, d_) in enumerate(items):
         y = y0 + i * step
@@ -528,6 +554,9 @@ def build(data, meta, out):
     # ------------------------------------------------------------------ 2. Key messages
     s = D.slide("Key Messages", "The AR, cash and payables position at a glance")
     msgs = data["KEY_MESSAGES"][:7]
+    if NO_UR:
+        msgs = [dict(m) for m in msgs if not str(m["title"]).startswith(("Gross exposure", "Unrecognized revenue"))]
+        for i, m in enumerate(msgs): m["n"] = i + 1
     y0 = 1.25; step = (SH - 0.5 - y0) / max(len(msgs), 1)
     for i, m in enumerate(msgs):
         y = y0 + i * step
@@ -544,20 +573,21 @@ def build(data, meta, out):
     post_d = (round(float(_pc)) - round(float(_pp))) if (_pc not in (None, "") and _pp not in (None, "")) else None
     post_sub = f" (of which {fd(post_d)} on lines posted in the {meta.get('posted_period')} period)" if (post_d is not None and abs(post_d) >= 50) else ""
     s = D.slide("AR Executive Summary", ("DRAFT (AR as of " + cur_s + "). " if meta.get("draft_note") else "") + f"Unbilled is {pct_unb:.0f}% of total AR; AR {fd(dwow(tot))} MMAD week on week{post_sub}" + ("" if MS_SAME else f" and {fd(dms(tot))} vs the month-start baseline ({ms_s})"))
-    cw = (SW - 0.6 - 0.12 * 5) / 6
-    for i, (lab, r, gwn) in enumerate([("Gross exposure", newar, True), ("Unrecognized revenue", unrec, True), ("Total AR", tot, True),
-                                        ("Unbilled", unb, True), ("Unpaid", unp, True), ("Advance", adv, True)]):
+    ex_cards = [("Gross exposure", newar, True), ("Unrecognized revenue", unrec, True), ("Total AR", tot, True), ("Unbilled", unb, True), ("Unpaid", unp, True), ("Advance", adv, True)]
+    if NO_UR: ex_cards = ex_cards[2:]
+    cw = (SW - 0.6 - 0.12 * (len(ex_cards) - 1)) / len(ex_cards)
+    for i, (lab, r, gwn) in enumerate(ex_cards):
         kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.25, lab, r["current"], dwow(r), (dms(r) if r["month_start"] else None), good_when_negative=gwn, ms_label=ms_label)
     # donut
-    tb(s, 0.4, 2.7, 5.5, 0.35, "AR exposure by component", size=14, bold=True, color=NAVY)
-    tb(s, 0.4, 3.02, 5.5, 0.3, f"Gross exposure {f0(newar['current'])} MMAD = total AR + unrecognized revenue", size=10, color=SLATE)
-    comp_pie = sorted([("Unbilled", unb["current"], NAVY2), ("Unpaid", unp["current"], GREY), ("Advance", adv["current"], LBLUE), ("Unrecognized", unrec["current"], BLUE)], key=lambda c: -(c[1] or 0))
+    tb(s, 0.4, 2.7, 5.5, 0.35, "AR by component" if NO_UR else "AR exposure by component", size=14, bold=True, color=NAVY)
+    tb(s, 0.4, 3.02, 5.5, 0.3, (f"Total AR {f0(tot['current'])} MMAD = unbilled + unpaid + advance" if NO_UR else f"Gross exposure {f0(newar['current'])} MMAD = total AR + unrecognized revenue"), size=10, color=SLATE)
+    comp_pie = sorted([("Unbilled", unb["current"], NAVY2), ("Unpaid", unp["current"], GREY), ("Advance", adv["current"], LBLUE)] + ([] if NO_UR else [("Unrecognized", unrec["current"], BLUE)]), key=lambda c: -(c[1] or 0))
     doughnut(s, 0.2, 3.3, 3.0, 3.7, [c[0] for c in comp_pie], [c[1] for c in comp_pie], [c[2] for c in comp_pie])
     for i, (lab, v, c) in enumerate(comp_pie):
         yy = 3.55 + i * 0.8
         rect(s, 3.35, yy + 0.08, 0.22, 0.22, c)
         tb(s, 3.65, yy, 1.7, 0.3, lab, size=11, bold=True, color=NAVY)
-        tb(s, 3.65, yy + 0.3, 1.7, 0.3, f"{f0(v)}  ·  {v/(newar['current'] or 1)*100:.0f}% of exposure", size=9, color=SLATE)
+        tb(s, 3.65, yy + 0.3, 1.7, 0.3, (f"{f0(v)}  ·  {v/(tot['current'] or 1)*100:.0f}% of AR" if NO_UR else f"{f0(v)}  ·  {v/(newar['current'] or 1)*100:.0f}% of exposure"), size=9, color=SLATE)
     # OCP callout
     ocp = splits.get("AR OCP", 0); nocp = splits.get("AR NON OCP", 0)
     mw = (7.7 - 0.24) / 3
@@ -1295,7 +1325,7 @@ def build(data, meta, out):
     zoom_bus = [b for b in BU_ORDER if b in arbu and (arbu[b]["Total AR"]["current"] or 0) >= 20]
     D.divider("07", "Business Unit Breakdown",
               [("Two pages per business unit", ["Position: AR components with WoW and vs month-start comparatives, DSO, unbilled by responsibility (client / JESA) and client signature, largest statuses, unpaid split and phases, aging, payments received (PSR / Proc)",
-                                                "Projects & unrecognized: largest unbilled and unpaid projects, unrecognized supplier scope by status, JESA attachments to client"]),
+                                                ("Projects: largest unbilled and unpaid projects" if NO_UR else "Projects & unrecognized: largest unbilled and unpaid projects, unrecognized supplier scope by status, JESA attachments to client")]),
                ("Business units covered", [", ".join(short(b) for b in zoom_bus[:6]), ", ".join(short(b) for b in zoom_bus[6:]) or "–"])],
               note=f"Ordered by size of the receivable book; business units below 20 MMAD of AR are summarised on the group slides only.")
     for b in zoom_bus:
@@ -1304,10 +1334,11 @@ def build(data, meta, out):
         unr_c = unr["current"] or 0; unr_p = unr["prev_week"]; unr_m = unr.get("month_start")
         tc = t_["current"] or 1
         s = D.slide(f"Zoom – {b}", f"Total AR {f0(t_['current'])} MMAD ({fd(dwow(t_))} WoW{'' if MS_SAME else ', ' + fd(dms(t_)) + ' vs month start'}); unbilled {u_['current']/tc*100:.0f}% / unpaid {p_['current']/tc*100:.0f}% / advance {a_['current']/tc*100:.0f}%" + (f" · DSO {dso_txt(b)}" if dso_txt(b) else ""))
-        cw = (SW - 0.6 - 0.12 * 5) / 6
-        kpi_card(s, 0.3, 1.2, cw, 1.15, "Gross exposure", t_["current"] + unr_c, delta_wow=(dwow(t_) + (unr_c - unr_p)) if unr_p is not None else None, delta_ms=(dms(t_) + (unr_c - unr_m)) if (unr_m is not None and dms(t_) is not None) else None, value_size=20, ms_label="vs month start")
-        kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.15, "Unrecognized revenue", unr_c, delta_wow=(round(unr_c) - round(unr_p)) if unr_p is not None else None, delta_ms=(round(unr_c) - round(unr_m)) if unr_m is not None else None, value_size=20, ms_label="vs month start")
-        for i, (lab, r) in enumerate([("Total AR", t_), ("Unbilled", u_), ("Unpaid", p_), ("Advance", a_)], start=2):
+        zn = 4 if NO_UR else 6; z0 = 0 if NO_UR else 2
+        cw = (SW - 0.6 - 0.12 * (zn - 1)) / zn
+        if not NO_UR: kpi_card(s, 0.3, 1.2, cw, 1.15, "Gross exposure", t_["current"] + unr_c, delta_wow=(dwow(t_) + (unr_c - unr_p)) if unr_p is not None else None, delta_ms=(dms(t_) + (unr_c - unr_m)) if (unr_m is not None and dms(t_) is not None) else None, value_size=20, ms_label="vs month start")
+        if not NO_UR: kpi_card(s, 0.3 + (cw + 0.12), 1.2, cw, 1.15, "Unrecognized revenue", unr_c, delta_wow=(round(unr_c) - round(unr_p)) if unr_p is not None else None, delta_ms=(round(unr_c) - round(unr_m)) if unr_m is not None else None, value_size=20, ms_label="vs month start")
+        for i, (lab, r) in enumerate([("Total AR", t_), ("Unbilled", u_), ("Unpaid", p_), ("Advance", a_)], start=z0):
             kpi_card(s, 0.3 + i * (cw + 0.12), 1.2, cw, 1.15, lab, r["current"], delta_wow=dwow(r), delta_ms=dms(r), value_size=20, ms_label="vs month start")
         # unbilled by responsibility (client / JESA) and client signature – same rules as the unbilled slide
         ub = u_["current"] or 1
@@ -1378,17 +1409,18 @@ def build(data, meta, out):
         bar_chart(s, 5.0, 5.05, 4.2, 2.05, bks, [("Unbilled", [agu.get(k, 0) for k in bks]), ("Unpaid", [agp.get(k, 0) for k in bks])], [NAVY2, GOLD], gap=50, cat_size=7, label_size=7, title="Aging – unbilled vs unpaid (MMAD)", legend_pos=XL_LEGEND_POSITION.BOTTOM)
 
         # ---- page B: projects & unrecognized
-        s = D.slide(f"Zoom – {short(b)} · projects & unrecognized", f"{b}: largest unbilled and unpaid projects at {cur_s}; unrecognized supplier scope by status (incl. markup)")
+        s = D.slide(f"Zoom – {short(b)} · projects" if NO_UR else f"Zoom – {short(b)} · projects & unrecognized", f"{b}: largest unbilled and unpaid projects at {cur_s}" + ("" if NO_UR else "; unrecognized supplier scope by status (incl. markup)"))
         for j, (typ, x0) in enumerate((("Unbilled", 0.4), ("Unpaid", 6.75))):
-            lst = sorted(projs.get((b, typ), []), key=lambda r: -(r["amount"] or 0))[:8]
+            lst = sorted(projs.get((b, typ), []), key=lambda r: -(r["amount"] or 0))[:(18 if NO_UR else 8)]
             tot_t = (u_ if typ == "Unbilled" else p_)["current"] or 1
             tb(s, x0, 1.2, 6.0, 0.3, f"Top {typ.lower()} projects (MMAD)", size=12, bold=True, color=NAVY)
             def short_status(st):
                 st = str(st or ""); return (st[:34] + "…") if len(st) > 35 else st
             rows = [[(str(r["wbs"]) or "")[:13], ((str(r["project"]) or "")[:33] + "…") if len(str(r["project"] or "")) > 34 else str(r["project"] or ""), short_status(r["status"]), f1(r["amount"]), f"{(r['amount'] or 0)/tot_t*100:.0f}%"] for r in lst]
-            if rows: table(s, x0, 1.5, 6.15, ["WBS", "Project", "Status", "MMAD", ("% unb." if typ == "Unbilled" else "% unp.")], rows, col_w=[0.95, 2.25, 2.05, 0.5, 0.45], font_size=7.5, header_size=7.5, row_h=0.27, header_h=0.32, align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
+            if rows: table(s, x0, 1.5, 6.15, ["WBS", "Project", "Status", "MMAD", ("% unb." if typ == "Unbilled" else "% unp.")], rows, col_w=[0.95, 2.25, 2.05, 0.5, 0.45], font_size=(9 if NO_UR else 7.5), header_size=(9 if NO_UR else 7.5), row_h=(0.58 if NO_UR else 0.27), header_h=(0.4 if NO_UR else 0.32), align=[PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.LEFT, PP_ALIGN.RIGHT, PP_ALIGN.RIGHT])
         u = urt.get(b)
-        if u and (u["grand_total"] or 0) > 0.05:
+        if NO_UR: pass
+        elif u and (u["grand_total"] or 0) > 0.05:
             tb(s, 0.4, 4.2, 6.0, 0.3, f"Unrecognized suppliers – {f0(u['grand_total'])} MMAD" + (f" ({fd(round(u['grand_total'] or 0) - round(u['prev_week_total'] or 0))} WoW)" if u.get("prev_week_total") is not None else ""), size=12, bold=True, color=NAVY)
             cats = ["Pending approval", "Signed by client", "Pending submission", "Under CN", "At risk"]
             eq = [u[k] or 0 for k in ("eq_pending_approval", "eq_signed_by_client", "eq_pending_submission", "eq_under_cn", "eq_at_risk")]
@@ -1458,14 +1490,18 @@ def build(data, meta, out):
             ("Payments received", "invoices paid by payment date, on the amount-invoiced basis used in the BU meeting report."),
             ("Cash position", "procurement (non-labor) cash in and out for the JESA Group including AM; PSR (labor) collections shown net of the AM ring-fence and the Water & Environment reserve."),
             ("DSO", "days sales outstanding excluding advances, as reported in the BU meeting report.")]
+    if NO_UR: defs = [(t, d_) for t, d_ in defs if t not in ("Unrecognized revenue", "Gross exposure")]
     tb(s, 0.4, 4.15, 12.5, 2.9, [[(t + ": ", {"bold": True, "color": NAVY}), (d_, {})] for t, d_ in defs], size=9, color=DARK, line_spacing=1.1)
 
+    if NO_UR: D.remove_section("unrec")
     D.reorder(["front", "ar", "ar_signed", "ar_jesa", "ar_nonocp", "unrec", "coll", "cash", "ap", "lc", "bu", "backup_divider", "ar_backup", "cash_backup", "backup", "sources"])
     D.save(out)
-    print("saved", out, "slides:", D.n)
+    print("saved", out, "slides:", len(D.prs.slides))
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--inputs", default="inputs/weekly_inputs.xlsx"); ap.add_argument("--out", required=True)
+    ap.add_argument("--no-unrecognized", action="store_true", help="variant without unrecognized revenue and gross exposure (e.g. for a client-facing review)")
     a = ap.parse_args()
     data, meta = read_inputs(a.inputs)
+    if a.no_unrecognized: meta["_no_unrecognized"] = True
     build(data, meta, a.out)
