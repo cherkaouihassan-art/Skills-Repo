@@ -86,7 +86,9 @@ for i,p in enumerate(paid,2):
         if j==10: c.number_format='#,##0.00'
 # ---- Unmapped
 U=wb['Unmapped Invoices']; n=U.max_row
+existing_unm={(str(U.cell(r,2).value), U.cell(r,14).value) for r in range(2,n+1)}
 for p in unm:
+    if (p['ref'],RUN) in existing_unm: continue
     n+=1
     sug='AM / Procurement (pattern: JESA on JFC/MP1/JPH/107 DEF)' if (p['div'] or '').startswith(('JFC','MP1','JPH','107')) else 'no pattern - user to decide'
     vals=[p['row'],p['ref'],p['iddoc'],p['fourn'],p['service'],p['div'],p['datedoc'],p['datepay'],p['pm'],p['refpay'],p['net'],None,sug,RUN,None]
@@ -105,7 +107,9 @@ if 'Payment Date Fixes' not in wb.sheetnames:
     F.freeze_panes='A2'
     for col,wd in zip('ABCDEFGHIJK',[12,10,14,16,14,18,16,16,12,26,60]): F.column_dimensions[col].width=wd
 F=wb['Payment Date Fixes']; fr=F.max_row
+existing_fix={(F.cell(r,1).value, str(F.cell(r,3).value), str(F.cell(r,4).value)) for r in range(2,fr+1)}
 for p in fixes:
+    if (RUN,p['ref'],p['piece']) in existing_fix: continue
     fr+=1
     vals=[RUN,p['row'],p['ref'],p['piece'],p['refpay'],p['statut'],p['net'],p['datepay'] if isinstance(p['datepay'],datetime.datetime) else None,p['pm'] if isinstance(p['pm'],datetime.datetime) else p['pm'],p['bu'] or None,p['datefix']]
     for j,v in enumerate(vals,1):
