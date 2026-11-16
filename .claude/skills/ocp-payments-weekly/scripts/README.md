@@ -11,7 +11,7 @@ directory; keep the extract and AR files in separate input directories.
    Inserts a column group for any new live month (blocks A/C/D before Total, E/F appended),
    writes live cells as values, rewrites `Payments Key`, appends `Unmapped Invoices`, logs to
    `Data Sources`, updates `Config`. Prints week-over-week new payments.
-3. `mapping_rebuild.py <AR.xlsx> <workbook>` — only when an AR extract is supplied. Rebuilds
+3. `mapping_rebuild.py <AR.xlsx> <workbook>` — env vars `AR_NAME`, `RUN_DATE`, `RUN_NOTE`, `RUN_TAIL`. Only when an AR extract is supplied. Rebuilds
    `Mapping` (first occurrence, carry-over of missing invoices, blank flags filled), reports
    BU / flag changes on live-month invoices, logs to `Data Sources`. Re-run 1 and 2 afterwards.
 

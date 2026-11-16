@@ -1,4 +1,5 @@
-import openpyxl, sys, re, datetime, pickle
+import openpyxl, sys, re, datetime, pickle, os
+AR_NAME=os.environ.get('AR_NAME','AR weekly.xlsx'); RUN_DATE=os.environ.get('RUN_DATE','2026-11-02'); RUN_D=datetime.datetime.strptime(RUN_DATE,'%Y-%m-%d')
 from openpyxl.styles import Font, PatternFill, Alignment
 AR, WB = sys.argv[1], sys.argv[2]
 def key(v):
@@ -45,16 +46,16 @@ M.delete_rows(2, M.max_row)
 r=2
 for inv in sorted(new, key=lambda x:(len(x),x)):
     v=new[inv]; M.cell(r,1,inv); M.cell(r,2,v['bu']); M.cell(r,3,v['it']); M.cell(r,4,v['t2']); M.cell(r,5,v['fl'])
-    if v.get('carried'): M.cell(r,6,'carried from previous mapping (not in AR weekly 26/10/2026)')
+    if v.get('carried'): M.cell(r,6,f'carried from previous mapping (not in {AR_NAME})')
     r+=1
 M.cell(1,6,'Note'); M.cell(1,6).font=Font(bold=True,color='FFFFFF'); M.cell(1,6).fill=PatternFill('solid',fgColor='1F4E78'); M.column_dimensions['F'].width=48
 C=wb['Config']
 for row in C.iter_rows(min_row=2):
-    if row[0].value=='MappingSource': row[1].value=f'AR weekly.xlsx (Power BI AR extract, AR tab, {n:,} rows with invoice, max Payment Date {maxpay:%d/%m/%Y}) + {carried} invoices carried from the previous mapping'; row[2].value=f'Rebuilt 02/11/2026. First occurrence kept where an invoice appears twice ({len(dups)} duplicates with differing BU/flag). Blank flags filled from the previous mapping ({filled}).'
+    if row[0].value=='MappingSource': row[1].value=f'{AR_NAME} (Power BI AR extract, AR tab, {n:,} rows with invoice, max Payment Date {maxpay:%d/%m/%Y}) + {carried} invoices carried from the previous mapping'; row[2].value=f'Rebuilt {RUN_D:%d/%m/%Y}. First occurrence kept where an invoice appears twice ({len(dups)} duplicates with differing BU/flag). Blank flags filled from the previous mapping ({filled}).'
 D=wb['Data Sources']; k=D.max_row+1
-for j,v in enumerate([f"Mapping!A2:F{r-1}","AR weekly.xlsx (Power BI AR extract uploaded by user 02/11/2026)",f"AR tab, cols P / O / AL / AW / BH; {n:,} rows with invoice number, max Payment Date {maxpay:%d/%m/%Y}","Weekly run by Claude (ocp-payments-weekly skill)","User: check the BU of the 12 unmapped October invoices in the new AR file; Mapping rebuilt",
-    f"Deduped on invoice (first occurrence); {carried} invoices absent from the new AR file carried over from the previous mapping (col F note); {filled} blank flags filled from previous mapping","2026-11-02","User",r-2,
+for j,v in enumerate([f"Mapping!A2:F{r-1}",f"{AR_NAME} (Power BI AR extract uploaded by user {RUN_D:%d/%m/%Y})",f"AR tab, cols P / O / AL / AW / BH; {n:,} rows with invoice number, max Payment Date {maxpay:%d/%m/%Y}","Weekly run by Claude (ocp-payments-weekly skill)",os.environ.get("RUN_NOTE","Mapping rebuilt from a new AR extract"),
+    f"Deduped on invoice (first occurrence); {carried} invoices absent from the new AR file carried over from the previous mapping (col F note); {filled} blank flags filled from previous mapping",RUN_DATE,"User",r-2,
     f"{len(added)} new invoices; {len(chg_bu)} BU changes and {len(chg_fl)} PSR/PROC flag changes vs previous mapping (of which live-month impact: BU {sum(1 for c in chg_bu if c[0] in live)}, flag {sum(1 for c in chg_fl if c[0] in live)})",
-    "All 12 previously unmapped Oct-26 invoices resolve from this file: 11 AM/PROC, 90022524 AM/PSR"],1): D.cell(k,j,v)
+    os.environ.get("RUN_TAIL","")],1): D.cell(k,j,v)
 wb.save(WB); print('mapping written', r-2)
 pickle.dump(dict(chg_bu=chg_bu,chg_fl=chg_fl,added=added,carried=carried,filled=filled,n=n,dups=dups,maxpay=maxpay),open('remap_state.pkl','wb'))
