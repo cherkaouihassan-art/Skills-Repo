@@ -82,6 +82,7 @@ go to `Data Sources`.
 | FrozenThrough | 2026-08-26 |
 | LiveMonths | 2026-09-26, 2026-10-26 |
 | PayMonthDay | 26 |
+| ClassRuleFrom | 2026-11-26 (TYPE-based split for non-AM BUs from this Pay Month) |
 | ExtractLayoutHash | hash of the 35 header names A1:AI1 of the last accepted extract |
 | MappingSource | file name + date of the AR extract used to build `Mapping` |
 | LastExtract | file name, max Date Paiement, row count |
@@ -103,7 +104,8 @@ Precedence: Overrides → Mapping → fallback rules. Seed rows: see standing-ex
 ## Tab 4 — `Mapping`
 
 Built from the Power BI AR extract (`AR` tab): A Invoice Number (col P) · B Business Unit
-(col O) · C Invoice Type (col AL) · D Type 2 (col AW) · E PSR/PROC (col BH). Trim and strip
+(col O) · C Invoice Type (col AL) · D Type 2 (col AW) · E PSR/PROC (col BH) · F Note · G TYPE (col AJ,
+Labor / Non Labor, used for the Nov-26+ split of non-AM BUs). Trim and strip
 NBSP from invoice numbers; dedupe on invoice keeping the **first occurrence** (the same result as
 the former `MATCH()` lookups); if two rows disagree on BU or flag, list the conflict in the run report.
 Where the BH flag is blank, fill it from the old `PSR-PROC Map` (merged into col E). Today's

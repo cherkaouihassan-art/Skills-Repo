@@ -33,8 +33,10 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
 4. **Frozen guard.** Drop every row whose Pay Month ≤ `Config!FrozenThrough`. Frozen cells are
    never recomputed. Additionally drop the five frozen-month invoices listed in
    standing-exceptions.md §A whatever their date.
-5. **BU and Class.** Precedence: `Overrides` (B, C) → `Mapping` (B = BU; E = PSR/PROC flag →
-   Proservices / Procurement) → fallback on Type 2 / Invoice Type (standing-exceptions.md §D).
+5. **BU and Class.** BU: `Overrides` (B) → `Mapping` (B). Class: `Overrides` (C) first; then,
+   for Pay Months from `Config!ClassRuleFrom` (Nov-26) and BU ≠ AM, `Mapping` col G TYPE
+   (Labor → Proservices, else Procurement); otherwise the PSR/PROC flag (`Mapping` E) with the
+   Type 2 / Invoice Type fallback (standing-exceptions.md §D). Record the rule used per row.
    Never assign a BU from Division, Fournisseur or any pattern — list it instead (step 7).
 6. **Re-date sweep.** Join to `Payments Key` on `Pièce comptable` + `Réf Paiement`. Any pair whose
    Pay Month changed, or whose amount changed, goes to the report. Do not fix silently; if the

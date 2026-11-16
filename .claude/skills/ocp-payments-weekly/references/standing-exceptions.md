@@ -39,6 +39,11 @@ been assigned AM / Procurement by the user. Claude still does not auto-assign: l
 
 ## D. Classification rules (not per-invoice)
 
+0. **From Pay Month Nov-26 onward (user rule 16/11/2026, `Config!ClassRuleFrom`):** BU = AM keeps the
+   AR `PSR/PROC` flag rule below. Every other BU uses AR col AJ `TYPE`: a value starting with
+   "Labor" (not "Non") → Proservices; any other non-blank value ("Non Labor", "Procurement…",
+   "Advance", "CC", "FC", "Subcontract") → Procurement; blank or "Labor and Non labor" → fall back
+   to the flag rule and note it. `Mapping` col G carries TYPE. Sep-26 and Oct-26 keep rule 1.
 1. Class comes from the AR `PSR/PROC` flag: `PSR` → Proservices, `PROC` → Procurement.
 2. Flag precedence: Sheet3/Mapping col BH first, then the old `PSR-PROC Map`, then the
    fallback: Type 2 = "Services" → Proservices; Type 2 non-blank → Procurement; Type 2 blank and

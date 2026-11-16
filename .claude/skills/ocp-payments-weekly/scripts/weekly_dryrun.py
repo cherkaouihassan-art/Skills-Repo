@@ -9,13 +9,13 @@ def key(v):
     return s
 wb=openpyxl.load_workbook(WB)
 cfg={r[0]:r[1] for r in wb['Config'].iter_rows(min_row=2,values_only=True) if r[0]}
-FROZEN=cfg['FrozenThrough']; EXP_HDR=cfg['ExtractLayout'].split('|')
+FROZEN=cfg['FrozenThrough']; EXP_HDR=cfg['ExtractLayout'].split('|'); CLASS_FROM=cfg.get('ClassRuleFrom') or datetime.datetime(2026,11,26)
 OV={}
 for r in wb['Overrides'].iter_rows(min_row=2,values_only=True):
     if r[0]: OV[key(r[0])]=dict(bu=r[1],cls=r[2],pm=r[3],scope=r[4])
 MAP={}
 for r in wb['Mapping'].iter_rows(min_row=2,values_only=True):
-    if r[0]: MAP[key(r[0])]=dict(bu=r[1],it=r[2],t2=r[3],fl=r[4])
+    if r[0]: MAP[key(r[0])]=dict(bu=r[1],it=r[2],t2=r[3],fl=r[4],typ=(r[6] if len(r)>6 else None))
 PREV={}
 pk_hdr=[c.value for c in wb['Payments Key'][1]]
 for r in wb['Payments Key'].iter_rows(min_row=2,values_only=True):
@@ -48,19 +48,28 @@ print(f'extract rows {nraw}, paid rows {len(paid)}, max Date Paiement {maxd:%d/%
 def classify(p):
     o=OV.get(p['ref']); m=MAP.get(p['ref'])
     bu=(o['bu'] if o and o['bu'] else None) or ((m['bu'] or '').strip() if m and m['bu'] else '')
-    fl,t2,it=(m['fl'],m['t2'],m['it']) if m else (None,None,None)
-    if o and o['cls']: cls=o['cls']
-    elif not bu: cls=''
-    elif fl=='PSR': cls='Proservices'
-    elif fl=='PROC': cls='Procurement'
-    elif t2=='Services': cls='Proservices'
-    elif t2 not in (None,''): cls='Procurement'
-    elif it=='Labor': cls='Proservices'
-    else: cls='Procurement'
+    fl,t2,it,typ=(m['fl'],m['t2'],m['it'],m.get('typ')) if m else (None,None,None,None)
     d=p['datepay']; pm=datetime.datetime(d.year,d.month,26) if isinstance(d,datetime.datetime) else None
     applied=''
     if o and o['pm']=='EXCLUDE': pm='EXCLUDE'; applied='Pay Month EXCLUDE'
     elif o and isinstance(o['pm'],datetime.datetime): pm=o['pm']; applied='Pay Month forced'
+    def flag_rule():
+        if fl=='PSR': return 'Proservices'
+        if fl=='PROC': return 'Procurement'
+        if t2=='Services': return 'Proservices'
+        if t2 not in (None,''): return 'Procurement'
+        if it=='Labor': return 'Proservices'
+        return 'Procurement'
+    rule=''
+    if o and o['cls']: cls=o['cls']; rule='Override'
+    elif not bu: cls=''
+    elif isinstance(pm,datetime.datetime) and pm>=CLASS_FROM and bu!='AM':
+        t=(typ or '').strip().lower()
+        if t and t.startswith('labor') and 'non' not in t: cls='Proservices'; rule='TYPE=Labor'
+        elif t and t!='labor and non labor': cls='Procurement'; rule=f'TYPE={typ.strip()}'
+        else: cls=flag_rule(); rule='TYPE blank - PSR/PROC flag used'
+    else: cls=flag_rule(); rule='PSR/PROC flag'
+    p['clsrule']=rule
     if o and (o['bu'] or o['cls']): applied=(applied+'; ' if applied else '')+'BU/Class'
     live=isinstance(pm,datetime.datetime) and pm>FROZEN
     return bu,cls,pm,fl,applied,live

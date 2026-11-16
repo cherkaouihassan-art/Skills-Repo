@@ -78,8 +78,10 @@ for d in prev.values():
 pk.delete_rows(2, pk.max_row)
 if pk.cell(1,18).value is None:
     pk.cell(1,18,'Date Paiement note'); copy_style(pk.cell(1,17),pk.cell(1,18)); pk.column_dimensions['R'].width=44
+if pk.cell(1,19).value is None:
+    pk.cell(1,19,'Class rule'); copy_style(pk.cell(1,17),pk.cell(1,19)); pk.column_dimensions['S'].width=30
 for i,p in enumerate(paid,2):
-    vals=[p['row'],p['ref'],p['iddoc'],p['fourn'],p['service'],p['div'],p['piece'],p['datepay'],p['refpay'],p['net'],p['pm'],p['bu'] or None,p['cls'] or None,p['fl'],p['applied'] or None,'Y' if p['live'] else 'N',maxd,p.get('datefix') or None]
+    vals=[p['row'],p['ref'],p['iddoc'],p['fourn'],p['service'],p['div'],p['piece'],p['datepay'],p['refpay'],p['net'],p['pm'],p['bu'] or None,p['cls'] or None,p['fl'],p['applied'] or None,'Y' if p['live'] else 'N',maxd,p.get('datefix') or None,p.get('clsrule') or None]
     for j,v in enumerate(vals,1):
         c=pk.cell(i,j,v)
         if j in (8,11,17) and isinstance(v,datetime.datetime): c.number_format='dd/mm/yyyy'
@@ -118,6 +120,8 @@ for p in fixes:
         if j==7: c.number_format='#,##0.00'
 # ---- Config / Data Sources
 C=wb['Config']
+if not any(r[0].value=='ClassRuleFrom' for r in C.iter_rows(min_row=2)):
+    nr=C.max_row+1; C.cell(nr,1,'ClassRuleFrom'); c=C.cell(nr,2,datetime.datetime(2026,11,26)); c.number_format='dd/mm/yyyy'; C.cell(nr,3,'From this Pay Month: AM keeps the PSR/PROC flag; every other BU uses AR col AJ TYPE (Labor -> Proservices, anything else -> Procurement; blank -> flag). User rule 16/11/2026. Earlier months keep the flag rule.')
 for r in C.iter_rows(min_row=2):
     if r[0].value=='LastExtract': r[1].value=f"{EXTRACT_NAME} - extract {maxd:%d/%m/%Y} - {st['nraw']:,} rows - {len(paid):,} paid rows kept in Payments Key"
     if r[0].value=='LiveMonths': r[1].value=', '.join(m.strftime('%Y-%m-%d') for m in months)
