@@ -1,6 +1,6 @@
 import openpyxl, pickle, datetime, sys, os, copy, re
 from openpyxl.utils import get_column_letter as L
-st=pickle.load(open('weekly_state.pkl','rb')); paid,unm,months,piv,pivc,gross,maxd=st['paid'],st['unm'],st['months'],st['piv'],st['pivc'],st['gross'],st['maxd']
+st=pickle.load(open('weekly_state.pkl','rb')); paid,unm,months,piv,pivc,gross,maxd=st['paid'],st['unm'],st['months'],st['piv'],st['pivc'],st['gross'],st['maxd']; fixes=st.get('fixes',[])
 WB="../out/OCP Payments Weekly.xlsx"; EXTRACT_NAME=os.environ['EXTRACT_NAME']; RUN=datetime.datetime.strptime(os.environ['RUN_DATE'],'%Y-%m-%d')
 wb=openpyxl.load_workbook(WB); S=wb['Summary by BU']; bus=[S.cell(r,2).value for r in range(4,15)]
 def copy_style(src,dst):
@@ -76,8 +76,10 @@ prev_tot={}
 for d in prev.values():
     if d['In live scope']=='Y' and d['BU']: prev_tot.setdefault(d['Pay Month'],[0,0.0]); prev_tot[d['Pay Month']][0]+=1; prev_tot[d['Pay Month']][1]+=float(d['Net à payer'])
 pk.delete_rows(2, pk.max_row)
+if pk.cell(1,18).value is None:
+    pk.cell(1,18,'Date Paiement note'); copy_style(pk.cell(1,17),pk.cell(1,18)); pk.column_dimensions['R'].width=44
 for i,p in enumerate(paid,2):
-    vals=[p['row'],p['ref'],p['iddoc'],p['fourn'],p['service'],p['div'],p['piece'],p['datepay'],p['refpay'],p['net'],p['pm'],p['bu'] or None,p['cls'] or None,p['fl'],p['applied'] or None,'Y' if p['live'] else 'N',maxd]
+    vals=[p['row'],p['ref'],p['iddoc'],p['fourn'],p['service'],p['div'],p['piece'],p['datepay'],p['refpay'],p['net'],p['pm'],p['bu'] or None,p['cls'] or None,p['fl'],p['applied'] or None,'Y' if p['live'] else 'N',maxd,p.get('datefix') or None]
     for j,v in enumerate(vals,1):
         c=pk.cell(i,j,v)
         if j in (8,11,17) and isinstance(v,datetime.datetime): c.number_format='dd/mm/yyyy'
@@ -95,6 +97,21 @@ for p in unm:
 mapped_refs={p['ref'] for p in paid if p['live'] and p['bu']}
 for rr in range(2, U.max_row+1):
     if U.cell(rr,15).value is None and str(U.cell(rr,2).value) in mapped_refs: U.cell(rr,15).value=f"Resolved {RUN:%d/%m/%Y}"
+# ---- Payment Date Fixes sheet
+if 'Payment Date Fixes' not in wb.sheetnames:
+    F=wb.create_sheet('Payment Date Fixes', wb.sheetnames.index('Unmapped Invoices')+1)
+    for j,hname in enumerate(['Run date','Extract row','Réference','Pièce comptable','Réf Paiement','Statut','Net à payer','Date Paiement used','Pay Month','BU','Action'],1):
+        F.cell(1,j,hname); copy_style(U.cell(1,1),F.cell(1,j))
+    F.freeze_panes='A2'
+    for col,wd in zip('ABCDEFGHIJK',[12,10,14,16,14,18,16,16,12,26,60]): F.column_dimensions[col].width=wd
+F=wb['Payment Date Fixes']; fr=F.max_row
+for p in fixes:
+    fr+=1
+    vals=[RUN,p['row'],p['ref'],p['piece'],p['refpay'],p['statut'],p['net'],p['datepay'] if isinstance(p['datepay'],datetime.datetime) else None,p['pm'] if isinstance(p['pm'],datetime.datetime) else p['pm'],p['bu'] or None,p['datefix']]
+    for j,v in enumerate(vals,1):
+        c=F.cell(fr,j,v)
+        if j in (1,8,9) and isinstance(v,datetime.datetime): c.number_format='dd/mm/yyyy'
+        if j==7: c.number_format='#,##0.00'
 # ---- Config / Data Sources
 C=wb['Config']
 for r in C.iter_rows(min_row=2):
@@ -106,7 +123,7 @@ D=wb['Data Sources']; k=D.max_row+1
 row=["'Summary by BU' live columns "+', '.join(f"{m:%b-%y}={L(colA[m])}" for m in months)+(f"; new column(s) inserted for {', '.join(x.strftime('%b-%y') for x in added)}" if added else '')+f"; 'Payments Key'!A2:Q{len(paid)+1}; 'Unmapped Invoices' rows {n-len(unm)+1}-{n}" if unm else "'Summary by BU' live columns "+', '.join(f"{m:%b-%y}={L(colA[m])}" for m in months)+(f"; new column(s) inserted for {', '.join(x.strftime('%b-%y') for x in added)}" if added else '')+f"; 'Payments Key'!A2:Q{len(paid)+1}",
      EXTRACT_NAME,f"SAP supplier-payment extract, 35 cols A:AI, {st['nraw']:,} rows","Weekly run by Claude (ocp-payments-weekly skill)",os.environ.get('RUN_NOTE','Weekly refresh'),
      "Layout check OK; Overrides > Mapping > fallback; Pay Month = 26th; frozen months untouched",RUN.strftime('%Y-%m-%d'),"User",len(paid),
-     f"Re-date sweep: {len(st['redated'])} moved payments, {len(st['gone'])} missing. "+summ, os.environ.get('RUN_TAIL','')]
+     f"Re-date sweep: {len(st['redated'])} moved payments, {len(st['gone'])} missing. Payment dates carried forward: {sum(1 for p in fixes if p['datefix'].startswith('carried'))}; paid rows with no date: {sum(1 for p in fixes if p['datefix'].startswith('MISSING'))}. "+summ, os.environ.get('RUN_TAIL','')]
 for j,v in enumerate(row,1): D.cell(k,j,v)
 wb.save(WB); print('saved; new month columns:',[m.date() for m in added])
 print('prev live totals:',{(k.date() if hasattr(k,'date') else k):(v[0],round(v[1],2)) for k,v in prev_tot.items()})

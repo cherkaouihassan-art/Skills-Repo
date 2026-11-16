@@ -19,7 +19,8 @@ and is never pasted into the workbook.
 | 4 | `Mapping` | Invoice → BU / Invoice Type / Type 2 / PSR-PROC. 5 columns, deduped. | Claude, only when a new AR extract is supplied |
 | 5 | `Payments Key` | Key columns of the **last processed** extract, for the re-date sweep. | Claude, overwritten weekly |
 | 6 | `Unmapped Invoices` | Live-month payments with no BU. Append-only. | Claude |
-| 7 | `Data Sources` | One row per weekly run (audit log). Replaces the ever-growing note in `'Summary by BU'!B2`. | Claude |
+| 7 | `Payment Date Fixes` | One row per paid invoice whose date was carried forward or is missing, per run. | Claude |
+| 8 | `Data Sources` | One row per weekly run (audit log). Replaces the ever-growing note in `'Summary by BU'!B2`. | Claude |
 
 Dropped from the slim file: `Sheet3` (replaced by `Mapping`), `PSR-PROC Map` (merged into
 `Mapping` col E), `JESA OCP File NN` tabs (extract stays external), and all 20 external links
@@ -116,7 +117,7 @@ changes on live-month invoices before writing the Summary. Last rebuilt 02/11/20
 
 Last processed extract, paid rows only (`Net à payer ≠ 0`): Réference (I) · ID DOC (C) ·
 Fournisseur (G) · Division (U) · Pièce comptable (AC) · Date Paiement (AD) · Réf Paiement (AE) ·
-Net à payer (Z) · Pay Month · BU · Class · Extract date. ~1,200 rows. Used to detect re-dated
+Net à payer (Z) · Pay Month · BU · Class · Extract date · Date Paiement note (blank, carried, or MISSING). Used to detect re-dated
 payments (same AC + AE, different month) and to produce week-over-week deltas by invoice.
 
 ## Tab 6 — `Unmapped Invoices`

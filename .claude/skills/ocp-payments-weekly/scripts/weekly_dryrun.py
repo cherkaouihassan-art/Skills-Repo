@@ -20,6 +20,10 @@ PREV={}
 pk_hdr=[c.value for c in wb['Payments Key'][1]]
 for r in wb['Payments Key'].iter_rows(min_row=2,values_only=True):
     d=dict(zip(pk_hdr,r)); PREV[(key(d['Pièce comptable']),key(d['Réf Paiement']),key(d['Réference']))]=d
+PREV2={}; PREV_EXTRACT=None
+for d in PREV.values():
+    if isinstance(d['Date Paiement'],datetime.datetime): PREV2[(key(d['Pièce comptable']),key(d['Réference']))]=d['Date Paiement']
+    if isinstance(d.get('Extract date'),datetime.datetime): PREV_EXTRACT=d['Extract date']
 # ---- extract
 ex=openpyxl.load_workbook(EX, read_only=True, data_only=True)
 ws=ex['JESA'] if 'JESA' in ex.sheetnames else ex.worksheets[0]
@@ -32,10 +36,14 @@ for i,row in enumerate(rows, start=2):
     try: z=float(row[25] or 0)
     except: z=0
     if z==0: continue
-    d=row[29]
+    d=row[29]; datefix=''
     if isinstance(d,datetime.datetime) and (maxd is None or d>maxd): maxd=d
+    if not isinstance(d,datetime.datetime):
+        pd=PREV2.get((key(row[28]),key(row[8])))
+        if pd: d=pd; datefix=f"carried from extract of {PREV_EXTRACT:%d/%m/%Y}" if PREV_EXTRACT else "carried from previous extract"
+        elif row[21]=='Payée' or key(row[30]): datefix='MISSING - Payée / Réf Paiement present but no Date Paiement'
     paid.append(dict(row=i, ref=key(row[8]), iddoc=key(row[2]), fourn=row[6], service=row[4], div=row[20], datedoc=row[9],
-                     piece=key(row[28]), datepay=d, refpay=key(row[30]), net=z))
+                     piece=key(row[28]), datepay=d, refpay=key(row[30]), net=z, statut=row[21], datefix=datefix))
 print(f'extract rows {nraw}, paid rows {len(paid)}, max Date Paiement {maxd:%d/%m/%Y}')
 def classify(p):
     o=OV.get(p['ref']); m=MAP.get(p['ref'])
@@ -66,6 +74,10 @@ for p in paid:
         if q['Pay Month']!=p['pm'] or abs(float(q['Net à payer'])-p['net'])>0.005:
             redated.append((p['ref'],p['piece'],p['refpay'],q['Date Paiement'],p['datepay'],q['Pay Month'],p['pm'],float(q['Net à payer']),p['net']))
 gone=[q for k,q in PREV.items() if k not in seen and q['In live scope']=='Y']
+fixes=[p for p in paid if p['datefix']]
+print('payment dates carried forward:',sum(1 for p in fixes if p['datefix'].startswith('carried')),'| paid rows with NO date (team to fill):',sum(1 for p in fixes if p['datefix'].startswith('MISSING')))
+for p in fixes:
+    if p['datefix'].startswith('MISSING'): print('   MISSING',p['row'],p['ref'],p['net'],p['statut'],p['refpay'])
 print('re-dated / amount-changed payments:',len(redated)); [print('  ',r) for r in redated]
 print('live payments in last week\'s key but missing now:',len(gone)); [print('  ',q['Réference'],q['Net à payer'],q['Date Paiement']) for q in gone]
 # ---- unmapped
@@ -91,4 +103,4 @@ for m in months:
     print(f"\n{m:%b-%y}: gross {gross[m][0]} / {gross[m][1]:,.2f}  excluded {[(p['ref'],p['net']) for p in exc]}  forced-in {[(p['ref'],p['net']) for p in forced]}  unmapped {sum(1 for p in unm if p['pm']==m)}")
     print(f"   mapped {t[0]} / {t[1]:,.2f} = PSR {ps[0]} / {ps[1]:,.2f} + PROC {pr[0]} / {pr[1]:,.2f}  (check {ps[1]+pr[1]:,.2f})")
     for bu in bus: print(f"   {bu:28} {piv[(m,bu)][0]:4} {piv[(m,bu)][1]:>16,.0f}   PSR {pivc[(m,bu,'Proservices')][1]:>14,.0f}  PROC {pivc[(m,bu,'Procurement')][1]:>14,.0f}")
-pickle.dump(dict(paid=paid,redated=redated,gone=gone,unm=unm,months=months,piv=dict(piv),pivc=dict(pivc),gross=dict(gross),maxd=maxd,nraw=nraw),open('weekly_state.pkl','wb'))
+pickle.dump(dict(paid=paid,fixes=fixes,redated=redated,gone=gone,unm=unm,months=months,piv=dict(piv),pivc=dict(pivc),gross=dict(gross),maxd=maxd,nraw=nraw),open('weekly_state.pkl','wb'))

@@ -18,9 +18,16 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
 1. **Layout check.** Use the tab named `JESA` (the extract file may also carry `JESATCD` and
    `Feuil1`; ignore them). Read row 1. Compare the 35 header names `A1:AI1` with the list
    in workbook-spec.md (and `Config!ExtractLayoutHash`). Any difference → stop, report, do nothing.
-2. **Load the extract.** Keep rows with `Net à payer` ≠ 0 and a `Date Paiement`. Normalise the
-   invoice key: `str(Réference)`, trimmed, NBSP removed, leading zeros kept. Note the extract
-   date = max `Date Paiement` and the row count.
+2. **Load the extract.** Keep rows with `Net à payer` ≠ 0. Normalise the invoice key:
+   `str(Réference)`, trimmed, NBSP removed, leading zeros kept. Note the extract date = max
+   `Date Paiement` and the row count.
+   **Missing payment dates.** The raw SAP file often has no `Date Paiement` on rows whose
+   Statut is `Payée` (a `Réf Paiement` is present); the user's team adds those dates by hand.
+   For such a row, carry the date forward from `Payments Key` (same Pièce comptable + Réference)
+   and note it; a `Payée` row with no date anywhere is listed as MISSING on the
+   `Payment Date Fixes` tab and excluded from the month totals until the team supplies the
+   date. Rows in other statuses (Transmise tréso, En ordonnancement…) are not paid yet: ignore.
+   A date present in the file always wins over the carried one.
 3. **Pay Month.** `DATE(year, month, 26)` of `Date Paiement`. Then apply `Overrides` col D:
    a date replaces it, `EXCLUDE` drops the row from every live month.
 4. **Frozen guard.** Drop every row whose Pay Month ≤ `Config!FrozenThrough`. Frozen cells are
