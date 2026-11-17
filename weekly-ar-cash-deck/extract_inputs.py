@@ -270,6 +270,26 @@ def extract_cash(path):
     out["cash_bu"] = bu; out["ongoing_paid_bu"] = paid_bu; out["ongoing_paid_total"] = sum(paid_bu.values())
     pm = re.search(r"paid ([\d–\-/]+)", h5[paid_c]) if paid_c is not None else None
     out["ongoing_paid_label"] = pm.group(1) if pm else ""
+    # the 'Basis in force' line is the most reliable place for the cut-off dates (column headers may lag a week behind)
+    mb = re.search(r"collections to (\d\d/\d\d)", out["basis"]); mp = re.search(r"payments cleared (\d\d[–\-]\d\d/\d\d)", out["basis"])
+    if mb: out["cash_collections_to"] = mb.group(1)
+    if mp and paid_c is not None: out["ongoing_paid_label"] = mp.group(1)
+    # headline cross-check: amounts that the workbook counts in its headline but does not split by BU (e.g. customs of the
+    # ongoing month) are added as one 'not allocated' line, so that the by-BU table totals to the headline
+    try:
+        hi = find_row(ex, "HEADLINE", col=2); labs = [re.sub(r"\s+", " ", str(c or "")).strip().upper() for c in ex[hi + 2]]; vals = ex[hi + 3]
+        def hv(prefix):
+            j = next(j for j, l in enumerate(labs) if l.startswith(prefix)); return num(vals[j], 1e6)
+        r_appr = hv("APPROVED PMTS") - sum(r[6] for r in bu); r_pend = hv("PENDING PAYMENTS") - sum(r[8] for r in bu); r_all = hv("NET POSITION") - sum(r[9] for r in bu)
+        if abs(r_all) >= 0.5 and abs(r_all - (r_appr + r_pend)) < 0.5:
+            cust_ong = next((m[5] for m in monthly if m[0] == "Cash OUT customs"), 0.0)
+            name = "Customs, not split by BU" if abs(cust_ong - r_appr) < 0.5 and abs(r_pend) < 0.5 else "Not allocated by BU"
+            bu.append([name, 0.0, 0.0, 0.0, 0.0, 0.0, r_appr, r_appr, r_pend, r_all]); out["cash_bu"] = bu; out["unallocated"] = (name, r_all)
+            print(f"INFO cash: {name}: {r_all:,.1f} MMAD in the workbook headline is not in the by-BU table; added as a separate line")
+        elif abs(r_all) >= 0.5:
+            print(f"WARN cash: by-BU table and headline differ by {r_all:,.1f} MMAD (approved {r_appr:,.1f}, pending {r_pend:,.1f}); by-BU figures kept")
+    except Exception as e:
+        print("WARN cash headline cross-check:", e)
     # Section 4B Oct supplier payments by BU (actual to date) and 4A Oct collections
     def block(label):
         i = find_row(ex, label, col=2) + 1; d = {}
