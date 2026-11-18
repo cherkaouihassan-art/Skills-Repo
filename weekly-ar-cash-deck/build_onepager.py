@@ -83,22 +83,27 @@ def build(data, meta, out):
     D.entries[-1][2].text_frame.paragraphs[0].runs[0].text = ""   # single page: no page number
 
     # ---- KPI row: gross exposure, unrecognized, total AR, unbilled, unpaid, DSO, cash received (wider), invoices billed
-    y0, ch_, gap, wn, wc_ = 1.25, 1.3, 0.1, 1.4, 2.2
+    y0, ch_, gap, wn, wc_ = 1.2, 1.2, 0.1, 1.4, 2.2
+    sp = {r["metric"]: (r["value"] or 0) for r in data.get("AR_SPLITS", [])}   # PSR (labor) / Procurement (non-labor) split of the stock
+    def pp(psr, proc): return f"PSR {f0(psr)}  ·  Proc {f0(proc)}"
+    dep_l, dep_n = float(meta.get("deposited_month_labor") or 0), float(meta.get("deposited_month_non_labor") or 0)
     S8 = {"size": 8, "color": SLATE}; B10 = {"size": 10, "bold": True, "color": DARK}
     def wow(d): return [(f"vs {prev_s}  ", S8), (fd(d), {"size": 10, "bold": True, "color": delta_color(d)})]
-    kp = [("Gross exposure", f0(gross["current"]), RED, wow(dw(gross)), wn, None),
-          ("Unrecognized", f0(unrec["current"]), BLUE, wow(dw(unrec)), wn, None),
-          ("Total AR", f0(tot["current"]), SLATE, wow(dw(tot)), wn, None),
-          ("Unbilled", f0(unb["current"]), TEAL, [(f"{unb['current']/tot['current']*100:.0f}% of AR  ", S8), (fd(dw(unb)), {"size": 10, "bold": True, "color": delta_color(dw(unb))})], wn, None),
-          ("Unpaid", f0(unp["current"]), GOLD, wow(dw(unp)), wn, None),
+    kp = [("Gross exposure", f0(gross["current"]), RED, wow(dw(gross)), wn, pp(sp.get("Total AR labor", 0), sp.get("Total AR non-labor", 0) + (unrec["current"] or 0))),
+          ("Unrecognized", f0(unrec["current"]), BLUE, wow(dw(unrec)), wn, pp(0, unrec["current"])),
+          ("Total AR", f0(tot["current"]), SLATE, wow(dw(tot)), wn, pp(sp.get("Total AR labor", 0), sp.get("Total AR non-labor", 0))),
+          ("Unbilled", f0(unb["current"]), TEAL, [(f"{unb['current']/tot['current']*100:.0f}% of AR  ", S8), (fd(dw(unb)), {"size": 10, "bold": True, "color": delta_color(dw(unb))})], wn, pp(sp.get("Unbilled labor", 0), sp.get("Unbilled non-labor", 0))),
+          ("Unpaid", f0(unp["current"]), GOLD, wow(dw(unp)), wn, pp(sp.get("Unpaid labor", 0), sp.get("Unpaid non-labor", 0))),
           ("DSO (days)", (f"{int(float(dso['dso_current']))}" if dso.get("dso_current") not in (None, "") else "n/a"), NAVY2,
-           [((meta.get("dso_prior_label") or "prior") + "  ", S8), (f"{int(float(dso['dso_prior_month']))}" if dso.get("dso_prior_month") not in (None, "") else "–", B10)], wn, None),
-          (f"Cash received – {month[:3]}", f0(c_m), GREEN, [(f"{prior_s}  ", S8), (f0(c_prior), B10), (f"   PSR {f0(p_psr)} · Proc {f0(p_proc)}", S8)], wc_, f"PSR {f0(m_psr)}\nProc {f0(m_proc)}"),
-          (f"Billed – {month[:3]}", f0(dep_m), NAVY, [(f"{prior_s}  ", S8), (f0(dep_p), B10)], wn, None)]
+           [((meta.get("dso_prior_label") or "prior") + "  ", S8), (f"{int(float(dso['dso_prior_month']))}" if dso.get("dso_prior_month") not in (None, "") else "–", B10)], wn, "excl. advances"),
+          (f"Cash received – {month[:3]}", f0(c_m), GREEN, [(f"{prior_s}  ", S8), (f0(c_prior), B10), (f"   PSR {f0(p_psr)} · Proc {f0(p_proc)}", S8)], wc_, pp(m_psr, m_proc)),
+          (f"Billed – {month[:3]}", f0(dep_m), NAVY, [(f"{prior_s}  ", S8), (f0(dep_p), B10)], wn, pp(dep_l, dep_n))]
     x0 = 0.3
-    for lab, val, col, parts, w_, side in kp:
+    for lab, val, col, parts, w_, split in kp:
         card(s, x0, y0, w_, ch_, lab, val, fill=col, value_size=22, label_size=8)
-        if side: tb(s, x0 + w_ - 1.05, y0 + 0.36, 0.95, 0.45, [[(t, {})] for t in side.split("\n")], size=9, bold=True, color=WHITE, align=PP_ALIGN.RIGHT, line_spacing=1.0)
+        # PSR / Procurement breakdown under the box
+        rect(s, x0, y0 + ch_ + 0.04, w_, 0.24, RGBColor(0xE9, 0xF0, 0xF6), shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
+        tb(s, x0, y0 + ch_ + 0.04, w_, 0.24, split, size=7.5, bold=True, color=NAVY, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         rect(s, x0 + 0.08, y0 + ch_ - 0.43, w_ - 0.16, 0.32, WHITE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
         tb(s, x0 + 0.08, y0 + ch_ - 0.43, w_ - 0.16, 0.32, [parts], align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         x0 += w_ + gap

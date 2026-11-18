@@ -117,6 +117,8 @@ rearrange it:
 - KPI boxes, in this order: gross exposure, unrecognized, total AR, unbilled, unpaid, DSO, cash received in the month
   (with the PSR / Proc split, and the prior month with its split), invoices billed in the month vs the prior month
   (billed = invoices deposited, by reception date, as in the BU meeting dashboard).
+- Under every KPI box: a strip with the PSR / Proc breakdown of that figure (unrecognized is all procurement; DSO
+  shows "excl. advances").
 - Left panel: unbilled roll-ups, signed / not signed with the client (external) / not signed with JESA (internal),
   each with its change vs last week in colour.
 - Middle panel: unrecognized revenue, equipment vs services totals, then signed vs not signed for equipment, services
