@@ -22,6 +22,8 @@
   "ur_prev_source": "last week's inputs",
   "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
   "deposited_month": 245.00729024952958,
+  "ap_total_prev": 2033.0640565071117,
+  "ap_overdue_prev": 1462.1748324014263,
   "deposited_month_labor": 72.51478681952953,
   "deposited_month_non_labor": 172.49250343000003,
   "deposited_prior_labor": 49.61234626264455,

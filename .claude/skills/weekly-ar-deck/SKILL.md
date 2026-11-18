@@ -117,11 +117,13 @@ rearrange it:
 - KPI boxes, in this order: gross exposure, unrecognized, total AR, unbilled, unpaid, DSO, cash received in the month
   (with the PSR / Proc split, and the prior month with its split), invoices billed in the month vs the prior month
   (billed = invoices deposited, by reception date, as in the BU meeting dashboard).
-- Left panel: unbilled roll-ups, signed / not signed with the client (external) / not signed with JESA (internal).
+- Left panel: unbilled roll-ups, signed / not signed with the client (external) / not signed with JESA (internal),
+  each with its change vs last week in colour.
 - Middle panel: unrecognized revenue, equipment vs services totals, then signed vs not signed for equipment, services
   and total (bars drawn as shapes so every figure is readable).
-- Right panel: "Cash position (Procurement Back to Back)" as a waterfall: cash IN, paid, approved suppliers, LC due,
-  balance after approved, not approved, balance after all. The intermediate positive balance is not shown.
+- Right panel: "Cash position (Procurement Back to Back)" as a waterfall with these labels: Cash IN, Paid, Ongoing
+  payments (approved suppliers), LC due end of <month>, Net cash position, Payments pending approval, Final position.
+  The intermediate positive balance is not shown. Below it: supplier payables and past due, each with its change vs last week.
 - Bottom: the previous-month revenue note (only in the weeks it applies) and the priority line.
 
 Email text: short, bullet points only, amounts in MDH, no explanations (everything is in the deck). Template:

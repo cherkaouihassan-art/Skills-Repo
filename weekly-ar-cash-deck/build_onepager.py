@@ -65,8 +65,10 @@ def build(data, meta, out):
     m_psr, m_proc, p_psr, p_proc = cs("month_labor"), cs("month_non_labor"), cs("prior_labor"), cs("prior_non_labor")
     dep_m = float(meta.get("deposited_month") or 0); dep_p = float(meta.get("deposited_prior_labor") or 0) + float(meta.get("deposited_prior_non_labor") or 0)
     sg = [r for r in data.get("AR_SIGNED_BU", []) if "split" in r]
-    def S(rp=None, c=None): return sum((r["current"] or 0) for r in sg if (rp is None or r["responsibility"] == rp) and (c is None or r["class"] == c))
+    def S(rp=None, c=None, key="current"): return sum((r[key] or 0) for r in sg if (rp is None or r["responsibility"] == rp) and (c is None or r["class"] == c))
     signed, ns_c, ns_j = S(c="Signed"), S("Client", "Not signed"), S("JESA", "Not signed"); scope = signed + ns_c + ns_j
+    sg_prev = any(r.get("prev_week") is not None for r in sg)   # week-on-week change of each signature bucket
+    def dS(rp=None, c=None): return (round(S(rp, c)) - round(S(rp, c, "prev_week"))) if sg_prev else None
     cb = data["CASH_BU"]
     def cbs(key): return sum((r.get(key) or 0) for r in cb)
     cash_in = cbs("cash_in"); paid = cbs("cash_out_suppliers") + cbs("cash_out_lc") + cbs("cash_out_customs")
@@ -109,16 +111,17 @@ def build(data, meta, out):
         if sub: tb(s, x + 0.15, py + 0.38, w - 0.3, 0.25, sub, size=8.5, color=SLATE)
     # A. signature status of the unbilled roll-ups
     xa, wa = 0.3, 3.6
-    panel(xa, wa, "Unbilled roll-ups – signature status", f"{f0(scope)} MDH of unbilled in scope")
+    panel(xa, wa, "Unbilled roll-ups – signature status", f"{f0(scope)} MDH of unbilled in scope" + (f"; change vs {prev_s} in colour" if sg_prev else ""))
     doughnut(s, xa + 0.02, py + 0.8, 1.95, 1.95, ["Signed", "Not signed – client", "Not signed – JESA"], [signed, ns_c, ns_j], [GREEN, GOLD, ORANGE], hole=58)
     tb(s, xa + 0.02, py + 1.47, 1.95, 0.4, f"{signed/(scope or 1)*100:.0f}%", size=18, bold=True, color=GREEN, align=PP_ALIGN.CENTER)
     tb(s, xa + 0.02, py + 1.82, 1.95, 0.25, "signed", size=9, color=SLATE, align=PP_ALIGN.CENTER)
-    for i, (lab, v, col) in enumerate((("Signed by the client", signed, GREEN), ("Not signed – client", ns_c, GOLD), ("Not signed – JESA", ns_j, ORANGE))):
+    for i, (lab, v, col, d_, good_up) in enumerate((("Signed by the client", signed, GREEN, dS(c="Signed"), True), ("Not signed – client", ns_c, GOLD, dS("Client", "Not signed"), False), ("Not signed – JESA", ns_j, ORANGE, dS("JESA", "Not signed"), False))):
         yy = py + 0.92 + i * 0.64
         rect(s, xa + 2.03, yy + 0.05, 0.15, 0.15, col)
         tb(s, xa + 2.22, yy - 0.03, 1.35, 0.26, lab, size=8.5, bold=True, color=NAVY)
-        tb(s, xa + 2.22, yy + 0.2, 1.35, 0.3, [[(f0(v), {"size": 13, "bold": True, "color": DARK}), (f"   {v/(scope or 1)*100:.0f}%", {"size": 9, "color": SLATE})]])
-    tb(s, xa + 0.15, py + ph - 0.62, wa - 0.3, 0.55, [[("Not signed: ", {"bold": True, "color": NAVY}), (f"{f0(ns_c + ns_j)} MDH", {"bold": True, "color": RED}), (f" – {f0(ns_c)} external (client) and {f0(ns_j)} internal (JESA).", {})]], size=9, color=DARK, line_spacing=1.05)
+        tb(s, xa + 2.22, yy + 0.2, 1.38, 0.3, [[(f0(v), {"size": 13, "bold": True, "color": DARK}), (f"  {v/(scope or 1)*100:.0f}%", {"size": 9, "color": SLATE})] + ([(f"  {fd(d_)}", {"size": 9.5, "bold": True, "color": delta_color(d_, good_when_negative=not good_up)})] if d_ is not None else [])])
+    d_ns = (dS("Client", "Not signed") + dS("JESA", "Not signed")) if sg_prev else None
+    tb(s, xa + 0.15, py + ph - 0.62, wa - 0.3, 0.55, [[("Not signed: ", {"bold": True, "color": NAVY}), (f"{f0(ns_c + ns_j)} MDH", {"bold": True, "color": RED})] + ([(f" ({fd(d_ns)} vs {prev_s})", {"bold": True, "color": delta_color(d_ns)})] if d_ns is not None else []) + [(f" – {f0(ns_c)} external (client) and {f0(ns_j)} internal (JESA).", {})]], size=9, color=DARK, line_spacing=1.05)
 
     # B. unrecognized revenue: equipment vs services, signed vs not signed by the client
     xb, wb_ = xa + wa + 0.12, 3.9
@@ -155,11 +158,15 @@ def build(data, meta, out):
     # C. cash position: waterfall from cash IN to the balance after approved, then after not-approved payments
     xc = xb + wb_ + 0.12; wc = SW - 0.3 - xc
     panel(xc, wc, "Cash position (Procurement Back to Back)", f"Cumulative since July, {com} commitments included (MDH)")
-    steps = [("Cash IN", cash_in, "total", GREEN), ("Paid", paid, "delta", NAVY2), (f"Approved\nsuppliers", appr_sup, "delta", GOLD), ("LC due", lc_due, "delta", GOLD),
-             ("Balance after\napproved", net_appr, "total", RED if net_appr < 0 else GREEN), ("Not\napproved", pend, "delta", ORANGE), ("Balance after\nall", net_all, "total", RED if net_all < 0 else GREEN)]
+    steps = [("Cash IN", cash_in, "total", GREEN), ("Paid", paid, "delta", NAVY2), ("Ongoing\npayments", appr_sup, "delta", GOLD), (f"LC due\nend of {com}", lc_due, "delta", GOLD),
+             ("Net cash\nposition", net_appr, "total", RED if net_appr < 0 else GREEN), ("Payments\npending\napproval", pend, "delta", ORANGE), ("Final\nposition", net_all, "total", RED if net_all < 0 else GREEN)]
     cash_waterfall(s, xc + 0.05, py + 0.62, wc - 0.1, 2.72, steps)
-    tb(s, xc + 0.18, py + ph - 0.34, 2.2, 0.26, "Supplier payables", size=8.5, color=SLATE)
-    tb(s, xc + 1.6, py + ph - 0.34, wc - 1.78, 0.26, f"{f0(ap_tot)}  ·  {f0(ap_over)} past due", size=9, bold=True, color=DARK, align=PP_ALIGN.RIGHT)
+    apk = lambda m: float(meta[m]) if meta.get(m) not in (None, "") else None
+    d_ap = (round(ap_tot) - round(apk("ap_total_prev"))) if apk("ap_total_prev") is not None else None
+    d_ov = (round(ap_over) - round(apk("ap_overdue_prev"))) if apk("ap_overdue_prev") is not None else None
+    tb(s, xc + 0.18, py + ph - 0.34, 2.3, 0.26, "Supplier payables" + (f" (vs {prev_s})" if d_ap is not None else ""), size=8.5, color=SLATE)
+    tb(s, xc + 1.55, py + ph - 0.34, wc - 1.73, 0.26, [[(f0(ap_tot), {"bold": True, "color": DARK})] + ([(f" {fd(d_ap)}", {"bold": True, "color": delta_color(d_ap)})] if d_ap is not None else []) + [("   ·   ", {"color": SLATE}), (f"{f0(ap_over)} past due", {"bold": True, "color": DARK})]
+                                                          + ([(f" {fd(d_ov)}", {"bold": True, "color": delta_color(d_ov)})] if d_ov is not None else [])], size=9, align=PP_ALIGN.RIGHT)
 
     # ---- bottom bands: context note and priority
     yb = py + ph + 0.12

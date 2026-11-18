@@ -739,6 +739,8 @@ def prev_from_inputs(path):
         _sc = lambda lbl: str(lbl).split(" ")[0].lower()
         P["jesa_unbilled_bu_status"] = {(r["bu"], _sc(r["status"]), sp): r[sp] or 0 for r in recs("JESA_UNBILLED_BU_STATUS") for sp in ("labor", "non_labor")}
     P["ap_kpi"] = {r["metric"]: r["current"] for r in recs("AR_KPI") if str(r["metric"]).startswith("AP ") or r["metric"] == "LC"}
+    if "AP_BUCKETS" in wb.sheetnames:
+        _b = recs("AP_BUCKETS"); P["ap_total"] = sum((r["amount"] or 0) for r in _b); P["ap_overdue"] = sum((r["amount"] or 0) for r in _b if r["bucket"] == "Overdue")
     try:
         P["cash_prev"] = {r["line"]: r["oct_actual"] for r in recs("CASH_MONTHLY")}
         P["coll_prev_bu"] = {r["bu"]: (r["oct_cash_in"] or 0) for r in recs("CASH_BU_OCT")}
@@ -952,6 +954,7 @@ def main():
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"],
+            "ap_total_prev": P.get("ap_total"), "ap_overdue_prev": P.get("ap_overdue"),
             "deposited_month_labor": cur.get("deposited_x", {}).get(("cur", "labor"), 0.0), "deposited_month_non_labor": cur.get("deposited_x", {}).get(("cur", "non_labor"), 0.0),
             "deposited_prior_labor": cur.get("deposited_x", {}).get(("prior", "labor"), 0.0), "deposited_prior_non_labor": cur.get("deposited_x", {}).get(("prior", "non_labor"), 0.0),
             "cash_ongoing_paid": abs(cash.get("ongoing_paid_total") or 0), "cash_ongoing_paid_label": cash.get("ongoing_paid_label") or "",
