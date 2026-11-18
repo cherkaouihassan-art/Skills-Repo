@@ -130,6 +130,8 @@ def card(slide, x, y, w, h, label, value, sub=None, fill=NAVY, fg=WHITE, value_s
     if sub:
         tb(slide, x + 0.1, y + h - 0.3, w - 0.2, 0.28, sub, size=sub_size, color=sub_color or fg)
 
+LEAN = True       # version as sent: no explanatory footnotes, plain section dividers, JESA status detail in the backup,
+                  # no payments-detail or sources slide. --full-notes restores them.
 NO_UR = False     # True for the variant without unrecognized revenue (and therefore without gross exposure): --no-unrecognized
 MS_SAME = False   # True when the month-start baseline is the current extract (first weeks of a month): the vs-month-start pill is not drawn
 
@@ -389,6 +391,7 @@ class Deck:
     def divider(self, number, title, blocks, note=None):
         """dark section slide: big number + title on the left, grouped bullet blocks on the right."""
         s = self.slide(dark=True)
+        if LEAN: blocks, note = [], None
         tb(s, 0.9, 1.6, 5.2, 1.0, number, size=60, bold=True, color=GOLD)
         tb(s, 0.9, 2.75, 5.4, 1.2, title, size=32, bold=True, color=WHITE)
         rect(s, 0.95, 4.0, 1.9, 0.05, GOLD)
@@ -459,7 +462,8 @@ def build(data, meta, out):
     adv, unb, unp, tot = K("Advance"), K("Unbilled"), K("Unpaid"), K("Total AR")
     unrec, newar = K("Unrecognized"), K("Total NEW AR")
     ap_dp, ap_pk, ap_44, ap_lc, ap_tot = K("AP Downpayment"), K("AP Parked"), K("AP Invoices 4411"), K("LC"), K("Total Payables")
-    global MS_SAME, NO_UR
+    global MS_SAME, NO_UR, LEAN
+    LEAN = not bool(meta.get("_full_notes"))
     NO_UR = bool(meta.get("_no_unrecognized"))
     MS_SAME = datef(meta["ar_current_date"]) == datef(meta["ar_month_start_date"])
     cur_d, prev_d, ms_d = datef(meta["ar_current_date"]), datef(meta["ar_prev_date"]), datef(meta["ar_month_start_date"])
@@ -538,7 +542,7 @@ def build(data, meta, out):
              ("5", "Cash position – procurement", "Cumulative cash in versus cash out by business unit: net cash position after ongoing payments and LC due, final position after payments pending approval"),
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
              ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
-             ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled under JESA responsibility detail, unbilled & unpaid status view, PSR collections, payments, LC and AP detail, sources")]
+             ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled under JESA responsibility detail, unbilled & unpaid status view, PSR collections, " + ("LC and AP detail" if LEAN else "payments, LC and AP detail, sources"))]
     if NO_UR:
         items = [(n, t, d_.replace("AR, unrecognized revenue, collections", "AR, collections").replace("signature progress on PSR and unrecognized", "signature progress on PSR").replace("projects and unrecognized revenue", "largest projects"))
                  for n, t, d_ in items if not t.startswith("Unrecognized")]
@@ -562,6 +566,7 @@ def build(data, meta, out):
         y = y0 + i * step
         circle_num(s, 0.55, y + 0.04, 0.42, m["n"])
         tb(s, 1.2, y - 0.03, 11.7, 0.36, str(m["title"]), size=12 if len(msgs) > 6 else 13, bold=True, color=NAVY)
+        if LEAN and str(m["title"]).startswith("Procurement cash"): continue   # headline only for the cash message
         parts = str(m["body"]).split("**"); runs = [(t, {"bold": (k % 2 == 1)}) for k, t in enumerate(parts) if t]
         tb(s, 1.2, y + 0.3, 11.7, step - 0.42, [runs], size=9.5 if len(msgs) > 6 else 10.5, color=DARK, line_spacing=1.0)
         if i < len(msgs) - 1: rect(s, 1.3, y + step - 0.08, 11.5, 0.012, RGBColor(0xD5, 0xDE, 0xE6))
@@ -694,6 +699,7 @@ def build(data, meta, out):
         # ---- Unbilled under JESA responsibility: status by BU (backup to slide 5)
         jbs = data.get("JESA_UNBILLED_BU_STATUS", [])
         if jbs:
+            if LEAN: D.section = "ar_backup"   # first slide of the backup section
             memo_of = lambda c: str(c)[:3].upper() in ("J-5", "J-6")   # outside the responsibility scope (signature mapping N/A)
             jst = {}
             for r in jbs: jst[(r["bu"], r["status"])] = r
@@ -749,9 +755,10 @@ def build(data, meta, out):
             legend = [[("How to read: ", {"bold": True, "color": NAVY}), ("J-1.x = JESA has not yet produced or validated the attachment (DMR / attachment creation, PA attachments, LS milestone, finance review, PC review, LC by PC); ", {}),
                        ("J-2.a", {"bold": True}), (" = credit lines pending JESA PM approval (negative); ", {}), ("J-3.a", {"bold": True}), (" = signed by the client, JESA still has to submit the service sheet; ", {}),
                        ("J-4.a", {"bold": True}), (" = ongoing invoicing; ", {}), ("J-7.a", {"bold": True}), (" = under investigation. ", {}), ("Memo J-5.a", {"bold": True}), (" = invoices rejected by the client, to be reissued by JESA; shown as a memo, outside the responsibility / signature scope.", {})]]
-            tb(s, 0.4, y_, SW - 0.8, 0.75, legend, size=8.5, color=DARK, line_spacing=1.1)
+            if not LEAN: tb(s, 0.4, y_, SW - 0.8, 0.75, legend, size=8.5, color=DARK, line_spacing=1.1)
             tb(s, 0.4, SH - 0.62, SW - 0.8, 0.3, "Scope = unbilled under JESA responsibility (J-* statuses; service sheets postponed, rejected and unearned excluded). Negative amounts are credit notes awaiting JESA PM approval.", size=7.5, italic=True, color=SLATE)
 
+        D.section = "ar_signed"
         # ---- PSR signature by BU (dedicated slide)
         s = D.slide("Signature Progress – Unbilled PSR by Business Unit", f"Unbilled PSR (labor) {f0(tsum(sel(l='labor'), 'current'))} MMAD: signed by the client {f0(tsum(sel(c='Signed', l='labor'), 'current'))} ({tsum(sel(c='Signed', l='labor'), 'current')/(tsum(sel(l='labor'), 'current') or 1)*100:.0f}%), not signed {f0(tsum(sel(c='Not signed', l='labor'), 'current'))}")
         TL = tsum(sel(l="labor"), "current"); SL = tsum(sel(c="Signed", l="labor"), "current"); NL = TL - SL
@@ -1041,7 +1048,7 @@ def build(data, meta, out):
     tS, tI = sum((u.get("signed_by_client") or 0) for u in usb.values()), sum((u.get("attachments_issued") or 0) for u in usb.values())
     rows.append(["Total", f0(ur_rev), f0(tI), f0(tS), f"{tS/(tI or 1)*100:.0f}%"])
     table(s, 6.85, 5.43, 6.2, ["BU", "Unrecognized", "Can be signed", "Signed by client", "% signed"], rows, col_w=[1.5, 1.1, 1.3, 1.2, 0.9], font_size=8, header_size=7.5, row_h=0.18, header_h=0.24, total_last=True)
-    tb(s, 6.85, 6.96, 6.2, 0.22, "Pending approval = attachments submitted, under the approval workflow (incl. signed by client); pending submission = executed scope not yet submitted; under CN = executed via a change notice; at-risk = no formal contract. Amounts HT, at cost (= revenue ÷ 1.06).", size=6.5, italic=True, color=SLATE)
+    if not LEAN: tb(s, 6.85, 6.96, 6.2, 0.22, "Pending approval = attachments submitted, under the approval workflow (incl. signed by client); pending submission = executed scope not yet submitted; under CN = executed via a change notice; at-risk = no formal contract. Amounts HT, at cost (= revenue ÷ 1.06).", size=6.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 8. Collections (payments received)
     D.section = "coll"
@@ -1074,13 +1081,13 @@ def build(data, meta, out):
         rows.append(["Total", f0(m_nl), f0(m_lab), f0(oct_cur), fd(d_tot), f0(jul_tot), "100%"])
         table(s, 7.85, 2.9, 5.2, ["BU", "Procurement", "PSR", "Total", f"Δ vs\n{prev_s}", "Since July", "%"], rows, col_w=[1.35, 0.85, 0.65, 0.7, 0.75, 0.75, 0.5], font_size=8, header_size=7.5, colors=colors, total_last=True, row_h=0.26, header_h=0.42)
         yn = 2.9 + 0.42 + 0.26 * len(rows) + 0.08
-        tb(s, 7.85, yn, 5.2, 0.4, f"AR report: invoices paid by payment date, all clients; {month_name} compared with the position of the previous AR extract ({prev_s}).", size=7.5, italic=True, color=SLATE)
+        if not LEAN: tb(s, 7.85, yn, 5.2, 0.4, f"AR report: invoices paid by payment date, all clients; {month_name} compared with the position of the previous AR extract ({prev_s}).", size=7.5, italic=True, color=SLATE)
         # bridge to the cash position slide (OCP payment report only)
         _cm = {r["line"]: r for r in data["CASH_MONTHLY"]}
         _same = (meta.get("cash_ongoing_month") or "")[:3] == month_name[:3]
         ocp_rep = ((_cm["Procurement collections (OCP payment report)"].get("oct_ongoing" if _same else "oct_actual") or 0) + (_cm["PSR collections (labor)"].get("oct_ongoing" if _same else "oct_actual") or 0)) if (_same or (meta.get("cash_actual_month") or "")[:3] == month_name[:3]) else None
         non_m = sum(cget(b, "nonocp_month_current") for b in coll_map)
-        if ocp_rep is not None and abs(oct_cur - ocp_rep) >= 1:
+        if (not LEAN) and ocp_rep is not None and abs(oct_cur - ocp_rep) >= 1:
             rest = oct_cur - ocp_rep - non_m
             tb(s, 7.85, yn + 0.42, 5.2, 0.75, [[(f"{month_name} {f0(oct_cur)} MMAD in the AR report = ", {"bold": True, "color": NAVY}), (f"{f0(ocp_rep)} per the OCP payment report", {"bold": True}), (" (the basis of the cash position slide) + ", {}), (f"{f0(non_m)} from non-OCP clients", {"bold": True}),
                                                    ((f" + {f0(rest)} from subsidiaries paid outside the OCP report" if rest >= 0.5 else (f" − {f0(-rest)} timing difference" if rest <= -0.5 else "")), {}), (".", {})]], size=8.5, color=DARK, line_spacing=1.1)
@@ -1191,6 +1198,7 @@ def build(data, meta, out):
     tb(s, 7.3, SH - 0.8, 5.8, 0.35, "AM (gold) is ring-fenced: its PSR collections cover AM PSR costs and are not available to the group.", size=8.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 11. Ongoing payments – October
+    if LEAN: D.section = "drop"
     s = D.slide(f"{cam} paid and {com_full} commitments", f"{f0(paid_oct)} MMAD paid in {cam} to {cpt}; ongoing payments {f0(appr_sup)}" + (f", LC due end of {com} {f0(appr_lc)}" if appr_lc else "") + f", payments pending approval {f0(pend)}")
     tb(s, 0.4, 1.25, 6.2, 0.3, f"{cam} actual and {com} committed cash OUT (MMAD)", size=13, bold=True, color=NAVY)
     total_oct = round(paid_oct) + round(appr_lc) + round(appr_sup) + round(pend)
@@ -1256,7 +1264,7 @@ def build(data, meta, out):
         rows.append([short(r["bu"]), f0(r["downpayment_cur"]), f0(r["parked_cur"]), f0(r["inv4411_cur"]), f0(r["lc_cur"]), f0(cur), fd(cur - prev)]); colors[(i, 6)] = delta_color(cur - prev)
     rows.append(["Total", f0(ap_dp["current"]), f0(ap_pk["current"]), f0(ap_44["current"]), f0(ap_lc["current"]), f0(ap_tot["current"]), fd(ap_tot["current"] - ap_tot["prev_week"])])
     table(s, 0.4, 2.75, 6.5, ["BU", "Down-payment", "Parked", "4411", "LC", "Total", "Δ WoW"], rows, col_w=[1.5, 0.9, 0.8, 0.8, 0.8, 0.85, 0.85], font_size=9.5, header_size=8.5, row_h=0.33, header_h=0.36, colors=colors, total_last=True)
-    tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs; parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers.", size=8, italic=True, color=GREY)
+    if not LEAN: tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs; parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers.", size=8, italic=True, color=GREY)
     # right: due date buckets from the invoice file
     origins = ["Invoices - 4411", "Parked Invoice", "Downpayment"]; buckets = ["Overdue", "Due ≤ 30d", "Due 31–60d", "Due > 60d", "No due date"]
     bm = {(r["origin"], r["bucket"]): r["amount"] or 0 for r in bk}
@@ -1277,7 +1285,7 @@ def build(data, meta, out):
     tb(s, 7.2, 5.45, 5.9, 0.3, "By supplier tier (MMAD)", size=11, bold=True, color=NAVY)
     rows = [[k, f0(v), f"{v/ap_file_tot*100:.0f}%"] for k, v in sorted(tg.items(), key=lambda x: -x[1])]
     table(s, 7.2, 5.72, 5.9, ["Tier group", "MMAD", "%"], rows, col_w=[3, 1.4, 1.4], font_size=8.5, header_size=8, row_h=0.22, header_h=0.26)
-    tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
+    if not LEAN: tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
 
     # ------------------------------------------------------------------ 13. Letters of credit
     D.section = "lc"
@@ -1470,7 +1478,7 @@ def build(data, meta, out):
     bar_chart(s, 0.3, 1.55 + 0.3 + 0.26 * len(m) + 0.5, 6.2, SH - 0.5 - (1.55 + 0.3 + 0.26 * len(m) + 0.5), [b for b in buckets], [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=False, gap=60, cat_size=8, label_size=7.5, title="Due-date buckets by origin (MMAD)", legend_pos=XL_LEGEND_POSITION.BOTTOM)
 
     # ------------------------------------------------------------------ 16. Sources & definitions
-    D.section = "sources"
+    D.section = "drop" if LEAN else "sources"
     s = D.slide("Sources & definitions", "Where each figure comes from and how it is defined")
     rows = [
         ["Accounts receivable (advance, unbilled, unpaid), statuses, aging, non-OCP, JESA responsibility, collections", "AR extract of the week", f"{cur_d}; previous week {prev_d}; month start {ms_d}"],
@@ -1494,6 +1502,7 @@ def build(data, meta, out):
     tb(s, 0.4, 4.15, 12.5, 2.9, [[(t + ": ", {"bold": True, "color": NAVY}), (d_, {})] for t, d_ in defs], size=9, color=DARK, line_spacing=1.1)
 
     if NO_UR: D.remove_section("unrec")
+    D.remove_section("drop")
     D.reorder(["front", "ar", "ar_signed", "ar_jesa", "ar_nonocp", "unrec", "coll", "cash", "ap", "lc", "bu", "backup_divider", "ar_backup", "cash_backup", "backup", "sources"])
     D.save(out)
     print("saved", out, "slides:", len(D.prs.slides))
@@ -1501,7 +1510,9 @@ def build(data, meta, out):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--inputs", default="inputs/weekly_inputs.xlsx"); ap.add_argument("--out", required=True)
     ap.add_argument("--no-unrecognized", action="store_true", help="variant without unrecognized revenue and gross exposure (e.g. for a client-facing review)")
+    ap.add_argument("--full-notes", action="store_true", help="keep the explanatory footnotes, detailed dividers, payments-detail and sources slides")
     a = ap.parse_args()
     data, meta = read_inputs(a.inputs)
     if a.no_unrecognized: meta["_no_unrecognized"] = True
+    if a.full_notes: meta["_full_notes"] = True
     build(data, meta, a.out)

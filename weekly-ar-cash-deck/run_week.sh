@@ -48,6 +48,8 @@ python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseli
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"
 python3 build_deck.py --inputs inputs/weekly_inputs.xlsx --out "$OUT"
+# copy under the name used when the deck is e-mailed (e.g. "JESA GROUP Cash Position - Nov 26.pptx")
+cp "$OUT" "output/JESA GROUP Cash Position - $(python3 -c "import datetime as d; print(d.date.fromisoformat('$ASOF').strftime('%b %y'))").pptx"
 # one-page snapshot for the body of the cover email (same inputs), with a PNG when LibreOffice is available
 SNAP="output/JESA_AR_Cash_Snapshot_${WK}_${ASOF}.pptx"
 python3 build_onepager.py --inputs inputs/weekly_inputs.xlsx --out "$SNAP"

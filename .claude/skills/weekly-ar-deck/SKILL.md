@@ -128,31 +128,43 @@ rearrange it:
   The intermediate positive balance is not shown. Below it: supplier payables and past due, each with its change vs last week.
 - Bottom: the previous-month revenue note (only in the weeks it applies) and the priority line.
 
-Email text: short, bullet points only, amounts in MDH, no explanations (everything is in the deck). Template:
+Email as actually sent (subject, wording and bullets are the reviewer's own; only the figures change):
 
 ```
+Subject: JESA Cash Dashboard - <Month YYYY> (Week <n>)
+
+Dear all,
+
 Please find attached this week's AR, Cash & Payables presentation.
 
-Key figures as of <AR date>:
-- Total AR: … MDH (… vs last week)
-- Unbilled: … MDH (…% of AR)
-- Unpaid: … MDH
-- Unrecognized revenue: … MDH
-- DSO: … days
-- Collections <month> to date: … MDH
-- Procurement cash: … MDH on actuals, … MDH after approved and pending payments
-- Supplier payables: … MDH, of which … MDH past due
+Key figures:
 
-Roll-ups:
-- Signed by the client: … MDH (…% of unbilled)
-- Not signed: … MDH (PSR … MDH / Procurement … MDH)
-- External, pending with the client: … MDH, mainly <top BUs>
-- Internal, pending with JESA: … MDH, mainly <top BUs>
-- Main internal blocker: … MDH <largest J status>
+* Total AR: … MDH (… MDH vs last week)
+* Unbilled: … MDH (…% of AR)
+* Unpaid: … MDH
+* Unrecognized revenue: … MDH
+* DSO: … days
+* Collections <month> to date: … MDH
+* Cash Position: … MDH after approved and pending payments
+* Supplier payables: … MDH, of which … MDH past due
 
-Priority remains to secure the client's sign-off on completed work (roll-ups / attachments) and to clear the internal
-backlog, to unlock cash for PSR and critical suppliers.
+Priority remains to secure the client's sign-off on completed work (roll-ups / attachments) and to clear the internal backlog, to unlock cash for PSR and critical suppliers.
 ```
+
+The snapshot PNG goes in the body under the text; the deck is attached as `JESA GROUP Cash Position - <Mon YY>.pptx`
+(`run_week.sh` writes that copy). No roll-up section in the email unless asked.
+
+## 7b. Deck format as sent (default of `build_deck.py`)
+
+The reviewer used to strip the deck by hand before sending; the builder now produces that version directly
+(checked slide by slide against the deck sent on 18-Nov-2026). Do not put these back unless asked (`--full-notes` restores them):
+
+- Key message on cash: headline only, no detail sentence.
+- No explanatory footnotes on the unrecognized, collections (including the AR-report / OCP-report bridge) and
+  payables slides; no "How to read" legend on the JESA status slide.
+- Section dividers ("Business Unit Breakdown", "Backup") carry the number and title only.
+- "Unbilled under JESA – Status by Business Unit" sits in the backup, first slide after the divider.
+- No "paid and commitments" payments-detail slide and no "Sources & definitions" slide.
 
 ## 8. Reviewer preferences (apply every week without being asked)
 
