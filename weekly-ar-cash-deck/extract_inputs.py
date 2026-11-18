@@ -687,10 +687,10 @@ def default_messages(ar, cash, lc, ap, meta):
          f"Executed supplier and equipment scope not yet booked as AR, including the 6% JESA cost + fee" + (f"; {ura:,.0f} MMAD of attachments can be signed by the client, of which {urs:,.0f} are signed." if ura and urs is not None else ".")],
         [f"Payments received in {cmonth}: {oct_cur:,.0f} MMAD (PSR {m_lab:,.0f}, Procurement {m_nl:,.0f}; {d(round(oct_cur)-round(oct_pw))} vs {pw_lab}); {jul_tot:,.0f} MMAD since July",
          (f"Of the {cmonth} amount, {sum(c[9] for c in coll):,.0f} MMAD comes from non-OCP clients. " if sum(c[9] for c in coll) >= 5 else "") + f"Since July: PSR {jul_lab:,.0f} / Procurement {jul_nl:,.0f}. Invoices deposited in {cmonth}: {dep:,.0f} MMAD (AR report, by payment / reception date)."],
-        [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, {d(net_appr)} after approved payments, {d(net_all)} after pending payments",
+        [f"Procurement cash Jul–{cam}: {d(net_act)} MMAD on actuals, net cash position {d(net_appr)} MMAD, final position {d(net_all)} MMAD",
          f"Cash IN {cin[6]:,.0f} MMAD" + (f" (incl. {cin[5]:,.0f} of {com} collections to {cash.get('cash_collections_to') or meta['collections_to']})" if abs(cin[5]) >= 0.5 else "") + f" vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
-         f"Approved {com} payments of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC maturities" + (f" and {abs(cash['ongoing_paid_total']):,.0f} already paid {cash.get('ongoing_paid_label') or 'in ' + com}" if abs(cash.get('ongoing_paid_total') or 0) >= 0.5 else "") + f") bring the position to {d(net_appr)} MMAD; "
-         f"pending payments of {pend:,.0f} MMAD bring it to {d(net_all)} MMAD."],
+         f"Ongoing payments and LC due end of {com} of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC" + (f" and {abs(cash['ongoing_paid_total']):,.0f} already paid {cash.get('ongoing_paid_label') or 'in ' + com}" if abs(cash.get('ongoing_paid_total') or 0) >= 0.5 else "") + f") bring the net cash position to {d(net_appr)} MMAD; "
+         f"payments pending approval of {pend:,.0f} MMAD bring the final position to {d(net_all)} MMAD."],
         [f"Supplier payables {ap_tot:,.0f} MMAD ({ap_over:,.0f} past due); letters of credit {lc_all:,.0f} MMAD, {lc_open:,.0f} on opened LCs",
          f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD. "
          f"LC: {lc_all - lc_open:,.0f} MMAD still to be opened; {mt.get('2026', 0):,.0f} MMAD matures in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027 (LC situation {meta.get('lc_date', '')})."],

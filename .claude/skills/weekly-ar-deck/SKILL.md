@@ -174,6 +174,8 @@ backlog, to unlock cash for PSR and critical suppliers.
 - The signed / not signed and client / JESA responsibility classification of unbilled lines follows
   `weekly-ar-cash-deck/reference/status2_signed_mapping.md` (finance guideline). Change it only when finance changes the guideline.
 
+- Cash wording, everywhere (cash slide, its backup, key message, snapshot): "Ongoing payments" (approved suppliers),
+  "LC due end of <month>", "Net cash position" (after those two), "Payments pending approval", "Final position".
 - Cash position slide = the COO cash file headline, never overridden. When its by-BU table carries a "paid in the
   ongoing month" column, that amount is added to the approved payments (as in the file's headline) and mentioned on the card.
 - The collections slide is on the AR report basis (all clients). It carries a one-line bridge to the OCP payment report

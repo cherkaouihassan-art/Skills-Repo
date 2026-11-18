@@ -535,7 +535,7 @@ def build(data, meta, out):
              ("2", "Accounts receivable", "Executive summary with week-on-week and month-start comparatives, unbilled by responsibility and client signature, signature progress on PSR and unrecognized, non-OCP clients"),
              ("3", "Unrecognized revenue & suppliers", "Executed scope not yet booked as AR, by business unit and status; supplier PO book"),
              ("4", "Payments received", "Invoices paid in the month and year to date, by business unit"),
-             ("5", "Cash position – procurement", "Cumulative cash in versus cash out by business unit, before and after approved and pending commitments"),
+             ("5", "Cash position – procurement", "Cumulative cash in versus cash out by business unit: net cash position after ongoing payments and LC due, final position after payments pending approval"),
              ("6", "Payables & letters of credit", "Supplier payables by business unit and due date; LC commitments and maturity schedule"),
              ("7", "Business unit breakdown", "Two pages per business unit: position and movement; projects and unrecognized revenue"),
              ("8", "Backup", "AR movement and position by business unit, DSO trend, unbilled under JESA responsibility detail, unbilled & unpaid status view, PSR collections, payments, LC and AP detail, sources")]
@@ -1123,18 +1123,18 @@ def build(data, meta, out):
     keys = ["jul", "aug", "sep", "oct_actual", "oct_ongoing"]
     tot_r = {k: sum((r[k] or 0) for r in cbu) for k in ("cash_in", "cash_out_suppliers", "cash_out_lc", "cash_out_customs", "net_actuals", "oct_approved", "net_after_approved", "oct_pending", "net_all_ongoing")}
     net_act = tot_r["net_actuals"]; net_appr = tot_r["net_after_approved"]; net_all = tot_r["net_all_ongoing"]
-    s = D.slide("Cash Position – Procurement (JESA Group incl. AM)", f"Jul–{cam} 2026: cash IN {f0(cin['cumulative'])} vs cash OUT paid {f0(-(cout['jul'] + cout['aug'] + cout['sep'] + cout['oct_actual']))} → {fd(net_act)} MMAD; {fd(net_appr)} after approved {com} payments, {fd(net_all)} after pending")
+    s = D.slide("Cash Position – Procurement (JESA Group incl. AM)", f"Jul–{cam} 2026: cash IN {f0(cin['cumulative'])} vs cash OUT paid {f0(-(cout['jul'] + cout['aug'] + cout['sep'] + cout['oct_actual']))} → {fd(net_act)} MMAD; net cash position {fd(net_appr)}, final position {fd(net_all)}")
     cw = (SW - 0.6 - 0.1 * 6) / 7
     in_ong = cin.get("oct_ongoing") or 0; nov_paid = float(meta.get("cash_ongoing_paid") or 0); nov_paid_lab = meta.get("cash_ongoing_paid_label") or ""
     card(s, 0.3, 1.2, cw, 1.1, f"Cash IN Jul–{cam}" + (f" + {com} to {cct}" if in_ong > 0.5 else ""), f0(cin["cumulative"]), f"OCP {f0(proc['cumulative'])}" + (f" (incl. {com} {f0(in_ong)})" if in_ong > 0.5 else "") + f" + dividends {f0(div['cumulative'])}", fill=TEAL, value_size=20, sub_size=7.5, label_size=(7.5 if in_ong > 0.5 else 8.5))
     card(s, 0.3 + (cw + 0.1), 1.2, cw, 1.1, f"Cash OUT Jul–{cam}", f0(-(cout["jul"] + cout["aug"] + cout["sep"] + cout["oct_actual"])), f"Suppliers, LC, customs to {cpt}", fill=NAVY2, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 2 * (cw + 0.1), 1.2, cw, 1.1, f"{com} approved supp.", f0(appr_sup), "Approved supplier invoices" + (f", incl. {f0(nov_paid)} paid {nov_paid_lab}" if nov_paid >= 0.5 else ""), fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 3 * (cw + 0.1), 1.2, cw, 1.1, f"LC payments due – {com}", f0(appr_lc), "LC maturities per bank situation", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 4 * (cw + 0.1), 1.2, cw, 1.1, f"{com} pending supp.", f0(pend), "Pending payment approval", fill=ORANGE, value_size=20, sub_size=7.5, label_size=8.5)
-    card(s, 0.3 + 5 * (cw + 0.1), 1.2, cw, 1.1, "Net after ongoing", fd(net_all), f"Actuals {fd(net_act)} · after approved {fd(net_appr)}", fill=(RED if net_all < 0 else GREEN), value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 2 * (cw + 0.1), 1.2, cw, 1.1, "Ongoing payments", f0(appr_sup), "Approved supplier invoices" + (f", incl. {f0(nov_paid)} paid {nov_paid_lab}" if nov_paid >= 0.5 else ""), fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 3 * (cw + 0.1), 1.2, cw, 1.1, f"LC due end of {com}", f0(appr_lc), "LC maturities per bank situation", fill=GOLD, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 4 * (cw + 0.1), 1.2, cw, 1.1, "Pending approval", f0(pend), "Payments pending approval", fill=ORANGE, value_size=20, sub_size=7.5, label_size=8.5)
+    card(s, 0.3 + 5 * (cw + 0.1), 1.2, cw, 1.1, "Final position", fd(net_all), f"Actuals {fd(net_act)} · net cash position {fd(net_appr)}", fill=(RED if net_all < 0 else GREEN), value_size=20, sub_size=7.5, label_size=8.5)
     card(s, 0.3 + 6 * (cw + 0.1), 1.2, cw, 1.1, "PSR collected", f0(psr["cumulative"]), f"Jul–{cam}: {f0(psr['jul'])} · {f0(psr['aug'])} · {f0(psr['sep'])} · {f0(psr['oct_actual'])}" + (f" · {com} {f0(psr.get('oct_ongoing'))}" if (psr.get('oct_ongoing') or 0) > 0.05 else ""), fill=SLATE, value_size=20, sub_size=7.5, label_size=8.5)
     # ---- cumulative position by BU (EXEC Summary section 5)
-    tb(s, 0.4, 2.38, 12.6, 0.3, f"Cumulative position Jul–{cam} by business unit – actuals, {com} approved (suppliers / LC) and pending commitments (MMAD)", size=11.5, bold=True, color=NAVY)
+    tb(s, 0.4, 2.38, 12.6, 0.3, f"Cumulative position Jul–{cam} by business unit – actuals, ongoing payments, LC due end of {com} and payments pending approval (MMAD)", size=11.5, bold=True, color=NAVY)
     lc_ong = {r["bu"]: (r["oct_ongoing_lc"] or 0) for r in data.get("CASH_BU_OCT", [])}
     rows, colors = [], {}
     for i, r in enumerate(cbu):
@@ -1145,13 +1145,13 @@ def build(data, meta, out):
     rows.append(["Total BUs", f0(tot_r["cash_in"]), f0(-tot_r["cash_out_suppliers"]), f0(-tot_r["cash_out_lc"]), f0(-tot_r["cash_out_customs"]), fd(tot_r["net_actuals"]), f0(t_sup), f0(t_lc), fd(tot_r["net_after_approved"]), f0(-tot_r["oct_pending"]), fd(tot_r["net_all_ongoing"])])
     n = len(rows) - 1
     for j, k in ((5, "net_actuals"), (8, "net_after_approved"), (10, "net_all_ongoing")): colors[(n, j)] = delta_color(tot_r[k], False)
-    table(s, 0.35, 2.66, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", f"{com} approved\nsuppliers", f"LC payments\ndue {com}", "Net after approved", f"{com} pending\nsuppliers", "Net after all ongoing"], rows,
+    table(s, 0.35, 2.66, 12.65, ["Business Unit", "Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "Net actuals", "Ongoing\npayments", f"LC due\nend of {com}", "Net cash position", "Payments pending\napproval", "Final position"], rows,
           col_w=[1.5, 0.9, 1.0, 0.8, 0.9, 0.95, 1.05, 0.95, 1.1, 1.0, 1.15], font_size=8, header_size=7.5, row_h=0.2, header_h=0.34, total_last=True, first_col_bold=True, colors=colors)
     yb = 2.66 + 0.34 + 0.2 * len(rows) + 0.1
     # ---- bottom left: position by month (table)
     # ---- bottom: group walk from cash IN to the net position after all ongoing
-    tb(s, 0.4, yb - 0.02, 12.6, 0.26, f"From cash IN to the net position after all {com} commitments – JESA Group (MMAD)", size=11, bold=True, color=NAVY)
-    wcats = ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "= Net actuals", f"{com} approved suppliers", "LC payments due", "= Net after approved", f"{com} pending suppliers", "= Net after all ongoing"]
+    tb(s, 0.4, yb - 0.02, 12.6, 0.26, "From cash IN to the final position – JESA Group (MMAD)", size=11, bold=True, color=NAVY)
+    wcats = ["Cash IN", "Paid suppliers", "Paid LC", "Paid customs", "= Net actuals", "Ongoing payments", f"LC due end of {com}", "= Net cash position", "Payments pending approval", "= Final position"]
     wvals = [tot_r["cash_in"], tot_r["cash_out_suppliers"], tot_r["cash_out_lc"], tot_r["cash_out_customs"], tot_r["net_actuals"], -t_sup, -t_lc, tot_r["net_after_approved"], tot_r["oct_pending"], tot_r["net_all_ongoing"]]
     wkind = ["total", "delta", "delta", "delta", "total", "delta", "delta", "total", "delta", "total"]
     ch = bar_chart(s, 0.3, yb + 0.2, 12.7, SH - 0.38 - (yb + 0.2), wcats, [("MMAD", wvals)], [NAVY], legend=False, gap=45, cat_size=7.5, label_size=8, number_format='+#,##0;−#,##0;0', label_pos=XL_LABEL_POSITION.OUTSIDE_END)
@@ -1191,10 +1191,10 @@ def build(data, meta, out):
     tb(s, 7.3, SH - 0.8, 5.8, 0.35, "AM (gold) is ring-fenced: its PSR collections cover AM PSR costs and are not available to the group.", size=8.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 11. Ongoing payments – October
-    s = D.slide(f"{cam} paid, {com_full} approved and pending payments", f"{f0(paid_oct)} MMAD paid in {cam} to {cpt}; {f0(appr_lc+appr_sup)} MMAD approved" + (f" (incl. {f0(appr_lc)} LC maturities)" if appr_lc else "") + f" and {f0(pend)} MMAD pending approval")
+    s = D.slide(f"{cam} paid and {com_full} commitments", f"{f0(paid_oct)} MMAD paid in {cam} to {cpt}; ongoing payments {f0(appr_sup)}" + (f", LC due end of {com} {f0(appr_lc)}" if appr_lc else "") + f", payments pending approval {f0(pend)}")
     tb(s, 0.4, 1.25, 6.2, 0.3, f"{cam} actual and {com} committed cash OUT (MMAD)", size=13, bold=True, color=NAVY)
     total_oct = round(paid_oct) + round(appr_lc) + round(appr_sup) + round(pend)
-    waterfall(s, 0.3, 1.55, 6.3, 2.45, [f"{cam} paid to {cpt}", "Approved – LC maturities", "Approved – supplier invoices", "Pending approval", f"Total {cam} + {com}"],
+    waterfall(s, 0.3, 1.55, 6.3, 2.45, [f"{cam} paid to {cpt}", f"LC due end of {com}", "Ongoing payments", "Payments pending approval", f"Total {cam} + {com}"],
               [paid_oct, appr_lc, appr_sup, pend, total_oct], ["total", "delta", "delta", "delta", "total"])
     # override colors: all additions in gold shades
     ch = s.shapes[-1].chart; color_points(ch, 1, [NAVY2, GOLD, GOLD, ORANGE, NAVY2])
@@ -1442,7 +1442,7 @@ def build(data, meta, out):
     D.section = "backup_divider"
     D.divider("08", "Backup",
               [("Accounts receivable", ["AR movement – week on week and vs baseline (components, aging, by business unit)", "AR position by business unit", "DSO trend by business unit", "Unbilled under JESA responsibility – PSR / Procurement and status detail", "Unbilled & unpaid status view"]),
-               ("Cash position", ["PSR (labor) collections by business unit and provisions", f"{cam} paid, {com} approved and pending payments"]),
+               ("Cash position", ["PSR (labor) collections by business unit and provisions", f"{cam} paid and {com} commitments: ongoing payments, LC due, payments pending approval"]),
                ("Payables & letters of credit", ["LC detail by letter of credit", "Supplier payables detail (tiers, top suppliers)"]),
                ("Reference", ["Sources & definitions"])],
               note="Supporting detail for the main sections, in the same order as the agenda.")
