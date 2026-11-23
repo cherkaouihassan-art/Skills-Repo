@@ -61,7 +61,12 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
     `Config!MappingSource`. Then re-run steps 5–10.
 12. **Run report** (chat): per live month this week vs last week (count, MAD, PSR / PROC split),
     every delta by invoice, new unmapped invoices, re-dated payments, overrides applied, open
-    decisions. Keep numbers in tables.
+    decisions. Keep numbers in tables. End with the **email sentence** for the current month,
+    in this exact shape (amounts in M MAD, two decimals; name the BUs that drive the change and
+    say the rest are unchanged):
+    "November payments stand at 145.99 M MAD, up 12.81 M on last week, entirely from AM
+    (102.43 M, up from 89.62 M). All other Business Units are unchanged."
+    The user's weekly email template is in `references/email-template.md`.
 
 ## User instructions during a run
 
