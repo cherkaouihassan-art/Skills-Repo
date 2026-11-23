@@ -23,7 +23,7 @@ extract and over `Mapping`. Nothing is added here without an explicit user instr
 | Invoice | Amount | Extract date | Pay Month | Reason |
 |---------|--------|--------------|-----------|--------|
 | 72000109 (JESA Buildings & Infrastructures advance, Water & Environement / Procurement) | 42,140,330.41 | 18/04/2025 | **26/10/2026** | Actually paid 01/10/2026; user instruction 12/10/2026. Today hardcoded on File 26 `AL5461`. |
-| 70000649 (ID DOC 162944) | 2,254,861.76 | 07/09/2026 | extract date (Sep-26) | Mirror case, no override needed; counted once. |
+| 70000649 (ID DOC 162944) | 2,254,861.76 | 07/09/2026 in every SAP extract to 23/11; the team's completed 23/11 file says 23/11/2026 | HELD in Sep-26 pending user confirmation (override 23/11/2026) | Reported in Sep-26 since September. |
 
 ## C. BU / Class assignments by the user (Scope = LIVE)
 
