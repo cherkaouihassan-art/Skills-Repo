@@ -16,6 +16,10 @@ extract and over `Mapping`. Nothing is added here without an explicit user instr
 
 ## B. Pay Month forced (Scope = LIVE)
 
+| 70001242 | 9,066,960.00 | SAP re-dated 18/05/2026 → 28/09/2026 (23/11 extract) | EXCLUDE (counted in frozen May-26) | Re-date sweep 23/11/2026; user to confirm. |
+| 70001372, 70001371, 70001368, 70001367, 70001358, 70001352, 70000835 | 8,075,518.83 together | SAP re-dated 07/09/2026 → 31/08/2026 (23/11 extract) | HELD in Sep-26 (26/09/2026) pending user decision | Reported in Sep-26 since September. Moving them to Aug-26 means correcting the frozen Aug values (+8,075,518.83, F&C and W&E). |
+
+
 | Invoice | Amount | Extract date | Pay Month | Reason |
 |---------|--------|--------------|-----------|--------|
 | 72000109 (JESA Buildings & Infrastructures advance, Water & Environement / Procurement) | 42,140,330.41 | 18/04/2025 | **26/10/2026** | Actually paid 01/10/2026; user instruction 12/10/2026. Today hardcoded on File 26 `AL5461`. |
@@ -57,6 +61,18 @@ been assigned AM / Procurement by the user. Claude still does not auto-assign: l
    used by any formula).
 5. Jul-26 and Aug-26 are **never** repointed to a newer extract: a newer extract would replace
    91000988's 110.5M with 10.2M and understate Aug by ~100M.
+
+## D2. Class overrides from the TYPE rule (Nov-26)
+
+92004771 (W&E), 92004762 and 92004759 (Building & Infrastructure), 90022311 (F&C): AR TYPE = Non Labor
+while the flag is PSR → Procurement. Entered as Overrides on 23/11/2026 because the Mapping TYPE column
+was lost with the working copy; redundant once Mapping is rebuilt from an AR file with col G.
+
+## Operational note (23/11/2026)
+
+The working copy is lost whenever the cloud session's scratch space is cleared. The Drive copy is the
+only durable state: it must be overwritten after every run. On 23/11 the Drive copy was still the
+02/11 version and the 02/11–17/11 state had to be re-entered from this file and the session record.
 
 ## E. Reconciliation checkpoints (19/10/2026 baseline)
 
