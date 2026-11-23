@@ -38,9 +38,10 @@ directory. Write values into the Summary, keep the SUM / % formulas. Do not rely
    (Labor → Proservices, else Procurement); otherwise the PSR/PROC flag (`Mapping` E) with the
    Type 2 / Invoice Type fallback (standing-exceptions.md §D). Record the rule used per row.
    Never assign a BU from Division, Fournisseur or any pattern — list it instead (step 7).
-6. **Re-date sweep.** Join to `Payments Key` on `Pièce comptable` + `Réf Paiement`. Any pair whose
-   Pay Month changed, or whose amount changed, goes to the report. Do not fix silently; if the
-   move crosses into a frozen month, exclude it from live months and say so.
+6. **Re-date sweep.** Join to `Payments Key` on `Pièce comptable` + `Réference`. **A payment keeps
+   the Date Paiement it was first reported with** (user rule 23/11/2026): a different date in a
+   later extract or manual entry is listed on `Payment Date Fixes` and in the report, never
+   applied, and never asked about. An amount change is reported.
 7. **Unmapped.** Live-month rows with no BU: exclude from BU rows, append to `Unmapped Invoices`
    (columns A:L, dated block). Suggest "AM / Procurement (pattern)" for JESA invoices on
    JPH / MP1 / JFC1 / JFC2 but do not apply it.

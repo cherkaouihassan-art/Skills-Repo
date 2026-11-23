@@ -43,6 +43,13 @@ Pattern for the future: unmapped JESA invoices on Division JPH / MP1 / JFC1 / JF
 been assigned AM / Procurement by the user. Claude still does not auto-assign: list them in
 `Unmapped Invoices` with the suggestion "AM / Procurement (pattern)" and wait.
 
+## C2. Date rule (user, 23/11/2026)
+
+A payment keeps the date it was first reported with. Re-dates in later extracts (SAP clearing or
+manual entries) are listed, not applied. This settles 70001242 (May-26), the seven invoices
+70001372/71/68/67/58/52 and 70000835 (Sep-26) and 70000649 (Sep-26) without further questions.
+Nov-26 unmapped invoices 90022766, 90022760, 90022759, 90022697 → AM (user 23/11/2026).
+
 ## D. Classification rules (not per-invoice)
 
 0. **From Pay Month Nov-26 onward (user rule 16/11/2026, `Config!ClassRuleFrom`):** BU = AM keeps the

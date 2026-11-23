@@ -38,6 +38,9 @@ for i,row in enumerate(rows, start=2):
     if z==0: continue
     d=row[29]; datefix=''
     if isinstance(d,datetime.datetime) and (maxd is None or d>maxd): maxd=d
+    pd0=PREV2.get((key(row[28]),key(row[8])))
+    if isinstance(d,datetime.datetime) and pd0 and pd0!=d:
+        datefix=f"kept as first reported {pd0:%d/%m/%Y} (extract shows {d:%d/%m/%Y})"; d=pd0
     if not isinstance(d,datetime.datetime):
         pd=PREV2.get((key(row[28]),key(row[8])))
         if pd: d=pd; datefix=f"carried from extract of {PREV_EXTRACT:%d/%m/%Y}" if PREV_EXTRACT else "carried from previous extract"
@@ -84,7 +87,7 @@ for p in paid:
             redated.append((p['ref'],p['piece'],p['refpay'],q['Date Paiement'],p['datepay'],q['Pay Month'],p['pm'],float(q['Net à payer']),p['net']))
 gone=[q for k,q in PREV.items() if k not in seen and q['In live scope']=='Y']
 fixes=[p for p in paid if p['datefix']]
-print('payment dates carried forward:',sum(1 for p in fixes if p['datefix'].startswith('carried')),'| paid rows with NO date (team to fill):',sum(1 for p in fixes if p['datefix'].startswith('MISSING')))
+print('payment dates carried forward:',sum(1 for p in fixes if p['datefix'].startswith('carried')),'| dates kept as first reported:',sum(1 for p in fixes if p['datefix'].startswith('kept')),'| paid rows with NO date (team to fill):',sum(1 for p in fixes if p['datefix'].startswith('MISSING')))
 for p in fixes:
     if p['datefix'].startswith('MISSING'): print('   MISSING',p['row'],p['ref'],p['net'],p['statut'],p['refpay'])
 print('re-dated / amount-changed payments:',len(redated)); [print('  ',r) for r in redated]
