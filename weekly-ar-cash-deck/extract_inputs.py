@@ -756,6 +756,46 @@ def prev_from_inputs(path):
         P["ur_signed_prev"] = {r["bu"]: ((r["eq_signed_by_client"] or 0) + (r["sub_signed_by_client"] or 0)) for r in recs("UNRECOGNIZED")}
     return P
 
+def ms_from_inputs(path):
+    """Month-start structures from the saved weekly_inputs workbook of the baseline week (its 'current' columns).
+    Used when the raw baseline AR extract is no longer at hand (the raw extracts are not kept in the repository)."""
+    wb = openpyxl.load_workbook(path, data_only=True)
+    def recs(name):
+        if name not in wb.sheetnames: return []
+        rows = [list(r) for r in wb[name].iter_rows(values_only=True)]
+        h = 1 if rows and isinstance(rows[0][0], str) and all(v is None for v in rows[0][1:]) else 0
+        hdr = [str(c) for c in rows[h]]
+        return [dict(zip(hdr, r)) for r in rows[h + 1:] if any(v is not None for v in r)]
+    kpi = {r["metric"]: r["current"] for r in recs("AR_KPI")}
+    det = recs("AR_BU_DETAIL")
+    def sec(name, key=lambda x: x): return {(r["bu"], key(r["item"])): r["current"] or 0 for r in det if r["section"] == name}
+    M = {"kpi": {"Advance": kpi.get("Advance Payment", 0), "Unbilled": kpi.get("Unbilled", 0), "Unpaid": kpi.get("Unpaid", 0), "Total AR": kpi.get("Total AR", 0)},
+         "bu": {(r["bu"], r["component"]): r["current"] or 0 for r in recs("AR_BU") if r["component"] != "Total AR"},
+         "owner": {(r["bu"], r["category"]): r["current"] or 0 for r in recs("AR_UNBILLED_OWNER")},
+         "status_total": {s2_code(r["status"]): r["current"] or 0 for r in recs("AR_UNBILLED_STATUS")},
+         "status_bu": sec("unbilled_status", s2_code), "unpaid_group": sec("unpaid_group"), "unpaid_phase": sec("unpaid_phase"),
+         "aging_unbilled": sec("aging_unbilled"), "aging_unpaid": sec("aging_unpaid"), "advance_status": sec("advance_status"),
+         "year": {str(r["year"]): r["current"] or 0 for r in recs("AR_AGING")},
+         "nonocp": {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")},
+         "jesa_unbilled": {(r["bu"], r["split"]): r["current"] or 0 for r in recs("JESA_UNBILLED_BU")},
+         "signed_bu": {(r["bu"], r["responsibility"], r["class"], r["split"]): r["current"] or 0 for r in recs("AR_SIGNED_BU") if "split" in r}}
+    return M
+
+def lc_from_inputs(path):
+    """LC lines as stored in a saved weekly_inputs workbook (tab LC_LINES): keeps the last bank LC situation received."""
+    wb = openpyxl.load_workbook(path, data_only=True); rows = [list(r) for r in wb["LC_LINES"].iter_rows(values_only=True)]
+    h = 1 if rows and isinstance(rows[0][0], str) and all(v is None for v in rows[0][1:]) else 0
+    hdr = [str(c) for c in rows[h]]; months = [c for c in hdr if re.match(r"^20\d\d-\d\d$", c)]
+    lines = []
+    for r in rows[h + 1:]:
+        if not any(v is not None for v in r): continue
+        d = dict(zip(hdr, r))
+        lines.append({"project": d.get("project") or "", "bu": d.get("bu") or "Other", "supplier": d.get("supplier") or "", "ref": d.get("lc_ref") or "", "expiry": d.get("expiry") or "",
+                      "ccy": d.get("ccy") or "", "face_fx": d.get("face_value_fx") or 0, "encours_fx": d.get("encours_fx") or 0, "encours_mad": d.get("encours_mad") or 0,
+                      "action": d.get("action") or "", "comment": "", "opened": d.get("opened") or "No", "part_2026": d.get("part_2026") or 0, "part_2027": d.get("part_2027") or 0,
+                      "months": {m: (d.get(m) or 0) for m in months}})
+    return {"lines": lines, "months": months}
+
 PHASES = ["Rejected", "Treasury", "OCP subs", "Ordonnancement", "Missing reception", "Other"]
 def phase_total(agg, b=None):
     out = collections.defaultdict(float)
@@ -772,7 +812,9 @@ def main():
     ap_.add_argument("--prev-inputs", default=None, help="last week's weekly_inputs.xlsx (standard source of previous-week values)")
     ap_.add_argument("--ar-baseline", default=None, help="raw AR line list used as month-start baseline")
     ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
-    ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", required=True); ap_.add_argument("--ap", required=True)
+    ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", default=None); ap_.add_argument("--ap", required=True)
+    ap_.add_argument("--lc-inputs", default=None, help="saved weekly_inputs.xlsx whose LC_LINES tab is reused when no new bank LC situation is provided")
+    ap_.add_argument("--baseline-inputs", default=None, help="saved weekly_inputs.xlsx of the month-start week, used when the raw baseline AR extract is not available")
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
     ap_.add_argument("--ur-ms", default=None, help="JSON {bu: MMAD} with month-start unrecognized revenue by BU")
     ap_.add_argument("--dso", default=None, help="JSON {bu: {current, prior}} DSO in days (manual override, e.g. from the BU meeting report)")
@@ -796,7 +838,13 @@ def main():
     as_of = dt.date.fromisoformat(a.as_of); ar_date = dt.date.fromisoformat(a.ar_date); prev_date = dt.date.fromisoformat(a.ar_prev_date)
     from ar_engine import aggregate, bus_in, status_label, owner_of, BUCKETS
     coll_m = dt.date.fromisoformat(a.coll_month + "-15") if a.coll_month else None
-    pstat = extract_suspension_log(a.suspension_log) if a.suspension_log else None
+    pstat = None
+    if a.suspension_log and str(a.suspension_log).lower().endswith(".json"): pstat = json.load(open(a.suspension_log))   # compact status map saved by an earlier run
+    elif a.suspension_log:
+        pstat = extract_suspension_log(a.suspension_log)
+        try:
+            os.makedirs("inputs/suspension_log", exist_ok=True); json.dump(pstat, open("inputs/suspension_log/status_map.json", "w"), ensure_ascii=False, sort_keys=True)
+        except Exception as e: print("WARN suspension status map not saved:", e)
     if pstat: print(f"suspension log: {len(pstat):,} project keys")
     cur = aggregate(a.ar, ar_date, prev_cutoff=prev_date, coll_month_ref=coll_m, project_status=pstat)
     print("current AR (MMAD):", {k: round(v, 1) for k, v in cur["kpi"].items()})
@@ -808,9 +856,12 @@ def main():
     elif a.ar_dashboard: P = prev_from_dashboard(extract_ar(a.ar_dashboard))
     else: raise SystemExit("need one of --ar-prev / --prev-inputs / --ar-dashboard for the previous week")
     print("previous AR (MMAD):", {k: round(v, 1) for k, v in P["kpi"].items()})
-    MS = aggregate(a.ar_baseline, dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else ar_date) if a.ar_baseline else None
+    if a.ar_baseline and os.path.exists(a.ar_baseline): MS = aggregate(a.ar_baseline, dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else ar_date)
+    elif a.baseline_inputs: MS = ms_from_inputs(a.baseline_inputs); print("month-start baseline taken from saved inputs:", a.baseline_inputs)
+    else: MS = None
     if MS: print("month-start AR (MMAD):", {k: round(v, 1) for k, v in MS["kpi"].items()})
-    cash = extract_cash(a.cash); lc = extract_lc(a.lc); ap = extract_ap(a.ap, as_of)
+    if not (a.lc or a.lc_inputs): raise SystemExit("need --lc (bank LC situation) or --lc-inputs (saved inputs workbook holding the last LC lines)")
+    cash = extract_cash(a.cash); lc = extract_lc(a.lc) if a.lc else lc_from_inputs(a.lc_inputs); ap = extract_ap(a.ap, as_of)
     if not cash.get("lc_oct_maturity_total"):
         # 'LC Ongoing' sheet absent: ongoing LC payments line of the cash workbook, else the LC situation column of the ongoing month
         lcp_line = next((r for r in cash["cash_monthly"] if r[0] == "Cash OUT LC payments"), None)

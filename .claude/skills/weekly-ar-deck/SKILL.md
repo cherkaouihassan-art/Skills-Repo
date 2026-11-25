@@ -60,6 +60,20 @@ sources slide that month-start comparisons resume the following week. The execut
 the week-on-week movement on lines posted in the previous month's period ("of which +762 on lines posted in the October
 period"): do not call it "revenue booked" and do not tie it to the P&L (some projects post cumulative figures).
 
+## 2c. After a container reset (raw files gone)
+
+The raw extracts (AR, baseline AR, LC situation, suspension log, DSO table, cash file) are not kept in git, and the
+session container is rebuilt from the repository when it has been idle. Nothing has to be re-requested for:
+
+- the **month-start baseline**: `run_week.sh` falls back to the saved inputs of the baseline week
+  (`--baseline-inputs inputs/history/weekly_inputs_<date>.xlsx`, the file whose META `ar_current_date` is the baseline date);
+- the **previous week**: always the latest `inputs/history/` workbook dated before the run;
+- the **LC figures**: `--lc-inputs` reuses the LC lines saved in the previous inputs until a new bank situation is dropped;
+- the **project statuses**: `inputs/suspension_log/status_map.json` (written each time a suspension log is processed).
+
+Still needed every week from the reviewer: AR extract, COO cash file, supplier invoices, UR consolidation, OCP payments,
+DSO table; the BU meeting PDF for the reconciliation; a suspension log when it has been refreshed.
+
 ## 3. DSO
 
 A weekly `DSO Table` workbook (columns PU, 12 months trailing, Unbilled/Unpaid, DSO Exc ADV, Month revenue) takes

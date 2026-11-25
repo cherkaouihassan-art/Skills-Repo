@@ -18,7 +18,10 @@ find1() { find "$SRC" -maxdepth 1 -iname "$1" | head -1; }
 AR=$(find1 'AR_PRE*.xlsx'); [ -z "$AR" ] && AR=$(find1 'AR*.zip'); [ -z "$AR" ] && AR=$(find1 'AR*.csv'); [ -z "$AR" ] && AR=$(find1 'AR*.xlsx'); CASH=$(find1 'CASH*flow*.xlsx'); AP=$(find1 'AP*.xlsx'); [ -z "$AP" ] && AP=$(find1 'Supplier*.xlsx')
 LC=$(find1 '*LC*SITUATION*.xlsx'); [ -z "$LC" ] && LC=$(find1 '*LC*.zip'); UR=$(find1 'UR*Tracking*.xlsx'); DSO=$(find1 '*DSO*.xlsx'); OCP=$(find1 'OCP*Payments*.xlsx'); SUSP=$(find1 '*Suspension*.xlsx')
 mkdir -p inputs/suspension_log; if [ -n "$SUSP" ]; then cp "$SUSP" "inputs/suspension_log/Suspension_Log_${ASOF}.xlsx"; fi
-SUSP=$(ls -t inputs/suspension_log/*.xlsx 2>/dev/null | head -1); SUSPARG=(); [ -n "$SUSP" ] && SUSPARG=(--suspension-log "$SUSP")
+SUSP=$(ls -t inputs/suspension_log/*.xlsx 2>/dev/null | head -1)
+# the raw log is not kept in the repository: without it, the compact status map saved by the last run that had one is used
+[ -z "$SUSP" ] && [ -f inputs/suspension_log/status_map.json ] && SUSP=inputs/suspension_log/status_map.json
+SUSPARG=(); [ -n "$SUSP" ] && SUSPARG=(--suspension-log "$SUSP")
 mkdir -p inputs/ocp_payments; if [ -n "$OCP" ]; then cp "$OCP" "inputs/ocp_payments/OCP_Payments_Weekly_${ASOF}.xlsx"; fi
 OCP=$(ls -t inputs/ocp_payments/*.xlsx 2>/dev/null | head -1); OCPARG=(); [ -n "$OCP" ] && OCPARG=(--ocp-payments "$OCP")
 # Cash flow workbook: the master maintained by the cash flow refresh kit in this repository (branch CASH_BRANCH),
@@ -33,17 +36,33 @@ if [ -z "$CASH" ]; then
   git show "$REF:$CF_PATH" > "$CASH" 2>/dev/null || { echo "cash flow workbook not found in $REF ($CF_PATH) and none in $SRC"; exit 1; }
   echo "cash flow workbook taken from $REF:$CF_PATH"
 fi
-for v in AR CASH AP LC UR; do [ -n "${!v}" ] || { echo "missing source file for $v in $SRC"; exit 1; }; done
+for v in AR CASH AP UR; do [ -n "${!v}" ] || { echo "missing source file for $v in $SRC"; exit 1; }; done
 mkdir -p inputs/dso_calc
 # a weekly 'DSO Table' workbook (PU, 12 months trailing, AR, DSO, month revenue) is used as is; the full DSO calculation workbook is recomputed on the AR extract
 if [ -n "$DSO" ]; then case "$(basename "$DSO" | tr 'A-Z' 'a-z')" in *table*) cp "$DSO" "inputs/dso_calc/DSO_Table_${ASOF}.xlsx";; *) cp "$DSO" "inputs/dso_calc/DSO_calc_${ASOF}.xlsx";; esac; fi
 DSO=$(ls -t inputs/dso_calc/*.xlsx 2>/dev/null | head -1); [ -n "$DSO" ] || { echo "no DSO calculation workbook (inputs/dso_calc/ empty and none in $SRC)"; exit 1; }
 case "$(basename "$DSO")" in DSO_Table*) DSOARG=(--dso-table "$DSO");; *) DSOARG=(--dso-calc "$DSO");; esac
 MS_FILE=$(sed -n 1p inputs/month_start.txt); MS_DATE=$(sed -n 2p inputs/month_start.txt)
-PREV=$(ls -t inputs/history/weekly_inputs_*.xlsx | head -1)
+# previous week = latest saved inputs dated before this run (by name: file times are not reliable after a fresh clone)
+PREV=$(ls inputs/history/weekly_inputs_*.xlsx | sort | awk -v a="inputs/history/weekly_inputs_${ASOF}.xlsx" '$0 < a' | tail -1)
+# no new bank LC situation: keep the LC lines of the previous run
+LCARG=(--lc-inputs "$PREV"); [ -n "$LC" ] && LCARG=(--lc "$LC")
+# raw month-start extract not at hand (not kept in the repository): use the saved inputs of the baseline week
+BASEARG=(--ar-baseline "$MS_FILE" --ar-baseline-date "$MS_DATE")
+if [ ! -f "$MS_FILE" ]; then
+  BASE_IN=$(python3 - "$MS_DATE" <<'PY'
+import sys, glob, openpyxl
+for f in sorted(glob.glob("inputs/history/weekly_inputs_*.xlsx")):
+    meta = {r[0]: r[1] for r in openpyxl.load_workbook(f, read_only=True, data_only=True)["META"].iter_rows(values_only=True)}
+    if str(meta.get("ar_current_date"))[:10] == sys.argv[1]: print(f); break
+PY
+)
+  [ -n "$BASE_IN" ] || { echo "month-start baseline $MS_FILE is missing and no saved inputs carry the $MS_DATE position"; exit 1; }
+  BASEARG=(--baseline-inputs "$BASE_IN" --ar-baseline-date "$MS_DATE")
+fi
 echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; echo "DSO calc=$DSO"; echo "previous week=$PREV"; echo "month start=$MS_FILE ($MS_DATE)"
-python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" --ar-baseline "$MS_FILE" --ar-baseline-date "$MS_DATE" \
-  --cash "$CASH" --lc "$LC" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
+python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" "${BASEARG[@]}" \
+  --cash "$CASH" "${LCARG[@]}" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
   --as-of "$ASOF" --ar-date "$ARDATE" --ar-prev-date "$PREVDATE" --out inputs/weekly_inputs.xlsx
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"
