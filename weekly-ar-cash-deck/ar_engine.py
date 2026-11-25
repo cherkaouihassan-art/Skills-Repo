@@ -238,8 +238,9 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
             continue
         comp = "Advance" if s1.startswith("advance") else ("Unbilled" if s1.startswith("unbilled") else ("Unpaid" if s1.startswith("unpaid") else None))
         rd = g(r, "Reception date")
-        if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt; dep_x[("cur", labor_type(g(r, "TYPE")))] += amt
-        if comp == "Unpaid" and isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == prior_m: dep_x[("prior", labor_type(g(r, "TYPE")))] += amt
+        # invoices deposited = every line with a reception date in the month, whatever its status (same count as the BU meeting dashboard)
+        if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == cur_m: dep_bu[b] += amt; dep_tot += amt; dep_x[("cur", labor_type(g(r, "TYPE")))] += amt
+        if isinstance(rd, (dt.datetime, dt.date)) and (rd.year, rd.month) == prior_m: dep_x[("prior", labor_type(g(r, "TYPE")))] += amt
         if comp is None: continue
         if comp == "Unbilled" and code == "j-6.a": continue  # unearned on LS is not unbilled AR; C-3.a (DP clearing) stays in unbilled, as in the BU meeting report
         if comp == "Advance" and (code.startswith("j-6") or code == "c-3.a"): continue

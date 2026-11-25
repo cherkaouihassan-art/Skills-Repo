@@ -924,8 +924,8 @@ def main():
             prev_d = (P.get("dso", {}).get(b) or {}).get("current"); prev_ar = (P.get("dso_ar") or {}).get(b)
             cur_d = round(ar_v / rev * 365)
             if prev_d is not None and prev_ar and abs(round(prev_ar / rev * 365) - float(prev_d)) >= 2:
-                # the published figure of this BU does not follow the formula (manual basis, e.g. JESA Technologies): keep its basis, scale with the AR
-                cur_d = round(float(prev_d) * ar_v / prev_ar); print(f"NOTE DSO {b}: published basis kept ({prev_d} days last week), scaled with the AR -> {cur_d}")
+                # the published figure of this BU does not follow the formula (manual basis, e.g. JESA Technologies): carry the last published figure
+                cur_d = round(float(prev_d)); print(f"NOTE DSO {b}: on a manual basis in the published table, last published figure carried ({cur_d} days)")
             dso[b] = {"current": cur_d, "prior": prev_d, "ar": ar_v, "rev12": rev}
         if t_rev: dso["JESA Group"] = {"current": round(t_ar / t_rev * 365), "prior": (P.get("dso", {}).get("JESA Group") or {}).get("current"), "ar": t_ar, "rev12": t_rev}
         dso_computed = True

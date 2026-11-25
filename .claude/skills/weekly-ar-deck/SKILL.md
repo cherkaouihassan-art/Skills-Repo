@@ -78,8 +78,8 @@ DSO table; the BU meeting PDF for the reconciliation; a suspension log when it h
 
 When no DSO table is dropped, the extractor computes it: total AR of the BU (this week's extract, advances included, as
 in the table) / 12-month trailing revenue carried from the last table x 365; the group figure uses the sum. A BU whose
-published DSO does not follow that formula (JESA Technologies, manual basis) keeps its published basis and moves with
-its AR. The revenue side only changes at month close: ask for a new table (or the month's revenue) after each close,
+published DSO does not follow that formula (JESA Technologies, manual basis) carries its last published figure.
+Checked against the Power BI dashboard of 25-Nov-2026: identical for the group and all ten BUs. The revenue side only changes at month close: ask for a new table (or the month's revenue) after each close,
 and check the computed figures against the Power BI dashboard when the reviewer shares it.
 
 A weekly `DSO Table` workbook (columns PU, 12 months trailing, Unbilled/Unpaid, DSO Exc ADV, Month revenue) takes
@@ -136,7 +136,8 @@ rearrange it:
 
 - KPI boxes, in this order: gross exposure, unrecognized, total AR, unbilled, unpaid, DSO, cash received in the month
   (with the PSR / Proc split, and the prior month with its split), invoices billed in the month vs the prior month
-  (billed = invoices deposited, by reception date, as in the BU meeting dashboard).
+  (billed = invoices deposited = every line with a reception date in the month, whatever its status, as in the BU
+  meeting dashboard).
 - Under every KPI box: a strip with the PSR / Proc breakdown of that figure (unrecognized is all procurement; DSO
   shows "excl. advances").
 - Left panel: unbilled roll-ups, signed / not signed with the client (external) / not signed with JESA (internal),
