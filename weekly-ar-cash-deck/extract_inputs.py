@@ -843,6 +843,7 @@ def main():
     ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", default=None); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--lc-inputs", default=None, help="saved weekly_inputs.xlsx whose LC_LINES tab is reused when no new bank LC situation is provided")
+    ap_.add_argument("--psr-note", default=None, help="one-line note shown in a highlighted band on the PSR signature slide (e.g. an achievement to celebrate)")
     ap_.add_argument("--baseline-inputs", default=None, help="saved weekly_inputs.xlsx of the month-start week, used when the raw baseline AR extract is not available")
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
     ap_.add_argument("--ur-ms", default=None, help="JSON {bu: MMAD} with month-start unrecognized revenue by BU")
@@ -877,6 +878,12 @@ def main():
     if pstat: print(f"suspension log: {len(pstat):,} project keys")
     cur = aggregate(a.ar, ar_date, prev_cutoff=prev_date, coll_month_ref=coll_m, project_status=pstat)
     print("current AR (MMAD):", {k: round(v, 1) for k, v in cur["kpi"].items()})
+    # safeguard on the signature rule: a roll-up status wording that is neither 'signed/approved by client' nor a known 'not signed' one must be looked at
+    _rw = cur.get("rollup_wordings") or {}
+    _unk = sorted(((w, v) for (cls, w, sig), v in _rw.items() if cls == "unknown" and abs(v) >= 1), key=lambda x: -abs(x[1]))
+    for w, v in _unk: print(f"WARN roll-up status wording not recognised (counted as not signed unless the PA comment says signed): {w!r} = {v:,.1f} MMAD - classify it in ar_engine.signed_flag / _RU_NOT_SIGNED")
+    _sg = sum(v for (cls, w, sig), v in _rw.items() if sig == "Signed"); _ns = sum(v for (cls, w, sig), v in _rw.items() if sig == "Not signed")
+    print(f"signature read from the roll-up status / PA comments (PO, at-risk, VAT statuses): signed {_sg:,.0f}, not signed {_ns:,.0f} MMAD; unrecognised wordings {sum(v for _, v in _unk):,.0f}")
     if a.ar_prev:
         A = aggregate(a.ar_prev, prev_date, coll_month_ref=coll_m)
         P = prev_from_inputs(a.prev_inputs) if a.prev_inputs else {"ap": {}}
@@ -1050,7 +1057,7 @@ def main():
             "ar_month_start_date": ms_date, "cash_data_as_of": cash["data_as_of"].date() if cash["data_as_of"] else None,
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
-            "deposited_month": cur["deposited_total"],
+            "deposited_month": cur["deposited_total"], "note_psr_signature": a.psr_note or "",
             "ap_total_prev": P.get("ap_total"), "ap_overdue_prev": P.get("ap_overdue"),
             "deposited_month_labor": cur.get("deposited_x", {}).get(("cur", "labor"), 0.0), "deposited_month_non_labor": cur.get("deposited_x", {}).get(("cur", "non_labor"), 0.0),
             "deposited_prior_labor": cur.get("deposited_x", {}).get(("prior", "labor"), 0.0), "deposited_prior_non_labor": cur.get("deposited_x", {}).get(("prior", "non_labor"), 0.0),

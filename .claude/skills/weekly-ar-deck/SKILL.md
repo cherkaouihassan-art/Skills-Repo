@@ -113,7 +113,9 @@ traceback must be fixed before delivering (the extractor is label-anchored: comp
 2. Reconcile: total AR, unbilled, unpaid, advance and "invoices paid in month" must equal the BU meeting PDF
    when one was provided (the deck keeps DP-clearing lines in unbilled, like the PDF; the processed AR dashboard
    leaves them out).
-3. Read `KEY_MESSAGES` in `inputs/weekly_inputs.xlsx`: six messages in deck order, no internal or tooling references,
+3. Signature safeguard: no `WARN roll-up status wording not recognised` in the extractor output, and the unsigned PSR by
+   BU does not jump or sit far above what the BU reports (see Rules).
+4. Read `KEY_MESSAGES` in `inputs/weekly_inputs.xlsx`: six messages in deck order, no internal or tooling references,
    the cash message gives the net position after approved payments and after adding pending payments. Edit the
    wording if a figure reads oddly, then rebuild with `build_deck.py`.
 
@@ -194,6 +196,13 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - Say "client", not "OCP", for responsibility and signature wording. Abbreviations "WoW" and "vs MS" in key messages.
 - Title slide: variance pills in MDH; when the AR increase comes from the previous month's revenue being posted, the
   note sits **below** the six boxes (automatic).
+- **Signature rule, mandatory check every week.** For the PO, at-risk and VAT statuses the signature is read from the
+  roll-up status column and the PA comments: "signed" / "signé" **or "Approved by Client PM"** = signed. Read the
+  extractor's line `signature read from the roll-up status ...` and any `WARN roll-up status wording not recognised`:
+  an unrecognised wording must be classified before the deck goes out (see the lesson in
+  `reference/status2_signed_mapping.md`: this mistake overstated F&C's unsigned PSR by 229 MMAD in November 2026).
+- A highlighted note with a clap can be shown on the PSR signature slide (`--psr-note "..."`, `**bold**` allowed), for
+  an achievement to celebrate or a BU figure that runs ahead of SAP. It is a one-week note: do not carry it over.
 - The "Signed RU status" workbook (`Signed_RU_status.xlsb`) is a tracker of physical copies only: never use it for the
   signed / not signed totals. It can be quoted as a follow-up list of physical copies outstanding.
 - Signed roll-up rule stays on the status mapping plus PA comments (`reference/status2_signed_mapping.md`).

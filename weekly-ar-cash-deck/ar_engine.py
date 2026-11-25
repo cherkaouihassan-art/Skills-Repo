@@ -148,11 +148,24 @@ SIGNED_MAP = {
     "j-5.a": None, "j-6.a": None, "j-6.b": None, "j-6.c": None, "j-6.d": None, "j-7.a": ("JESA", "Not signed"),
 }
 import re as _re
-_SIGN_POS = _re.compile(r"sign[eé]"); _SIGN_NEG = _re.compile(r"not\s+sign|non\s+sign|unsign|pas\s+sign")
+# A roll-up counts as signed when the text says "signed" / "signé" OR "approved by client (PM)" / "approuvé par le client":
+# business units word the roll-up status column differently (F&C writes "Approved by Client PM"). Missing that wording
+# overstated F&C's unsigned PSR by 229 MMAD in Nov-2026, so every new wording must be classified here, never ignored.
+_SIGN_POS = _re.compile(r"sign[eé]|approved\s+by\s+(the\s+)?client|approuv[eé]e?s?\s+par\s+(le\s+)?client")
+_SIGN_NEG = _re.compile(r"not\s+sign|non\s+sign|unsign|pas\s+sign|not\s+approved|non\s+approuv|pas\s+approuv")
+_RU_NOT_SIGNED = _re.compile(r"pending|rejected|rejet|generated|no ru|en attente|draft|cancel")   # roll-up statuses that clearly mean 'not signed yet'
 def signed_flag(*texts):
-    """True when one of the texts says the roll-up is signed ('signed' / 'signé'), and none says not signed."""
+    """True when one of the texts says the roll-up is signed / approved by the client, and none says it is not."""
     joined = " ".join(str(t or "").strip().lower() for t in texts if t)
     return bool(_SIGN_POS.search(joined)) and not _SIGN_NEG.search(joined)
+
+def rollup_wording(v):
+    """'signed', 'not signed', 'blank' or 'unknown' for a value of the roll-up status column (used to flag wordings never seen before)."""
+    t = str(v or "").strip().lower()
+    if t in ("", "-", "none", "n/a", "na"): return "blank"
+    if signed_flag(t): return "signed"
+    if _SIGN_NEG.search(t) or _RU_NOT_SIGNED.search(t): return "not signed"
+    return "unknown"
 
 def signed_class(code, rollup, comment=None):
     """(responsibility, 'Signed'/'Not signed') for an unbilled line, or None when the status is outside the signed view.
@@ -166,6 +179,11 @@ def signed_class(code, rollup, comment=None):
     if sig == "Depends":
         sig = "Signed" if (signed_flag(rollup) or signed_flag(comment)) else "Not signed"
     return resp, sig
+
+def depends_code(code):
+    """True for the statuses whose signature is read from the roll-up status column / PA comments."""
+    m = SIGNED_MAP.get(code)
+    return (code not in SIGNED_MAP) or (m is not None and m[1] == "Depends")
 
 def labor_type(v):
     """labor / non_labor from the AR 'TYPE' column (col AJ): anything called labor is labor, the rest is non-labor."""
@@ -198,6 +216,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
         i = I.get(name); return r[i] if i is not None else None
     D = lambda: collections.defaultdict(float)
     period = D()   # AR by (component, posting period YYYY-MM)
+    ru_words = D()   # roll-up status wordings met on 'depends' lines: (class, wording, resulting signature) -> amount
     kpi = D(); bu = D(); owner = D(); st_tot = D(); st_bu = D(); upg = D(); uph = D(); agu = D(); agp = D(); year = D(); labor = D(); ocp = D()
     proj = D(); adv_bu = D(); st_proj = {}
     nonocp = D(); nonocp_proj = D(); nonocp_meta = {}; jesa_unb = D(); jesa_unb_st = D(); jesa_unb_bs = D(); signed_bu = D(); signed_st = D(); signed_ps = D()
@@ -262,6 +281,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
             sc = signed_class(code, g(r, "Rollup status"), g(r, "Comments PA"))
             if sc:
                 signed_bu[(b, sc[0], sc[1], lab)] += amt; signed_st[(code, sc[0], sc[1])] += amt
+                if depends_code(code): ru_words[(rollup_wording(g(r, "Rollup status")), str(g(r, "Rollup status") or "").strip()[:60], sc[1])] += amt
                 if project_status is not None:
                     ps = project_status.get(wbs) or project_status.get(str(g(r, "New Project") or "").strip()) or project_status.get(wbs[:8]) or "Not in log"
                     signed_ps[(b, sc[1], lab, ps)] += amt
@@ -284,7 +304,7 @@ def aggregate(path, as_of, prev_cutoff=None, coll_month_ref=None, project_status
     for key, (client, st) in nonocp_meta.items():
         nproj.append([key[0], client, key[1], key[2], nonocp_proj.get((key, "Unbilled"), 0.0), nonocp_proj.get((key, "Unpaid"), 0.0), st])
     nproj.sort(key=lambda r: -(r[4] + r[5]))
-    return {"period": dict(period), "kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
+    return {"rollup_wordings": dict(ru_words), "period": dict(period), "kpi": dict(kpi), "bu": dict(bu), "owner": dict(owner), "status_total": dict(st_tot), "status_bu": dict(st_bu),
             "unpaid_group": dict(upg), "unpaid_phase": dict(uph), "aging_unbilled": dict(agu), "aging_unpaid": dict(agp), "year": dict(year),
             "labor": dict(labor), "ocp": dict(ocp), "advance_status": dict(adv_bu), "top_projects": top,
             "nonocp": dict(nonocp), "nonocp_projects": nproj, "jesa_unbilled": dict(jesa_unb), "jesa_unbilled_status": dict(jesa_unb_st), "jesa_unbilled_bu_status": dict(jesa_unb_bs),

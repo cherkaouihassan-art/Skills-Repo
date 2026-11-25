@@ -2,7 +2,9 @@
 
 Responsibility: `Client` = action with the client / OCP, `JESA` = action with JESA. Signature: whether the attachment or service
 sheet has been signed by the client. `Depends` = read the "AP column" of the AR file, i.e. the PA comments (`Comments PA`) and, when filled,
-the roll-up status column: the line is **signed** when either contains the word signed / signé (and not "not signed"), otherwise **not signed**. `N/A` lines are not part of unbilled AR
+the roll-up status column: the line is **signed** when either says signed / signé **or approved by the client (e.g. "Approved by Client PM")**
+(and not "not signed" / "not approved"), otherwise **not signed**. Business units word this column differently: F&C writes "Approved by Client PM",
+others write "Signed". Roll-up statuses such as "Pending Client PM Approval", "Rejected", "Generated", "Pending JESA PCM/PM Approval" mean not signed. `N/A` lines are not part of unbilled AR
 (unpaid statuses, unearned on lump sum, advances) and are left out of the signed view.
 
 | Status 2 | Responsibility | Signed or not | Note |
@@ -40,3 +42,16 @@ the roll-up status column: the line is **signed** when either contains the word 
 Unrecognized revenue: signed = the "attachment signed by client" columns of the UR consolidation (equipment + subcontracts).
 The ownership view of the deck (under OCP / under JESA / SS postponed / at risk) is kept separately; this table drives the
 "Signed roll-ups" slide only.
+
+## Lesson of November 2026 (do not repeat)
+
+Until 25-Nov-2026 the reader only recognised the word "signed". F&C's roll-ups approved by the client PM but sitting in a PO status
+(C-1-c pending PO 202 MMAD, C-1-b at risk 15, C-1-d PO correction 12) were therefore shown as **not signed**: F&C unsigned PSR appeared
+as 371 MMAD instead of 142, and the BU challenged the deck. Rules since then:
+
+1. "Approved by Client PM" (any capitalisation) in the roll-up status column = signed, for the `Depends` statuses.
+2. The extractor prints a `WARN roll-up status wording not recognised` line for any wording it cannot classify. Never deliver
+   with such a warning unread: classify the wording in `ar_engine.signed_flag` / `_RU_NOT_SIGNED` first.
+3. When a BU reports a lower unsigned figure than the deck, reconcile before sending: compare the AR roll-up status column with the
+   BU's list. The gap that remains is normally roll-ups signed but not yet updated in SAP; show the AR figure and mention the BU
+   figure in a note, do not replace the AR basis (finance reporting relies on the AR statuses).

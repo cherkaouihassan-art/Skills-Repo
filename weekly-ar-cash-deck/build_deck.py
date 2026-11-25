@@ -806,6 +806,14 @@ def build(data, meta, out):
             topp = pb[:9]
             ch = bar_chart(s, 8.2, 2.6, 4.9, 4.5, [short(b) for b in topp], [("Signed", [tsum(sel(c="Signed", l="labor"), "current", b) for b in topp]), ("Not signed – under client", [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp]), ("Not signed – JESA", [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp])], [GREEN, GOLD, ORANGE], stacked=True, horizontal=True, gap=35, cat_size=8, label_size=7.5, label_colors=[WHITE, DARK, WHITE], legend_pos=XL_LEGEND_POSITION.BOTTOM, title="Unbilled PSR by BU (MMAD)")
             hide_small_labels(ch, [[tsum(sel(c="Signed", l="labor"), "current", b) for b in topp], [tsum(sel("Client", "Not signed", "labor"), "current", b) for b in topp], [tsum(sel("JESA", "Not signed", "labor"), "current", b) for b in topp]], 40)
+        # optional highlighted note (achievement of the week), with a clap
+        _note = str(meta.get("note_psr_signature") or "").strip()
+        if _note:
+            GREEN_BG = RGBColor(0xE4, 0xF3, 0xE8)
+            rect(s, 0.4, SH - 0.93, 12.55, 0.46, GREEN_BG, line=GREEN, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.25)
+            tb(s, 0.48, SH - 0.93, 0.6, 0.46, "\U0001F44F", size=18, font="Segoe UI Emoji", align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+            parts = _note.split("**"); runs = [(t, {"bold": (k % 2 == 1), "color": (GREEN if k % 2 == 1 else DARK)}) for k, t in enumerate(parts) if t]
+            tb(s, 1.08, SH - 0.93, 11.8, 0.46, [runs], size=10, color=DARK, anchor=MSO_ANCHOR.MIDDLE, line_spacing=1.0)
         tb(s, 0.4, SH - 0.42, 12.6, 0.2, "Signature per the finance guideline. PSR = labor scope per the AR type column; the rest is Procurement.", size=7.5, italic=True, color=SLATE)
 
     # ------------------------------------------------------------------ 4. AR movement (comparatives)
