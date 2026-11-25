@@ -339,8 +339,35 @@ def extract_cash(path):
 
 # ----------------------------------------------------------------------------- LC situation
 PROJ_TO_BU = {"FEC": "Fertilizers & Chemicals", "WEN": "Water & Environment", "ENE": "Energy Operations", "AMT": "AM"}
+def _extract_lc_followup(rows):
+    """LC follow-up layout (from 17-Nov-2026): two header rows; one 'Shipment' / 'Payment' column pair per month; opened LCs only."""
+    h0 = [re.sub(r"\s+", " ", str(c)).strip().lower() if c is not None else "" for c in rows[0]]; h1 = [str(c).strip().lower() if c is not None else "" for c in rows[1]]
+    def col(*keys): return next(i for i, h in enumerate(h0) if any(h.startswith(k) for k in keys))
+    c_proj, c_ref, c_exp, c_sup, c_face, c_ccy, c_open, c_fx, c_mad = col("project"), col("référence credoc", "reference credoc"), col("date d'expiration"), col("fournisseur"), col("montant initial"), col("devise"), col("date ouverture"), col("encours credoc (en devises)"), col("encours credoc (en mad)")
+    c_com = next((i for i, h in enumerate(h0) if h.startswith("commentaires")), None)
+    months = []; cur = None
+    for i, c in enumerate(rows[0]):
+        if isinstance(c, (dt.datetime, dt.date)): cur = f"{c.year}-{c.month:02d}"
+        elif c is not None: cur = None
+        if cur and h1[i] == "payment": months.append((i, cur))
+    lines = []
+    for r in rows[2:]:
+        if not r[0] or str(r[0]).strip().lower() == "total" or not r[c_ref]: continue
+        proj = str(r[c_proj]).strip() if r[c_proj] else ""
+        bu = PROJ_TO_BU.get(proj.split("-")[0].strip(), "SP2M Ad Hoc Program" if proj.startswith("SP2M") else "Other")
+        exp = r[c_exp]; exp_s = exp.strftime("%Y-%m-%d") if isinstance(exp, (dt.date, dt.datetime)) else (str(exp) if exp else "")
+        mm = {m: num(r[i], 1e6) for i, m in months}
+        lines.append({"project": proj, "bu": bu, "supplier": str(r[c_sup]).strip() if r[c_sup] else "", "ref": str(r[c_ref]).strip(), "expiry": exp_s,
+                      "ccy": str(r[c_ccy]).strip() if r[c_ccy] else "", "face_fx": num(r[c_face]), "encours_fx": num(r[c_fx]), "encours_mad": num(r[c_mad], 1e6),
+                      "action": (str(r[c_com]).strip() if (c_com is not None and r[c_com]) else ""), "comment": "",
+                      "opened": "Yes" if isinstance(r[c_open], (dt.date, dt.datetime)) else "No",
+                      "part_2026": sum(v for m, v in mm.items() if m.startswith("2026")), "part_2027": sum(v for m, v in mm.items() if m.startswith("2027")), "months": mm})
+    return {"lines": lines, "months": [m for _, m in months], "layout": "follow-up"}
+
 def extract_lc(path):
     rows = load(path, "LC avec echéance")
+    if rows and str(rows[0][0] or "").strip().lower() == "origine" and len(rows) > 1 and any(str(c or "").strip().lower() == "payment" for c in rows[1]):
+        return _extract_lc_followup(rows)
     hdr = [str(h).replace("\n", " ").strip() if h else "" for h in rows[0]]
     month_cols = [(i, h) for i, h in enumerate(hdr) if re.match(r"^20\d\d-\d\d$", h)]
     lines = []
@@ -691,9 +718,9 @@ def default_messages(ar, cash, lc, ap, meta):
          f"Cash IN {cin[6]:,.0f} MMAD" + (f" (incl. {cin[5]:,.0f} of {com} collections to {cash.get('cash_collections_to') or meta['collections_to']})" if abs(cin[5]) >= 0.5 else "") + f" vs cash OUT {out_act:,.0f} MMAD paid to {cpt} gives {d(net_act)} MMAD. "
          f"Ongoing payments and LC due end of {com} of {appr:,.0f} MMAD (incl. {cash['lc_oct_maturity_total']:,.0f} of LC" + (f" and {abs(cash['ongoing_paid_total']):,.0f} already paid {cash.get('ongoing_paid_label') or 'in ' + com}" if abs(cash.get('ongoing_paid_total') or 0) >= 0.5 else "") + f") bring the net cash position to {d(net_appr)} MMAD; "
          f"payments pending approval of {pend:,.0f} MMAD bring the final position to {d(net_all)} MMAD."],
-        [f"Supplier payables {ap_tot:,.0f} MMAD ({ap_over:,.0f} past due); letters of credit {lc_all:,.0f} MMAD, {lc_open:,.0f} on opened LCs",
+        [f"Supplier payables {ap_tot:,.0f} MMAD ({ap_over:,.0f} past due); letters of credit {lc_all:,.0f} MMAD" + (" outstanding on opened LCs" if lc_all - lc_open < 0.5 else f", {lc_open:,.0f} on opened LCs"),
          f"Parked invoices {o.get('Parked Invoice', 0):,.0f}, 4411 open items {o.get('Invoices - 4411', 0):,.0f}, downpayments {o.get('Downpayment', 0):,.0f} MMAD. "
-         f"LC: {lc_all - lc_open:,.0f} MMAD still to be opened; {mt.get('2026', 0):,.0f} MMAD matures in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027 (LC situation {meta.get('lc_date', '')})."],
+         f"LC: " + ("" if lc_all - lc_open < 0.5 else f"{lc_all - lc_open:,.0f} MMAD still to be opened; ") + f"{mt.get('2026', 0):,.0f} MMAD of payments planned in 2026 and {mt.get('2027', 0):,.0f} MMAD in 2027 (LC situation {meta.get('lc_date', '')})."],
     ]
 
 def prev_from_dashboard(d):

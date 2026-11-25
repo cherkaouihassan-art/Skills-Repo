@@ -197,8 +197,10 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - The "Signed RU status" workbook (`Signed_RU_status.xlsb`) is a tracker of physical copies only: never use it for the
   signed / not signed totals. It can be quoted as a follow-up list of physical copies outstanding.
 - Signed roll-up rule stays on the status mapping plus PA comments (`reference/status2_signed_mapping.md`).
-- LC figures stay on the last bank LC situation received (19-Oct) until a new one is dropped; the LC payments due on
-  the cash slide come from the COO cash file.
+- LC figures stay on the last LC situation received until a new one is dropped (latest: LC follow-up of 17-Nov-2026,
+  pass `--lc-date 17/11`); the LC payments due on the cash slide come from the COO cash file. Two layouts are read:
+  the bank situation (opened and to-be-opened LCs) and the LC follow-up (opened LCs only, one Shipment / Payment
+  column pair per month; the Payment columns give the schedule).
 - Check whether the UR consolidation was really refreshed (compare totals by BU with last week); say so when it was not.
 - If the COO cash file is re-sent during the week, re-run with it and report what moved (approved, pending, balances).
 - Collections: AR report basis (all clients); explain the gap to the COO file as non-OCP clients and subsidiaries paid

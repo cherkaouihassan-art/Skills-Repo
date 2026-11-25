@@ -15,7 +15,7 @@
   "cash_data_as_of": "2026-11-16",
   "collections_to": "24/11",
   "payments_to": "24/11",
-  "lc_date": "19/10",
+  "lc_date": "17/11",
   "ap_label": "Nov W4 (24/11)",
   "cash_basis": "Jul\u2013Oct actuals (October closed) + Nov collections to 16/11 (OCP weekly report extract 16/11) + November LC maturities per bank LC situation 19/10 v003 (SP2M per SP2M LC forecast 05/11, counted as approved) + SAP payments cleared 02\u201319/11 + Nov customs 01\u201312/11 + open commitments carried into November (approved + pending) \u00b7 Update 23/11: SAP payments 13\u201319/11 (NOVEMBER PAYMENTS.xlsx) loaded; ongoing checked vs Payment tracking log 23/11; MECS removed from AM LC ongoing.",
   "units": "MMAD (millions of MAD)",

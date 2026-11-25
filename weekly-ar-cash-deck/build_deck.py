@@ -441,8 +441,11 @@ def short(bu): return BU_SHORT.get(bu, bu)
 def short_action(a):
     """map the free-text 'Action' column of the LC situation to a short label."""
     l = (str(a) if a else "").strip().lower()
-    if not l or l == "na": return "No action recorded"
-    rules = [("24-month", "24-month rescheduling to finalise"), ("split amount", "Amount to be split by delivery"), ("pushed for 2027", "Remaining payment pushed to 2027"),
+    if not l or l in ("na", "none"): return "No comment"
+    rules = [("delivered, closed", "Delivered, closed"), ("lc closed", "LC closed"), ("need lc extension", "LC extension needed"), ("warranty", "Warranty retention to pay"),
+             ("partil", "Partially delivered"), ("partial", "Partially delivered"), ("delivered", "Delivered"), ("service (supervision)", "Service, no shipment"),
+             ("réception provisoire", "Provisional acceptance pending"), ("paid", "Paid"),
+             ("24-month", "24-month rescheduling to finalise"), ("split amount", "Amount to be split by delivery"), ("pushed for 2027", "Remaining payment pushed to 2027"),
              ("finance to check", "Finance to check with bank"), ("lc to close", "LC to close"), ("lc closed", "LC closed"), ("to pay by 2026", "To pay by 2026"),
              ("lc copy", "Awaiting LC copy from buyer"), ("draft lc", "Awaiting draft LC (procurement)"), ("official response", "Awaiting JESA response (suspension)"),
              ("client agreement", "Client agreement on two-lot schedule"), ("opening committee", "LC opening committee / client approval"), ("new schedule", "Approval of new schedule"),
@@ -1293,12 +1296,19 @@ def build(data, meta, out):
     lc_all = sum(r["encours_mad"] or 0 for r in lcl); lc_open = sum((r["encours_mad"] or 0) for r in lcl if r["opened"] == "Yes"); lc_noo = lc_all - lc_open
     mt = {m: sum((r[m] or 0) for r in lcl) for m in months}
     p26 = sum(v for m, v in mt.items() if str(m).startswith("2026")); p27 = sum(v for m, v in mt.items() if str(m).startswith("2027"))
-    s = D.slide("Letters of Credit – outstanding & maturities", f"{f0(lc_all)} MMAD of LC commitments at {meta['lc_date']}: {f0(lc_open)} opened, {f0(lc_noo)} still to be opened; {f0(appr_lc)} MMAD maturing in {com_full}")
+    only_open = lc_noo < 0.5   # the LC follow-up lists opened LCs only
+    s = D.slide("Letters of Credit – outstanding & maturities", (f"{f0(lc_all)} MMAD outstanding on opened LCs at {meta['lc_date']}; {f0(p26)} MMAD of payments planned in 2026 and {f0(p27)} MMAD in 2027" if only_open
+                else f"{f0(lc_all)} MMAD of LC commitments at {meta['lc_date']}: {f0(lc_open)} opened, {f0(lc_noo)} still to be opened; {f0(appr_lc)} MMAD maturing in {com_full}"))
     cw = (SW - 0.6 - 0.12 * 4) / 5
-    card(s, 0.3, 1.25, cw, 1.05, "Total LC commitments", f0(lc_all), "Encours in MMAD, bank LC situation", fill=NAVY, value_size=22)
-    card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.05, "Opened LCs", f0(lc_open), "LC reference and opening date exist", fill=NAVY2, value_size=22)
-    card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.05, "To be opened", f0(lc_noo), "Committed, LC not yet issued", fill=SLATE, value_size=22)
-    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.05, f"{com} maturities", f0(appr_lc), "Counted as approved payments", fill=GOLD, value_size=22)
+    card(s, 0.3, 1.25, cw, 1.05, ("Outstanding on opened LCs" if only_open else "Total LC commitments"), f0(lc_all), "Encours in MMAD, bank LC situation", fill=NAVY, value_size=22)
+    if only_open:
+        m0 = months[0]; m0n = dt.date.fromisoformat(m0 + "-01").strftime("%b")
+        card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.05, "Number of LCs", str(len(lcl)), "Opened, per the LC follow-up", fill=NAVY2, value_size=22)
+        card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.05, f"{m0n} payments in LC file", f0(mt[m0]), "Planned payments of the first month", fill=SLATE, value_size=22)
+    else:
+        card(s, 0.3 + (cw + 0.12), 1.25, cw, 1.05, "Opened LCs", f0(lc_open), "LC reference and opening date exist", fill=NAVY2, value_size=22)
+        card(s, 0.3 + 2 * (cw + 0.12), 1.25, cw, 1.05, "To be opened", f0(lc_noo), "Committed, LC not yet issued", fill=SLATE, value_size=22)
+    card(s, 0.3 + 3 * (cw + 0.12), 1.25, cw, 1.05, f"LC due end of {com}", f0(appr_lc), "Per the cash position file", fill=GOLD, value_size=22)
     card(s, 0.3 + 4 * (cw + 0.12), 1.25, cw, 1.05, "2026 / 2027 maturities", f"{f0(p26)} / {f0(p27)}", f"Per monthly schedule; unscheduled {f0(lc_all - p26 - p27)}", fill=TEAL, value_size=20)
     tb(s, 0.4, 2.45, 7.5, 0.3, "LC maturity schedule by month (MMAD)", size=13, bold=True, color=NAVY)
     last_nz = max(i for i, m in enumerate(months) if mt[m] > 0.05); mkeep = months[:last_nz + 1]
