@@ -731,7 +731,8 @@ def prev_from_inputs(path):
         P["ur_ms"] = {r["bu"]: r["month_start_total"] for r in recs("UNRECOGNIZED") if r.get("month_start_total") is not None}
     if "DSO" in wb.sheetnames:
         P["dso"] = {r["bu"]: {"current": r["dso_current"], "prior": r["dso_prior_month"]} for r in recs("DSO")}
-        P["dso_rev12"] = {r["bu"]: r["revenue_12m"] for r in recs("DSO") if r.get("revenue_12m")}   # 12-month trailing revenue (MMAD), changes at month close only
+        P["dso_rev12"] = {r["bu"]: r["revenue_12m"] for r in recs("DSO") if r.get("revenue_12m")}
+        P["dso_ar"] = {r["bu"]: r["total_ar"] for r in recs("DSO") if r.get("total_ar")}   # 12-month trailing revenue (MMAD), changes at month close only
     if "NONOCP_BU" in wb.sheetnames:
         P["nonocp"] = {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")}
     if "JESA_UNBILLED_BU" in wb.sheetnames:
@@ -920,7 +921,12 @@ def main():
         for b, rev in P["dso_rev12"].items():
             if b == "JESA Group" or not rev: continue
             ar_v = ar_bu_total.get(b, 0.0); t_ar += ar_v; t_rev += rev
-            dso[b] = {"current": round(ar_v / rev * 365), "prior": (P.get("dso", {}).get(b) or {}).get("current"), "ar": ar_v, "rev12": rev}
+            prev_d = (P.get("dso", {}).get(b) or {}).get("current"); prev_ar = (P.get("dso_ar") or {}).get(b)
+            cur_d = round(ar_v / rev * 365)
+            if prev_d is not None and prev_ar and abs(round(prev_ar / rev * 365) - float(prev_d)) >= 2:
+                # the published figure of this BU does not follow the formula (manual basis, e.g. JESA Technologies): keep its basis, scale with the AR
+                cur_d = round(float(prev_d) * ar_v / prev_ar); print(f"NOTE DSO {b}: published basis kept ({prev_d} days last week), scaled with the AR -> {cur_d}")
+            dso[b] = {"current": cur_d, "prior": prev_d, "ar": ar_v, "rev12": rev}
         if t_rev: dso["JESA Group"] = {"current": round(t_ar / t_rev * 365), "prior": (P.get("dso", {}).get("JESA Group") or {}).get("current"), "ar": t_ar, "rev12": t_rev}
         dso_computed = True
         print("DSO computed from the AR extract and the carried 12-month revenue (days):", {b: v["current"] for b, v in dso.items()})
