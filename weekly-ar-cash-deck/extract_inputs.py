@@ -731,6 +731,7 @@ def prev_from_inputs(path):
         P["ur_ms"] = {r["bu"]: r["month_start_total"] for r in recs("UNRECOGNIZED") if r.get("month_start_total") is not None}
     if "DSO" in wb.sheetnames:
         P["dso"] = {r["bu"]: {"current": r["dso_current"], "prior": r["dso_prior_month"]} for r in recs("DSO")}
+        P["dso_rev12"] = {r["bu"]: r["revenue_12m"] for r in recs("DSO") if r.get("revenue_12m")}   # 12-month trailing revenue (MMAD), changes at month close only
     if "NONOCP_BU" in wb.sheetnames:
         P["nonocp"] = {(r["bu"], r["component"]): r["current"] or 0 for r in recs("NONOCP_BU")}
     if "JESA_UNBILLED_BU" in wb.sheetnames:
@@ -889,7 +890,7 @@ def main():
     ur_ms = {canon_bu(k) or k: float(v) for k, v in json.load(open(a.ur_ms)).items()} if a.ur_ms else (P.get("ur_ms") or {})
     if ur and a.ar_baseline_date and a.ar_baseline_date == a.ar_date and not a.ur_ms:
         ur_ms = {canon_bu(r[0]) or r[0]: r[13] for r in ur["table"]}   # new month: the month-start unrecognized revenue is this week's position
-    dso = {}; dso_trend = None
+    dso = {}; dso_trend = None; dso_computed = False
     if a.dso_calc:
         dc = extract_dso_calc(a.dso_calc, as_of)
         ar_bu_total = collections.defaultdict(float)
@@ -911,6 +912,18 @@ def main():
         for k, v in json.load(open(a.dso)).items():
             if k.startswith("_"): continue
             dso[canon_bu(k) or k] = v
+    elif P.get("dso_rev12"):
+        # no DSO table this week: DSO = total AR of the BU (this week's extract) / 12-month trailing revenue carried from the last table x 365
+        ar_bu_total = collections.defaultdict(float)
+        for (b, comp), v in cur["bu"].items(): ar_bu_total[b] += v
+        t_ar = t_rev = 0.0
+        for b, rev in P["dso_rev12"].items():
+            if b == "JESA Group" or not rev: continue
+            ar_v = ar_bu_total.get(b, 0.0); t_ar += ar_v; t_rev += rev
+            dso[b] = {"current": round(ar_v / rev * 365), "prior": (P.get("dso", {}).get(b) or {}).get("current"), "ar": ar_v, "rev12": rev}
+        if t_rev: dso["JESA Group"] = {"current": round(t_ar / t_rev * 365), "prior": (P.get("dso", {}).get("JESA Group") or {}).get("current"), "ar": t_ar, "rev12": t_rev}
+        dso_computed = True
+        print("DSO computed from the AR extract and the carried 12-month revenue (days):", {b: v["current"] for b, v in dso.items()})
     elif P.get("dso"): dso = P["dso"]
     ms_date = dt.date.fromisoformat(a.ar_baseline_date) if a.ar_baseline_date else None
 
@@ -1010,7 +1023,7 @@ def main():
             "deposited_prior_labor": cur.get("deposited_x", {}).get(("prior", "labor"), 0.0), "deposited_prior_non_labor": cur.get("deposited_x", {}).get(("prior", "non_labor"), 0.0),
             "cash_ongoing_paid": abs(cash.get("ongoing_paid_total") or 0), "cash_ongoing_paid_label": cash.get("ongoing_paid_label") or "",
             "cash_in_ongoing_month": next((r[5] for r in cash["cash_monthly"] if r[0] == "Total cash IN (procurement)"), 0),
-            "dso_prior_label": ("last week" if a.dso_table else "prior month"), "baseline_note": a.baseline_note or "",
+            "dso_prior_label": ("last week" if (a.dso_table or dso_computed) else "prior month"), "dso_source": ("computed" if dso_computed else ("table" if a.dso_table else "")), "baseline_note": a.baseline_note or "",
             **posted}
 
     ar["jesa_unbilled_tot"] = (sum(cur["jesa_unbilled"].values()), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "labor"), sum(v for (b, l), v in cur["jesa_unbilled"].items() if l == "non_labor"))
