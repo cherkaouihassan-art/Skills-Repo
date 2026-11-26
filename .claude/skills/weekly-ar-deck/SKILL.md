@@ -231,12 +231,16 @@ deck after the LC slide, only when asked). Content:
   imminent months + after).
 - Panels, row 2: customs paid by month plus the projection to March at the average of the closed months since July;
   penalties to be paid in December (T4), March and June as a small table, project / non-project invoices; **critical
-  invoices to be paid first**, suppliers under factoring left out (they are paid in full as factoring past due): one
-  grouped line "Tier 3 suppliers > 60 days late" with its total (tab `AP_CRITICAL_GROUPS`), then the four other invoices
-  that generate the most penalties (tab `AP_CRITICAL_INVOICES`, one line per supplier and invoice reference, ranked by
-  amount x days past due until the penalties file gives penalties by invoice:
-  `"by_invoice": {"<supplier>|<reference>": MMAD}`). The section total feeds the "Critical invoices" bar of the
-  first-priority waterfall (`"priority_invoices"` in the penalties JSON overrides it).
+  invoices to be paid first**, suppliers under factoring left out (they are paid in full as factoring past due), tab
+  `AP_CRITICAL_GROUPS` for the two grouped lines and `AP_CRITICAL_INVOICES` for the invoices (one line per supplier and
+  invoice reference):
+  1. "Tier 3 national > 60 days late", one grouped line with its total;
+  2. "International > 180 days late", one grouped line: international suppliers do not generate late-payment penalties,
+     so they are treated apart and only come in when the due date is very old (penalty column "n/a");
+  3. the national invoices that generate the most penalties (top three), ranked by amount x days past due until the
+     penalties file gives penalties by invoice (`"by_invoice": {"<supplier>|<reference>": MMAD}`).
+  The section total feeds the "Critical invoices" bar of the first-priority waterfall (`"priority_invoices"` in the
+  penalties JSON overrides it).
 - The global exposure box carries the label "incl. Q1 <year> horizon".
 - Customs of the month in progress: paid to date by default; when the reviewer gives a full-month figure, pass it with
   `--customs-month <MMAD>` (26-Nov-2026: "make November customs fees 40 MDH"). It then feeds the first-priority

@@ -1503,26 +1503,25 @@ def build(data, meta, out):
         pen_t4 = ((ps[dues[0]].get("project") or 0) + (ps[dues[0]].get("non_project") or 0)) if dues[0] in ps else None
         pen_end = dt.date.fromisoformat(dues[-1] + "-01").strftime("%b-%y"); pen_lab = f"Penalties to {pen_end}"; pen_when = dt.date.fromisoformat(dues[0] + "-01").strftime("%B")
         expo = r_inv + lc_all + cus_expo + (pen_tot or 0)
-        _im0 = r_fpd + sum(mt[m] for m in months[:2]) + cus_cur + (cus_avg if proj_m else 0) + (pen_t4 or 0)
-        _cr = [r for r in data.get("AP_CRITICAL_INVOICES", []) if str(r.get("factoring")) != "Yes" and "tier 3" not in str(r.get("tier"))]
-        if any(r.get("penalty") not in (None, "") for r in _cr): _cr = sorted(_cr, key=lambda r: -(r.get("penalty") or 0))
-        _g = next(iter(data.get("AP_CRITICAL_GROUPS", [])), None)
-        _im0 += (float(meta.get("ap_penalty_priority_invoices")) if meta.get("ap_penalty_priority_invoices") not in (None, "", "None") else sum((r["amount"] or 0) for r in _cr[:(4 if _g else 5)]) + ((_g["amount"] or 0) if _g else 0))
+        # critical invoices, factoring left out (paid in full above): national tier 3 suppliers long past due as one group, international
+        # suppliers (no late-payment penalties) only when the due date is very old, then the national invoices that generate the most penalties
+        # (ranked on penalties when the penalties file gives them, else on amount x days past due)
+        cgr = {r.get("key"): r for r in data.get("AP_CRITICAL_GROUPS", []) if r.get("key")}
+        t3g = cgr.get("tier3_long"); ing = cgr.get("intl_old")
+        if ing and (ing["amount"] or 0) < 0.05: ing = None
+        crit_all = [r for r in data.get("AP_CRITICAL_INVOICES", []) if str(r.get("factoring")) != "Yes" and "tier 3" not in str(r.get("tier")) and not str(r.get("tier")).startswith("International")]
+        has_pen = any(r.get("penalty") not in (None, "") for r in crit_all)
+        if has_pen: crit_all = sorted(crit_all, key=lambda r: -(r.get("penalty") or 0))
+        crit_top = crit_all[:5 - (1 if t3g else 0) - (1 if ing else 0)]
+        crit_oth = sum((r["amount"] or 0) for r in crit_top); crit_t3 = (t3g["amount"] or 0) if t3g else 0.0; crit_in = (ing["amount"] or 0) if ing else 0.0; crit_tot = crit_oth + crit_t3 + crit_in
+        pinv = meta.get("ap_penalty_priority_invoices"); pinv = float(pinv) if pinv not in (None, "", "None") else (crit_tot if (crit_top or t3g or ing) else None)
+        _im0 = r_fpd + sum(mt[m] for m in months[:2]) + cus_cur + (cus_avg if proj_m else 0) + (pen_t4 or 0) + (pinv or 0)
         hz = f"incl. Q1 {_ad.year + (1 if _ad.month > 3 else 0)} horizon"
         s = D.slide("JESA Cash Risks", f"First priority payments {f0(_im0)} MMAD; global exposure {f0(expo)} MMAD {hz}")
         # ---- top: first priority (imminent payments, waterfall) and the global exposure
         ty, th = 1.16, 1.7
         def _ml(m): return dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b")
         lc_im = [(m, mt[m]) for m in months[:2]]   # LC payments due in the month in progress and the next one
-        # critical invoices: tier 3 suppliers long past due as one group, then the other invoices that generate the most penalties
-        # (ranked on penalties when the penalties file gives them, else on amount x days past due). Factoring is left out: it is paid in full above.
-        crit_all = [r for r in data.get("AP_CRITICAL_INVOICES", []) if str(r.get("factoring")) != "Yes" and "tier 3" not in str(r.get("tier"))]
-        has_pen = any(r.get("penalty") not in (None, "") for r in crit_all)
-        if has_pen: crit_all = sorted(crit_all, key=lambda r: -(r.get("penalty") or 0))
-        t3g = next(iter(data.get("AP_CRITICAL_GROUPS", [])), None)
-        crit_top = crit_all[:(4 if t3g else 5)]
-        crit_oth = sum((r["amount"] or 0) for r in crit_top); crit_t3 = (t3g["amount"] or 0) if t3g else 0.0; crit_tot = crit_oth + crit_t3
-        pinv = meta.get("ap_penalty_priority_invoices"); pinv = float(pinv) if pinv not in (None, "", "None") else (crit_tot if (crit_top or t3g) else None)
         cus_im = cus_cur + (cus_avg if proj_m else 0)   # customs of the same two months: paid to date in the month in progress + next month at the average
         imm = r_fpd + sum(v for _, v in lc_im) + cus_im + (pinv or 0)
         imm += (pen_t4 or 0)   # penalties to be paid at the first payment date (end of December)
@@ -1536,7 +1535,7 @@ def build(data, meta, out):
                                             [(f"Penalties end {pen_when[:3]} ", {}), ((f1(pen_t4) if pen_t4 is not None else "–"), {"bold": True})]], size=8, color=WHITE, line_spacing=1.08)
         wcat = [("Factoring\npast due", f"of {f0(r_f)}", r_fpd, GOLD)] + [(f"LC due\n{_ml(m)}-{str(m)[2:4]}", "", v, BLUE) for m, v in lc_im] + \
                [(f"Customs\n{com}–{proj_m[0] if proj_m else com}", (f"{f0(cus_cur)} + {f0(cus_avg)}" if proj_m else ""), cus_im, SLATE),
-                ("Critical\ninvoices", ("Tier 3 + others" if t3g else "aging, penalties"), pinv, RED), (f"Penalties\nend {pen_when[:3]}", "T4", pen_t4, ORANGE), ("First\npriority", "", imm, NAVY)]
+                ("Critical\ninvoices", "aging, penalties", pinv, RED), (f"Penalties\nend {pen_when[:3]}", "T4", pen_t4, ORANGE), ("First\npriority", "", imm, NAVY)]
         wx, ww = 2.95, 6.1; n_ = len(wcat); slot = ww / n_; bwid = slot * 0.6; base_y = ty + th - 0.6; top_y = ty + 0.3; sc = (base_y - top_y) / (imm or 1)
         rect(s, wx, base_y, ww, 0.012, GREY); run = 0.0
         for i, (lab, sub, v, col) in enumerate(wcat):
@@ -1621,13 +1620,16 @@ def build(data, meta, out):
         # ---- 6. critical invoices: to be paid first, by aging and penalties generated
         panel(xC, y2, wC, h2, "Critical invoices (MMAD)", None, RED)
         tb(s, xC + 2.2, y2 + 0.09, wC - 2.35, 0.22, "to be paid first  ·  excl. factoring  ·  " + ("ranked by penalties generated" if has_pen else "ranked by amount × days late"), size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
-        crow = []
-        if t3g: crow.append([f"Tier 3 > 60 days late ({int(t3g['invoices'] or 0)} invoices, {int(t3g['suppliers'] or 0)} suppliers)", "All", f1(t3g["amount"]), f"61–{int(t3g['max_days_past_due'] or 0)}", "–"])
+        crow = []; gfill = RGBColor(0xFB, 0xE6, 0xE2)
+        if t3g: crow.append([f"Tier 3 national > 60 days late ({int(t3g['invoices'] or 0)} invoices, {int(t3g['suppliers'] or 0)} suppliers)", "All", f1(t3g["amount"]), f"61–{int(t3g['max_days_past_due'] or 0)}", "–"])
+        if ing: crow.append([f"International > 180 days late ({int(ing['invoices'] or 0)} invoices, {int(ing['suppliers'] or 0)} suppliers)", "All", f1(ing["amount"]), f"{int(ing['min_days_past_due'] or 0)}–{int(ing['max_days_past_due'] or 0)}", "n/a"])
+        ng = len(crow)
         crow += [[str(r["supplier"] or "")[:40], short(r["bu"]), f1(r["amount"]), f"{int(r['days_past_due'] or 0)}", (f1(r["penalty"]) if r.get("penalty") not in (None, "") else "–")] for r in crit_top]
         if crow:
             table(s, xC + 0.12, y2 + 0.38, wC - 0.24, ["Supplier", "BU", "Amount", "Days late", "Penalty"], crow, col_w=[3.1, 0.9, 0.6, 0.65, 0.55], font_size=7.5, header_size=7, row_h=0.185, header_h=0.22,
-                  colors={(i, 3): RED for i in range(len(crow))}, header_fill=RED, bold_rows=((0,) if t3g else ()), fills=({0: RGBColor(0xFB, 0xE6, 0xE2)} if t3g else None))
-        total_strip(xC, y2, wC, h2, "Total critical invoices", f0(crit_tot), ([("= ", {}), B(f0(crit_t3), RED), (" Tier 3 + ", {}), B(f0(crit_oth), RED), (f" other invoices (top {len(crit_top)})", {})] if t3g else [(f"= top {len(crit_top)} invoices", {})]))
+                  colors={(i, 3): RED for i in range(len(crow))}, header_fill=RED, bold_rows=tuple(range(ng)), fills={i: gfill for i in range(ng)})
+        parts = [(v, lab) for v, lab in ((crit_t3, "Tier 3"), (crit_in, "international"), (crit_oth, f"national invoices (top {len(crit_top)})")) if v > 0.05]
+        total_strip(xC, y2, wC, h2, "Total critical invoices", f0(crit_tot), [("= ", {})] + [x for j, (v, lab) in enumerate(parts) for x in ((B(("+ " if j else "") + f1(v), RED), (f" {lab} ", {})))])
 
     D.section = "bu"
     det = {}

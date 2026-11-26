@@ -437,10 +437,14 @@ def extract_ap(path, as_of):
             "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None,
             # critical invoices: ranked by amount x days past due (what drives late-payment penalties: amount and time)
             "critical": sorted([[k[0], v["bu"], k[1], v["origin"], v["days"], v["amount"], ("Yes" if v["factoring"] else "No"), v["tier"], v["amount"] * v["days"]] for k, v in inv_x.items() if v["amount"] > 0.05],
-                               key=lambda x: -x[8])[:40], "n_past_due_invoices": sum(1 for v in inv_x.values() if v["amount"] > 0.05),
-            # tier 3 suppliers long past due (more than 60 days), factoring apart: shown as one group among the critical invoices
-            "tier3_long": (lambda L: {"amount": sum(v["amount"] for _, v in L), "invoices": len(L), "suppliers": len({k[0] for k, _ in L}), "max_days": max([v["days"] for _, v in L] or [0]),
-                                      "over_90": sum(v["amount"] for _, v in L if v["days"] > 90)})([(k, v) for k, v in inv_x.items() if "tier 3" in v["tier"] and not v["factoring"] and v["days"] > 60 and v["amount"] > 0])}
+                               key=lambda x: -x[8])[:80], "n_past_due_invoices": sum(1 for v in inv_x.values() if v["amount"] > 0.05),
+            # groups shown among the critical invoices, factoring apart: national tier 3 suppliers long past due (more than 60 days),
+            # and international suppliers (no late-payment penalties) only when the due date is very old (more than 180 days)
+            "tier3_long": _grp([(k, v) for k, v in inv_x.items() if v["tier"].startswith("National") and "tier 3" in v["tier"] and not v["factoring"] and v["days"] > 60 and v["amount"] > 0]),
+            "intl_old": _grp([(k, v) for k, v in inv_x.items() if v["tier"].startswith("International") and not v["factoring"] and v["days"] > 180 and v["amount"] > 0])}
+
+def _grp(L):
+    return {"amount": sum(v["amount"] for _, v in L), "invoices": len(L), "suppliers": len({k[0] for k, _ in L}), "min_days": min([v["days"] for _, v in L] or [0]), "max_days": max([v["days"] for _, v in L] or [0])}
 
 AGING_PAST_DUE = ["1–30 days", "31–60 days", "61–90 days", "91–180 days", "> 180 days"]
 TIER_ORDER = ["National – tier 1", "National – tier 2", "National – tier 3", "International – tier 1", "International – tier 2", "International – tier 3",
@@ -1280,10 +1284,11 @@ def main():
     pinv_ = (pen or {}).get("by_invoice") or {}   # {"<supplier>|<invoice reference>": MMAD} penalties generated, from the penalties file
     write_sheet(wb, "AP_CRITICAL_INVOICES", ["supplier", "bu", "reference", "origin", "days_past_due", "amount", "factoring", "tier", "amount_x_days", "penalty"],
                 [c + [pinv_.get(f"{c[0]}|{c[2]}")] for c in ap["critical"]],
-                note=f"Supplier invoice file: past due invoices at {as_of.isoformat()} ranked by amount x days past due (40 largest of {ap['n_past_due_invoices']}); penalty = penalties generated per the penalties file when provided (MMAD).", widths=[34, 22, 20, 16, 12, 12, 10, 24, 14, 12])
-    t3 = ap["tier3_long"]
-    write_sheet(wb, "AP_CRITICAL_GROUPS", ["group", "amount", "invoices", "suppliers", "max_days_past_due", "amount_over_90_days"], [["Tier 3 suppliers, more than 60 days past due, excl. factoring", t3["amount"], t3["invoices"], t3["suppliers"], t3["max_days"], t3["over_90"]]],
-                note=f"Supplier invoice file: tier 3 suppliers (national and international) more than 60 days past due at {as_of.isoformat()}, suppliers under factoring left out (MMAD).", widths=[56, 12, 10, 10, 16, 18])
+                note=f"Supplier invoice file: past due invoices at {as_of.isoformat()} ranked by amount x days past due (80 largest of {ap['n_past_due_invoices']}); penalty = penalties generated per the penalties file when provided (MMAD).", widths=[34, 22, 20, 16, 12, 12, 10, 24, 14, 12])
+    write_sheet(wb, "AP_CRITICAL_GROUPS", ["key", "group", "amount", "invoices", "suppliers", "min_days_past_due", "max_days_past_due"],
+                [[k_, lab_, ap[k_]["amount"], ap[k_]["invoices"], ap[k_]["suppliers"], ap[k_]["min_days"], ap[k_]["max_days"]] for k_, lab_ in
+                 (("tier3_long", "National tier 3 suppliers, more than 60 days past due, excl. factoring"), ("intl_old", "International suppliers, more than 180 days past due, excl. factoring (no late-payment penalties)"))],
+                note=f"Supplier invoice file at {as_of.isoformat()}: groups shown among the critical invoices (MMAD).", widths=[12, 70, 12, 10, 10, 16, 16])
     tp = (crep or {}).get("tiers") or {}
     write_sheet(wb, "AP_TIER_PAID", ["tier", "paid_actual_months", "ongoing_month", "pending_approval", "open_invoices", "past_due"],
                 [[t, (tp.get(t) or [None] * 3)[0], (tp.get(t) or [None] * 3)[1], (tp.get(t) or [None] * 3)[2], ap["tier_x"].get((t, "open"), 0.0), ap["tier_x"].get((t, "past_due"), 0.0)]
