@@ -1122,6 +1122,7 @@ def main():
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"], "note_psr_signature": a.psr_note or "",
+            "ap_penalty_priority_invoices": (pen or {}).get("priority_invoices"),
             "ap_penalties": (pen or {}).get("total"), "ap_penalties_label": (pen or {}).get("label") or "",
             "rfq1_month": (rfq1 or {}).get("month") or "",
             "ap_total_prev": P.get("ap_total"), "ap_overdue_prev": P.get("ap_overdue"),

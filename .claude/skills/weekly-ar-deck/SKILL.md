@@ -217,12 +217,14 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
 deck after the LC slide, only when asked). Content:
 
-- Top: **total cash exposure** = supplier invoices + LC outstanding + customs from the month in progress to next March
-  (paid to date in the month + projection; earlier months are not counted) + **T4 penalties only** (first payment date,
-  December; the March and June amounts are shown in the penalties section but stay out of the total), with a
-  waterfall by category: past due invoices excl. factoring, invoices not yet due excl. factoring, invoices under
-  factoring (past due part quoted), LC outstanding, customs projection, penalties, total. Factoring is carved out of the
-  two invoice bars so nothing is counted twice. No KPI boxes.
+- Top left: **first priority – imminent payments**, with the waterfall: factoring past due, LC due in the month in
+  progress, LC due next month (LC payment schedule, same figures as the LC panel), invoices that generate the highest
+  penalties at the December payment date (blank until the penalties file gives them: `"priority_invoices": MMAD` in the
+  penalties JSON; do not count twice invoices already in the factoring past due), total first priority.
+- Top right: **global exposure** box, no waterfall = supplier invoices (past due excl. factoring, not yet due excl.
+  factoring, under factoring) + LC outstanding + customs from the month in progress to next March (paid to date in the
+  month + projection; earlier months are not counted) + **T4 penalties only** (December; March and June are shown in
+  the penalties section but stay out of the total).
 - Panels: past due payables by age; factoring by BU (factoring, past due, not yet due); LC payments due over the next six
   months; customs paid by month plus a projection to March at the average of the closed months since July (the month
   in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
