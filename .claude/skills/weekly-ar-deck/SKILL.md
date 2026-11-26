@@ -189,6 +189,29 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - "Unbilled under JESA – Status by Business Unit" sits in the backup, first slide after the divider.
 - No "paid and commitments" payments-detail slide and no "Sources & definitions" slide.
 
+## 7c. Slides added on request (26-Nov-2026): keep them every week
+
+- **AR Executive Summary (slide 4).** A band under each KPI box gives the PSR / Proc split of the box (gross exposure =
+  AR PSR vs AR procurement + unrecognized). The payments card is a small grid: current month, prior month and since July,
+  each with Total, PSR, Proc, OCP and Non-OCP (AR report, by payment date).
+- **PSR – Cash In vs Revenue Posted by Business Unit** (right after the cash position slide). Revenue = rows
+  "Revenue — PSR" of the cash flow workbook, sheet `REPORT - Cashflow by BU` (closed months since July). Cash in = PSR paid
+  lines of the AR report by payment date, **all clients** (the OCP payment report alone understates Global Mining and
+  JESA Technologies, mostly non-OCP). Coverage = cash in ÷ revenue over the same months. The month not yet closed has
+  no posted revenue: the reviewer gives the **RFQ1** PSR revenue by BU; save it as
+  `inputs/rfq1/psr_rfq1_<YYYY-MM>.json` (`{"month": "2026-11", "psr": {"AM": 60.0, ...}}`, MMAD) and the month joins
+  the ratio, flagged "RFQ1". Without it the month's cash in is shown apart ("Nov cash in to <date>") and stays outside
+  the ratio: ask for the RFQ1 figures, never estimate them.
+- **Accounts Payable.** Cards: total payables incl. LC, open supplier invoices, past due (% of invoices), invoices under
+  factoring (column "Does the supplier have a factoring?" of the supplier invoice file), LC opened. Table by BU with
+  past due, % past due and factoring. Aging of the past due by days late (1–30, 31–60, 61–90, 91–180, > 180), factoring
+  apart. Paid vs open invoices by supplier tier: paid in the closed months since July and ongoing payments of the
+  current month from the tier rows of the JESA total block of `REPORT - Cashflow by BU`, open invoices and past due
+  from the supplier invoice file ("Etranger" in the cash workbook = "International" not tiered in the invoice file).
+- **Penalties on past due.** Shown only when the reviewer's penalties file has been received: save its figures as
+  `inputs/penalties/penalties_<date>.json` (`{"total": MMAD, "label": "...", "by_bu": {"<BU>": MMAD}}`); a card and a
+  "Penalties" column by BU then appear. Never compute or estimate penalties.
+
 ## 8. Reviewer preferences (apply every week without being asked)
 
 - Do not send files unless asked ("send me the presentation"); when the reviewer says "do not send", only confirm the change.

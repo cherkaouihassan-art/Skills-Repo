@@ -399,8 +399,22 @@ def extract_ap(path, as_of):
     by_bu_origin = collections.defaultdict(float); cnt = collections.defaultdict(int)
     buckets = collections.defaultdict(float); tiers = collections.defaultdict(float); sup = collections.defaultdict(float)
     sup_bu = {}
+    hdr = [str(c or "").strip().lower() for c in rows[hdr_i]]
+    f_col = next((i for i, h in enumerate(hdr) if "factoring" in h), None)   # 'Does the supplier have a factoring?'
+    bu_x = collections.defaultdict(float); aging = collections.defaultdict(float); tier_x = collections.defaultdict(float)
     for r in data:
         bu = canon_bu(r[3]) or str(r[3]); origin = str(r[10]).strip(); amt = -num(r[14], 1e6)  # payables shown positive
+        fact = f_col is not None and str(r[f_col] or "").strip().upper() in ("YES", "OUI", "Y", "O")
+        od = (as_of - (r[9].date() if isinstance(r[9], dt.datetime) else r[9])).days if isinstance(r[9], (dt.datetime, dt.date)) else None
+        late = od is not None and od > 0; ts = tier_std(r[6])
+        bu_x[(bu, "total")] += amt; tier_x[(ts, "open")] += amt
+        if fact: bu_x[(bu, "factoring")] += amt
+        if late:
+            bu_x[(bu, "past_due")] += amt; tier_x[(ts, "past_due")] += amt
+            if fact: bu_x[(bu, "factoring_past_due")] += amt
+            ab = "1–30 days" if od <= 30 else "31–60 days" if od <= 60 else "61–90 days" if od <= 90 else "91–180 days" if od <= 180 else "> 180 days"
+            aging[(ab, "all")] += amt
+            if fact: aging[(ab, "factoring")] += amt
         by_bu_origin[(bu, origin)] += amt; cnt[(bu, origin)] += 1
         d = r[9]
         if isinstance(d, (dt.datetime, dt.date)):
@@ -415,7 +429,52 @@ def extract_ap(path, as_of):
     return {"by_bu_origin": {f"{k[0]}|{k[1]}": v for k, v in by_bu_origin.items()},
             "count": {f"{k[0]}|{k[1]}": v for k, v in cnt.items()},
             "buckets": {f"{k[0]}|{k[1]}": v for k, v in buckets.items()},
-            "tiers": dict(tiers), "top_suppliers": [[s, v, sup_bu[s]] for s, v in top], "n_lines": len(data)}
+            "tiers": dict(tiers), "top_suppliers": [[s, v, sup_bu[s]] for s, v in top], "n_lines": len(data),
+            "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None}
+
+AGING_PAST_DUE = ["1–30 days", "31–60 days", "61–90 days", "91–180 days", "> 180 days"]
+TIER_ORDER = ["National – tier 1", "National – tier 2", "National – tier 3", "International – tier 1", "International – tier 2", "International – tier 3",
+              "International – not tiered", "OCP & subsidiaries", "Other / not tiered"]
+
+def tier_std(t):
+    """one tier naming for the supplier invoice file ('1 - National', 'International', 'Not on OCP Tier' …) and the cash flow workbook ('1', 'Intl 1', 'Etranger*' …)."""
+    t = re.sub(r"\s+", " ", str(t if t is not None else "").strip().lower())
+    if re.fullmatch(r"\d(\.0)?", t): return "National – tier " + t[0]
+    m = re.match(r"(\d) ?- ?(national|international)", t)
+    if m: return ("National" if m.group(2) == "national" else "International") + " – tier " + m.group(1)
+    m = re.match(r"intl ?(\d)", t)
+    if m: return "International – tier " + m.group(1)
+    if t.startswith("etranger") or t.startswith("étranger") or t == "international": return "International – not tiered"
+    if "filiale" in t: return "OCP & subsidiaries"
+    return "Other / not tiered"
+
+def extract_cash_report(path):
+    """Cash flow workbook, sheet 'REPORT - Cashflow by BU': revenue posted by BU and month (PSR and procurement) and, for the group block,
+    supplier payments by tier (actual months, ongoing month incl. approved payments, payments pending approval). MMAD, payments positive."""
+    names = openpyxl.load_workbook(path, read_only=True).sheetnames
+    sheet = next((n for n in names if n.strip().lower().startswith("report - cashflow by bu")), None)
+    if not sheet: return None
+    rows = load(path, sheet)
+    hi = next((i for i, r in enumerate(rows[:15]) if sum(isinstance(c, (dt.datetime, dt.date)) for c in r[1:9]) >= 2), None)
+    if hi is None: return None
+    h = rows[hi]; mcols = [(c, h[c].strftime("%Y-%m")) for c in range(1, 9) if isinstance(h[c], (dt.datetime, dt.date))]
+    c_ong = mcols[-1][0] + 1; c_pend = c_ong + 2
+    kcol = next((c for c, v in enumerate(h) if str(v or "").strip().lower() == "bu key"), 10)
+    rev = {"psr": {}, "proc": {}}; tiers = collections.defaultdict(lambda: [0.0, 0.0, 0.0]); in_tiers = False
+    for r in rows[hi + 1:]:
+        if len(r) <= kcol: continue
+        lab = str(r[0] if r[0] is not None else "").strip(); key = str(r[kcol] or "").strip(); grp = key.upper().startswith("JESA TOTAL")
+        ll = lab.lower()
+        if ll.startswith("revenue"):
+            kind = "psr" if "psr" in ll else ("proc" if "proc" in ll else None); b = "JESA Group" if grp else canon_bu(key)
+            if kind and b and any(r[c] is not None for c, _ in mcols): rev[kind][b] = {m: num(r[c], 1e6) for c, m in mcols}
+        if grp:
+            if ll.startswith("total cash in"): in_tiers = True; continue
+            if ll.startswith("lc payments") or ll.startswith("total cash out"): in_tiers = False
+            if in_tiers and lab:
+                t = tiers[tier_std(lab)]
+                t[0] += -sum(num(r[c], 1e6) for c, _ in mcols); t[1] += -num(r[c_ong], 1e6); t[2] += -num(r[c_pend], 1e6)
+    return {"months": [m for _, m in mcols], "revenue": rev, "tiers": {k: v for k, v in tiers.items()}}
 
 
 # ----------------------------------------------------------------------------- AR baseline (raw AR line list, e.g. beginning of month)
@@ -843,6 +902,8 @@ def main():
     ap_.add_argument("--ar-baseline-date", default=None, help="date label of the month-start baseline YYYY-MM-DD")
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", default=None); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--lc-inputs", default=None, help="saved weekly_inputs.xlsx whose LC_LINES tab is reused when no new bank LC situation is provided")
+    ap_.add_argument("--rfq1", default=None, help='JSON {"month": "2026-11", "psr": {bu: MMAD}}: forecast PSR revenue (RFQ1) of the month not yet closed, for the PSR cash-in coverage slide')
+    ap_.add_argument("--penalties", default=None, help='JSON {"total": MMAD, "label": "...", "by_bu": {bu: MMAD}}: late-payment penalties on the past due supplier balance')
     ap_.add_argument("--psr-note", default=None, help="one-line note shown in a highlighted band on the PSR signature slide (e.g. an achievement to celebrate)")
     ap_.add_argument("--baseline-inputs", default=None, help="saved weekly_inputs.xlsx of the month-start week, used when the raw baseline AR extract is not available")
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
@@ -898,6 +959,9 @@ def main():
     if MS: print("month-start AR (MMAD):", {k: round(v, 1) for k, v in MS["kpi"].items()})
     if not (a.lc or a.lc_inputs): raise SystemExit("need --lc (bank LC situation) or --lc-inputs (saved inputs workbook holding the last LC lines)")
     cash = extract_cash(a.cash); lc = extract_lc(a.lc) if a.lc else lc_from_inputs(a.lc_inputs); ap = extract_ap(a.ap, as_of)
+    crep = extract_cash_report(a.cash)
+    rfq1 = json.load(open(a.rfq1)) if a.rfq1 else None
+    pen = json.load(open(a.penalties)) if a.penalties else None
     if not cash.get("lc_oct_maturity_total"):
         # 'LC Ongoing' sheet absent: ongoing LC payments line of the cash workbook, else the LC situation column of the ongoing month
         lcp_line = next((r for r in cash["cash_monthly"] if r[0] == "Cash OUT LC payments"), None)
@@ -1015,7 +1079,7 @@ def main():
     ar["collections_bu"] = []
     for b in bus:
         cb = cur["coll_bu"]
-        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0), cb.get((b, "jul_ytd"), 0.0), cb.get((b, "jul_ytd_labor"), 0.0), cb.get((b, "jul_ytd_non_labor"), 0.0), cb.get((b, "month_labor"), 0.0), cb.get((b, "month_non_labor"), 0.0), cb.get((b, "prior_labor"), 0.0), cb.get((b, "prior_non_labor"), 0.0)])
+        ar["collections_bu"].append([b, cb.get((b, "month_prev"), 0.0), cb.get((b, "month"), 0.0), cb.get((b, "prior"), 0.0), cb.get((b, "ytd_prev"), 0.0), cb.get((b, "ytd"), 0.0), cur["coll_cnt"].get(b, 0), cur["deposited_bu"].get(b, 0.0), cb.get((b, "month_prev_nonocp"), 0.0), cb.get((b, "month_nonocp"), 0.0), cb.get((b, "prior_nonocp"), 0.0), cb.get((b, "ytd_nonocp"), 0.0), cb.get((b, "jul_ytd"), 0.0), cb.get((b, "jul_ytd_labor"), 0.0), cb.get((b, "jul_ytd_non_labor"), 0.0), cb.get((b, "month_labor"), 0.0), cb.get((b, "month_non_labor"), 0.0), cb.get((b, "prior_labor"), 0.0), cb.get((b, "prior_non_labor"), 0.0), cb.get((b, "jul_ytd_nonocp"), 0.0)])
     ar["ap_bu"] = [[b, ap_prev_bu.get(b, {}).get("downpayment", 0.0), ap_cur_bu[b]["downpayment"], ap_prev_bu.get(b, {}).get("parked", 0.0), ap_cur_bu[b]["parked"],
                     ap_prev_bu.get(b, {}).get("inv4411", 0.0), ap_cur_bu[b]["inv4411"], ap_prev_bu.get(b, {}).get("lc", 0.0), ap_cur_bu[b]["lc"]] for b in bus if b in ap_cur_bu or b in ap_prev_bu]
     # per-BU detail (current / prev when a raw prev file or prev inputs with detail exist / month start)
@@ -1058,6 +1122,8 @@ def main():
             "collections_to": a.collections_to or "19/10", "payments_to": a.payments_to or "15/10", "lc_date": a.lc_date or "19/10", "ap_label": a.ap_label or "Oct W3",
             "cash_basis": cash["basis"], "units": "MMAD (millions of MAD)", "ur_prev_source": (ur or {}).get("prev_source", ""), "collections_basis": "AR paid lines by payment date, amount invoiced (same basis as 'Invoices paid' in the BU meeting report)",
             "deposited_month": cur["deposited_total"], "note_psr_signature": a.psr_note or "",
+            "ap_penalties": (pen or {}).get("total"), "ap_penalties_label": (pen or {}).get("label") or "",
+            "rfq1_month": (rfq1 or {}).get("month") or "",
             "ap_total_prev": P.get("ap_total"), "ap_overdue_prev": P.get("ap_overdue"),
             "deposited_month_labor": cur.get("deposited_x", {}).get(("cur", "labor"), 0.0), "deposited_month_non_labor": cur.get("deposited_x", {}).get(("cur", "non_labor"), 0.0),
             "deposited_prior_labor": cur.get("deposited_x", {}).get(("prior", "labor"), 0.0), "deposited_prior_non_labor": cur.get("deposited_x", {}).get(("prior", "non_labor"), 0.0),
@@ -1161,7 +1227,7 @@ def main():
     if dso_trend:
         write_sheet(wb, "DSO_TREND", ["bu"] + dso_trend["trend_months"] + ["current"], [[b] + (dso_trend["trend"].get(b) or [None] * len(dso_trend["trend_months"])) + [dso[b]["current"]] for b in dso if b != "JESA Group"],
                     note=f"DSO history by BU (days) from the DSO calc workbook 'Trend' sheet; 12-month revenue window {dso_trend['window'][0]} to {dso_trend['window'][-1]}.", widths=[28] + [9] * (len(dso_trend["trend_months"]) + 1))
-    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd", "since_jul", "since_jul_labor", "since_jul_non_labor", "month_labor", "month_non_labor", "prior_labor", "prior_non_labor"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
+    write_sheet(wb, "COLLECTIONS_BU", ["bu", "month_prev_week", "month_current", "prior_month", "ytd_prev_week", "ytd_current", "invoices_ytd", "deposited_month", "nonocp_month_prev_week", "nonocp_month_current", "nonocp_prior_month", "nonocp_ytd", "since_jul", "since_jul_labor", "since_jul_non_labor", "month_labor", "month_non_labor", "prior_labor", "prior_non_labor", "since_jul_nonocp"], sorted(ar["collections_bu"], key=lambda r: -r[5]),
                 note=f"Payments received by BU (amount invoiced, by payment date): current month to {ar_date.isoformat()} vs to {prev_date.isoformat()}, prior full month, YTD; deposited_month = invoices received (reception date) in the current month, HT; nonocp_* = same measures for non-OCP clients (Client 1).", widths=[28])
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     write_sheet(wb, "COLLECTIONS_MONTHLY", ["month", "labor", "non_labor"], [[m, cur["coll_month"].get((i + 1, "labor"), 0.0), cur["coll_month"].get((i + 1, "non_labor"), 0.0)] for i, m in enumerate(months)],
@@ -1190,6 +1256,32 @@ def main():
     write_sheet(wb, "AP_BUCKETS", ["origin", "bucket", "amount"], [[k.split("|")[0], k.split("|")[1], v] for k, v in sorted(ap["buckets"].items())], note=f"Supplier invoice file ({meta['ap_label']}): open payables by origin and due-date bucket vs {as_of.isoformat()} (MMAD).", widths=[20, 16])
     write_sheet(wb, "AP_BU_ORIGIN", ["bu", "origin", "amount", "lines"], [[k.split("|")[0], k.split("|")[1], v, ap["count"][k]] for k, v in sorted(ap["by_bu_origin"].items())], note="Supplier invoice file: open payables by BU and origin.", widths=[28, 20])
     write_sheet(wb, "AP_TIERS", ["tier", "amount"], sorted([[k, v] for k, v in ap["tiers"].items()], key=lambda r: -r[1]), note="Supplier invoice file: open payables by supplier tier.", widths=[24])
+    bx = ap["bu_x"]; ap_bus = sorted({k[0] for k in bx}, key=lambda b: -bx.get((b, "total"), 0.0))
+    write_sheet(wb, "AP_BU_INDICATORS", ["bu", "open_invoices", "past_due", "factoring", "factoring_past_due", "penalties"],
+                [[b, bx.get((b, "total"), 0.0), bx.get((b, "past_due"), 0.0), (bx.get((b, "factoring"), 0.0) if ap["has_factoring"] else None), (bx.get((b, "factoring_past_due"), 0.0) if ap["has_factoring"] else None),
+                  ((pen or {}).get("by_bu") or {}).get(b)] for b in ap_bus],
+                note=f"Supplier invoice file ({meta['ap_label']}): open invoices by BU, past due at {as_of.isoformat()}, invoices of suppliers under factoring, late-payment penalties when provided (MMAD).", widths=[28])
+    write_sheet(wb, "AP_AGING_PAST_DUE", ["bucket", "amount", "factoring"], [[k, ap["aging_past_due"].get((k, "all"), 0.0), ap["aging_past_due"].get((k, "factoring"), 0.0)] for k in AGING_PAST_DUE],
+                note=f"Supplier invoice file: past due open invoices by days past the due date at {as_of.isoformat()} (MMAD); factoring = suppliers under factoring.", widths=[18])
+    tp = (crep or {}).get("tiers") or {}
+    write_sheet(wb, "AP_TIER_PAID", ["tier", "paid_actual_months", "ongoing_month", "pending_approval", "open_invoices", "past_due"],
+                [[t, (tp.get(t) or [None] * 3)[0], (tp.get(t) or [None] * 3)[1], (tp.get(t) or [None] * 3)[2], ap["tier_x"].get((t, "open"), 0.0), ap["tier_x"].get((t, "past_due"), 0.0)]
+                 for t in TIER_ORDER if t in tp or ap["tier_x"].get((t, "open"))],
+                note="Supplier payments by tier per the cash flow workbook (closed months since July, ongoing month incl. approved payments, payments pending approval) vs open invoices by tier in the supplier invoice file (MMAD).", widths=[30])
+    if crep and crep["revenue"]["psr"]:
+        cm_ = cur.get("coll_bu_month", {}); rm = crep["months"]; cov = []
+        fm = (rfq1 or {}).get("month"); fv = {canon_bu(k) or k: v for k, v in ((rfq1 or {}).get("psr") or {}).items()}
+        all_m = rm + ([fm] if fm and fm not in rm else ([] if fm else [ar_date.strftime("%Y-%m")] if ar_date.strftime("%Y-%m") not in rm else []))
+        cov_bus = sorted({*[b for b in crep["revenue"]["psr"] if b != "JESA Group"], *[k[0] for k in cm_ if k[2] == "labor" and f"{ar_date.year}-{k[1]:02d}" in all_m]} - {"Other"})
+        for b in cov_bus:
+            for m in all_m:
+                mi = int(m[5:7]); actual = m in rm
+                rv = crep["revenue"]["psr"].get(b, {}).get(m) if actual else (fv.get(b) if fm == m else None)
+                cov.append([b, m, rv, ("actual" if actual else ("RFQ1" if fm == m and rv is not None else "")),
+                            cm_.get((b, mi, "labor", "ocp"), 0.0) + cm_.get((b, mi, "labor", "nonocp"), 0.0), cm_.get((b, mi, "labor", "nonocp"), 0.0)])
+        write_sheet(wb, "PSR_COVERAGE", ["bu", "month", "revenue", "revenue_basis", "cash_in", "cash_in_nonocp"], cov,
+                    note="PSR revenue posted by BU and month (cash flow workbook, 'Revenue — PSR'; forecast month from RFQ1 when provided) vs PSR cash in per the AR report (paid lines by payment date, all clients), MMAD.", widths=[28, 10, 12, 14, 12, 14])
+        print("PSR coverage:", {m: (round(sum(r[2] or 0 for r in cov if r[1] == m), 1), round(sum(r[4] for r in cov if r[1] == m), 1)) for m in all_m})
     write_sheet(wb, "AP_TOP_SUPPLIERS", ["supplier", "amount", "bu"], ap["top_suppliers"], note="Top 15 suppliers by open payables.", widths=[36, 12, 28])
     write_sheet(wb, "LC_LINES", ["project", "bu", "supplier", "lc_ref", "expiry", "ccy", "face_value_fx", "encours_fx", "encours_mad", "opened", "action", "part_2026", "part_2027"] + lc["months"],
                 [[l["project"], l["bu"], l["supplier"], l["ref"], l["expiry"], l["ccy"], l["face_fx"], l["encours_fx"], l["encours_mad"], l["opened"], l["action"], l["part_2026"], l["part_2027"]] + [l["months"][m] for m in lc["months"]] for l in lc["lines"]],

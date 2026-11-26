@@ -584,11 +584,19 @@ def build(data, meta, out):
     ex_cards = [("Gross exposure", newar, True), ("Unrecognized revenue", unrec, True), ("Total AR", tot, True), ("Unbilled", unb, True), ("Unpaid", unp, True), ("Advance", adv, True)]
     if NO_UR: ex_cards = ex_cards[2:]
     cw = (SW - 0.6 - 0.12 * (len(ex_cards) - 1)) / len(ex_cards)
+    _tl, _tn = splits.get("Total AR labor") or 0, splits.get("Total AR non-labor") or 0
+    _ul, _un = splits.get("Unbilled labor") or 0, splits.get("Unbilled non-labor") or 0; _pl, _pn = splits.get("Unpaid labor") or 0, splits.get("Unpaid non-labor") or 0
+    psr_proc = {"Gross exposure": (_tl, _tn + (unrec["current"] or 0)), "Unrecognized revenue": (0, unrec["current"] or 0), "Total AR": (_tl, _tn),
+                "Unbilled": (_ul, _un), "Unpaid": (_pl, _pn), "Advance": (_tl - _ul - _pl, _tn - _un - _pn)}
     for i, (lab, r, gwn) in enumerate(ex_cards):
-        kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.25, lab, r["current"], dwow(r), (dms(r) if r["month_start"] else None), good_when_negative=gwn, ms_label=ms_label)
+        xk = 0.3 + i * (cw + 0.12)
+        kpi_card(s, xk, 1.15, cw, 1.25, lab, r["current"], dwow(r), (dms(r) if r["month_start"] else None), good_when_negative=gwn, ms_label=ms_label)
+        # PSR / procurement split of the box, on a band underneath
+        rect(s, xk, 2.43, cw, 0.23, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.3)
+        tb(s, xk, 2.43, cw, 0.23, f"PSR {f0(psr_proc[lab][0])}  ·  Proc {f0(psr_proc[lab][1])}", size=8, bold=True, color=NAVY, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
     # donut
-    tb(s, 0.4, 2.7, 5.5, 0.35, "AR by component" if NO_UR else "AR exposure by component", size=14, bold=True, color=NAVY)
-    tb(s, 0.4, 3.02, 5.5, 0.3, (f"Total AR {f0(tot['current'])} MMAD = unbilled + unpaid + advance" if NO_UR else f"Gross exposure {f0(newar['current'])} MMAD = total AR + unrecognized revenue"), size=10, color=SLATE)
+    tb(s, 0.4, 2.78, 4.8, 0.35, "AR by component" if NO_UR else "AR exposure by component", size=14, bold=True, color=NAVY)
+    tb(s, 0.4, 3.08, 4.8, 0.3, (f"Total AR {f0(tot['current'])} MMAD = unbilled + unpaid + advance" if NO_UR else f"Gross exposure {f0(newar['current'])} MMAD = total AR + unrecognized revenue"), size=10, color=SLATE)
     comp_pie = sorted([("Unbilled", unb["current"], NAVY2), ("Unpaid", unp["current"], GREY), ("Advance", adv["current"], LBLUE)] + ([] if NO_UR else [("Unrecognized", unrec["current"], BLUE)]), key=lambda c: -(c[1] or 0))
     doughnut(s, 0.2, 3.3, 3.0, 3.7, [c[0] for c in comp_pie], [c[1] for c in comp_pie], [c[2] for c in comp_pie])
     for i, (lab, v, c) in enumerate(comp_pie):
@@ -598,27 +606,37 @@ def build(data, meta, out):
         tb(s, 3.65, yy + 0.3, 1.7, 0.3, (f"{f0(v)}  ·  {v/(tot['current'] or 1)*100:.0f}% of AR" if NO_UR else f"{f0(v)}  ·  {v/(newar['current'] or 1)*100:.0f}% of exposure"), size=9, color=SLATE)
     # OCP callout
     ocp = splits.get("AR OCP", 0); nocp = splits.get("AR NON OCP", 0)
-    mw = (7.7 - 0.24) / 3
+    mws = [1.95, 1.95, 3.56]; mxs = [5.3, 5.3 + 1.95 + 0.12, 5.3 + 2 * (1.95 + 0.12)]; my, mh = 2.8, 1.12
     gdso = dso.get("JESA Group", {}); gdso_v = (f"{int(float(gdso['dso_current']))} days" if gdso.get("dso_current") not in (None, "") else "n/a")
     minis = [("OCP share of AR", f"{ocp/(ocp+nocp)*100:.0f}%", f"OCP {f0(ocp)}  ·  non-OCP {f0(nocp)} ({nocp/(ocp+nocp)*100:.1f}%)", BLUE),
              ("DSO JESA Group", gdso_v, (meta.get("dso_prior_label") or "prior month") + " " + str(int(float(gdso["dso_prior_month"]))) + " days" if gdso.get("dso_prior_month") not in (None, "") else "excl. advances, BU meeting report", NAVY),
              (f"Payments received (AR report)", f"{f0(paid_m)} MDH", None, TEAL)]
     _cmm = {r["month"]: r for r in data["COLLECTIONS_MONTHLY"]}; _pr = _cmm.get(prior_name[:3], {"labor": 0, "non_labor": 0})
-    pay_lines = [[(f"{month_name[:3]} {f0(paid_m)}", {"bold": True, "color": DARK}), (f" (PSR {f0(m_lab)} / Proc {f0(m_nl)})", {})],
-                 [(f"{prior_name[:3]} {f0((_pr['labor'] or 0) + (_pr['non_labor'] or 0))}", {"bold": True, "color": DARK}), (f" (PSR {f0(_pr['labor'])} / Proc {f0(_pr['non_labor'])})", {})],
-                 [(f"Since Jul {f0(jul_tot)}", {"bold": True, "color": DARK}), (f" (PSR {f0(jul_lab)} / Proc {f0(jul_nl)})", {})]]
+    _prt = (_pr["labor"] or 0) + (_pr["non_labor"] or 0); jul_non = sum(cget(b, "since_jul_nonocp") for b in coll_map)
+    has_jn = any(r.get("since_jul_nonocp") is not None for r in collbu)
+    # rows: period, total, PSR, procurement, OCP, non-OCP (AR report, by payment date)
+    pay_rows = [(month_name[:3], paid_m, m_lab, m_nl, paid_m - nonocp_m, nonocp_m), (prior_name[:3], _prt, _pr["labor"], _pr["non_labor"], _prt - nonocp_prior, nonocp_prior),
+                ("Since Jul", jul_tot, jul_lab, jul_nl, (jul_tot - jul_non) if has_jn else None, jul_non if has_jn else None)]
     for i, (lab, val, sub, col) in enumerate(minis):
-        x0 = 5.3 + i * (mw + 0.12)
-        rect(s, x0, 2.75, mw, 1.05, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, x0, 2.75, 0.07, 1.05, col)
-        tb(s, x0 + 0.15, 2.8, mw - 0.25, 0.25, lab.upper(), size=8.5, bold=True, color=SLATE)
+        x0, mw = mxs[i], mws[i]
+        rect(s, x0, my, mw, mh, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.08); rect(s, x0, my, 0.07, mh, col)
         if sub is None:
-            tb(s, x0 + 0.12, 3.0, 0.95, 0.45, val, size=14, bold=True, color=col)
-            tb(s, x0 + 1.02, 3.0, mw - 1.08, 0.78, pay_lines, size=7, color=SLATE, line_spacing=1.0)
+            tb(s, x0 + 0.15, my + 0.05, mw - 0.25, 0.25, "PAYMENTS RECEIVED (AR REPORT, MDH)", size=8.5, bold=True, color=SLATE)
+            gx = [x0 + 0.15, x0 + 0.72, x0 + 1.24, x0 + 1.76, x0 + 2.38, x0 + 2.93]; gw = 0.53
+            for j, hname in enumerate(["", "Total", "PSR", "Proc", "OCP", "Non-OCP"]):
+                if hname: tb(s, gx[j], my + 0.28, gw, 0.18, hname, size=7, bold=True, color=(TEAL if j == 1 else SLATE), align=PP_ALIGN.RIGHT, margin=0.01)
+            rect(s, x0 + 0.15, my + 0.47, mw - 0.3, 0.01, LBLUE); rect(s, gx[4] + 0.02, my + 0.3, 0.01, mh - 0.38, LBLUE)
+            for k, prow in enumerate(pay_rows):
+                yy = my + 0.5 + k * 0.195
+                tb(s, gx[0], yy, 0.68, 0.19, prow[0], size=8, bold=True, color=DARK, margin=0.01)
+                for j, v in enumerate(prow[1:], 1):
+                    tb(s, gx[j], yy, gw, 0.19, f0(v), size=8.5 if j == 1 else 8, bold=(j == 1), color=(TEAL if j == 1 else DARK), align=PP_ALIGN.RIGHT, margin=0.01)
         else:
-            tb(s, x0 + 0.15, 3.02, mw - 0.25, 0.45, val, size=20, bold=True, color=col)
-            tb(s, x0 + 0.15, 3.46, mw - 0.25, 0.34, sub, size=7.5 if len(sub) > 60 else 8, color=SLATE)
+            tb(s, x0 + 0.15, my + 0.05, mw - 0.25, 0.25, lab.upper(), size=8.5, bold=True, color=SLATE)
+            tb(s, x0 + 0.15, my + 0.27, mw - 0.25, 0.45, val, size=20, bold=True, color=col)
+            tb(s, x0 + 0.15, my + 0.72, mw - 0.25, 0.36, sub, size=7.5, color=SLATE, line_spacing=1.0)
     # labor vs non-labor
-    tb(s, 5.4, 4.0, 7, 0.35, "Labor vs non-labor split", size=14, bold=True, color=NAVY)
+    tb(s, 5.4, 4.02, 7, 0.35, "Labor vs non-labor split", size=14, bold=True, color=NAVY)
     nl_pct = splits.get("Total AR non-labor", 0) / tot["current"] * 100
     tb(s, 5.4, 4.32, 7, 0.3, f"{nl_pct:.0f}% of the book is non-labor (procurement scope)", size=10, color=SLATE)
     sgl = {}
@@ -1175,6 +1193,63 @@ def build(data, meta, out):
     ch = bar_chart(s, 0.3, yb + 0.2, 12.7, SH - 0.38 - (yb + 0.2), wcats, [("MMAD", wvals)], [NAVY], legend=False, gap=45, cat_size=7.5, label_size=8, number_format='+#,##0;−#,##0;0', label_pos=XL_LABEL_POSITION.OUTSIDE_END)
     color_points(ch, 0, [NAVY if k == "total" else (RED if v < 0 else GREEN) for v, k in zip(wvals, wkind)])
 
+    # ------------------------------------------------------------------ 10a. PSR cash in vs PSR revenue posted, by business unit (coverage)
+    cov = data.get("PSR_COVERAGE", [])
+    if cov:
+        def mlab(m): return dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b")
+        cmths = sorted({str(r["month"])[:7] for r in cov}); cv = {(r["bu"], str(r["month"])[:7]): r for r in cov}
+        act_m = [m for m in cmths if any(r["revenue_basis"] == "actual" for (b, mm), r in cv.items() if mm == m)]
+        fc_m = [m for m in cmths if m not in act_m and any(r["revenue_basis"] == "RFQ1" for (b, mm), r in cv.items() if mm == m)]
+        open_m = [m for m in cmths if m not in act_m and m not in fc_m]   # month in progress without revenue: cash in shown, outside the ratio
+        win = act_m + fc_m
+        def rv(b, ms): return sum(((cv.get((b, m)) or {}).get("revenue") or 0) for m in ms)
+        def ci(b, ms, k="cash_in"): return sum(((cv.get((b, m)) or {}).get(k) or 0) for m in ms)
+        cbus = sorted({r["bu"] for r in cov}, key=lambda b: -rv(b, win))
+        R = sum(rv(b, win) for b in cbus); C = sum(ci(b, win) for b in cbus); Cn = sum(ci(b, win, "cash_in_nonocp") for b in cbus)
+        Ra = sum(rv(b, act_m) for b in cbus); Rf = sum(rv(b, fc_m) for b in cbus); Co = sum(ci(b, open_m) for b in cbus)
+        span = f"{mlab(win[0])}–{mlab(win[-1])}"; aspan = f"{mlab(act_m[0])}–{mlab(act_m[-1])}"
+        def cpct(c_, r_): return (c_ / r_ * 100) if r_ and r_ > 0.05 else None
+        def cfill(pc): return None if pc is None else (HEAT_GOOD[2] if pc >= 100 else HEAT_GOOD[0] if pc >= 70 else RGBColor(0xFB, 0xEF, 0xD2) if pc >= 40 else HEAT_BAD[1])
+        s = D.slide("PSR – Cash In vs Revenue Posted by Business Unit", f"{span} 2026: PSR cash in {f0(C)} MMAD vs PSR revenue {f0(R)} MMAD → {cpct(C, R):.0f}% coverage"
+                    + (f"; {mlab(fc_m[0])} revenue per RFQ1" if fc_m else "") + (f"; {mlab(open_m[0])} cash in to {cur_s}: {f0(Co)} MMAD" if open_m else ""))
+        cards = [(f"PSR revenue {span}", f0(R), (f"Actuals {aspan} {f0(Ra)} + {mlab(fc_m[0])} RFQ1 {f0(Rf)}" if fc_m else f"Revenue posted, actuals {aspan}"), NAVY2),
+                 (f"PSR cash in {span}", f0(C), f"OCP {f0(C - Cn)}  ·  non-OCP {f0(Cn)}", TEAL),
+                 ("Coverage", f"{cpct(C, R):.0f}%", "PSR cash in ÷ PSR revenue", (GREEN if cpct(C, R) >= 70 else GOLD if cpct(C, R) >= 40 else RED)),
+                 ("Revenue not yet covered", f0(R - C), f"{sum(1 for b in cbus if (cpct(ci(b, win), rv(b, win)) or 100) < 50)} business units below 50% coverage", (RED if R - C > 0 else GREEN))]
+        if open_m: cards.append((f"{mlab(open_m[0])} cash in to {cur_s}", f0(Co), f"OCP {f0(Co - sum(ci(b, open_m, 'cash_in_nonocp') for b in cbus))}  ·  non-OCP {f0(sum(ci(b, open_m, 'cash_in_nonocp') for b in cbus))}", SLATE))
+        cw = (SW - 0.6 - 0.12 * (len(cards) - 1)) / len(cards)
+        for i, (lab, val, sub, col) in enumerate(cards):
+            card(s, 0.3 + i * (cw + 0.12), 1.2, cw, 1.0, lab, val, sub, fill=col, value_size=20, sub_size=8, label_size=8.5)
+        # ---- table: revenue and cash in by month, by BU
+        cash_m = win + open_m; nrv, nca = len(win) + 1, len(cash_m) + 1
+        hdr = ["Business Unit"] + [mlab(m) + (" RFQ1" if m in fc_m else "") for m in win] + ["Total"] + [mlab(m) + (" to date" if m in open_m else "") for m in cash_m] + [f"Total\n{span}"] + ["o/w\nnon-OCP", "Coverage", "Revenue −\ncash in"]
+        colw = [1.75] + [0.72] * (nrv + nca) + [0.72, 0.8, 0.85]; tw = 12.65
+        rows, colors, fills = [], {}, {}
+        for i, b in enumerate(cbus + ["Total"]):
+            bs = cbus if b == "Total" else [b]
+            r_ = sum(rv(x, win) for x in bs); c_ = sum(ci(x, win) for x in bs); pc = cpct(c_, r_)
+            rows.append([short(b)] + [f0(sum(rv(x, [m]) for x in bs)) for m in win] + [f0(r_)] + [f0(sum(ci(x, [m]) for x in bs)) for m in cash_m] + [f0(c_), f0(sum(ci(x, win, "cash_in_nonocp") for x in bs)),
+                         (f"{pc:.0f}%" if pc is not None else "–"), fd(r_ - c_)])
+            if cfill(pc) and b != "Total": fills[(i, len(hdr) - 2)] = cfill(pc)
+            colors[(i, len(hdr) - 1)] = delta_color(r_ - c_)
+        ty = 2.62; xw = [tw * w_ / sum(colw) for w_ in colw]
+        x_rev = 0.35 + xw[0]; w_rev = sum(xw[1:1 + nrv]); x_ca = x_rev + w_rev; w_ca = sum(xw[1 + nrv:1 + nrv + nca + 1])
+        rect(s, x_rev, ty - 0.24, w_rev - 0.03, 0.22, NAVY2); tb(s, x_rev, ty - 0.24, w_rev - 0.03, 0.22, "PSR REVENUE POSTED (MMAD)", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        rect(s, x_ca, ty - 0.24, w_ca - 0.03, 0.22, TEAL); tb(s, x_ca, ty - 0.24, w_ca - 0.03, 0.22, "PSR CASH IN – AR REPORT, ALL CLIENTS (MMAD)", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        table(s, 0.35, ty, tw, hdr, rows, col_w=colw, font_size=8.5, header_size=8, row_h=0.25, header_h=0.36, colors=colors, fills=fills, total_last=True, first_col_bold=True)
+        yb = ty + 0.36 + 0.25 * len(rows) + 0.12
+        # ---- bottom left: group by month, revenue vs cash in
+        tb(s, 0.4, yb, 6.2, 0.28, "JESA Group by month – PSR revenue vs PSR cash in (MMAD)", size=11, bold=True, color=NAVY)
+        cats = [f"{mlab(m)}{' RFQ1' if m in fc_m else ''}\n{cpct(sum(ci(b, [m]) for b in cbus), sum(rv(b, [m]) for b in cbus)):.0f}% covered" for m in win]
+        bar_chart(s, 0.3, yb + 0.26, 6.3, SH - 0.32 - (yb + 0.26), cats, [("PSR revenue", [sum(rv(b, [m]) for b in cbus) for m in win]), ("PSR cash in", [sum(ci(b, [m]) for b in cbus) for m in win])], [NAVY2, TEAL],
+                  gap=60, cat_size=8, label_size=8, legend_pos=XL_LEGEND_POSITION.RIGHT)
+        # ---- bottom right: coverage by BU
+        tb(s, 6.9, yb, 6.2, 0.28, f"Coverage by business unit, {span} (PSR cash in ÷ PSR revenue)", size=11, bold=True, color=NAVY)
+        cb_ = sorted([b for b in cbus if cpct(ci(b, win), rv(b, win)) is not None], key=lambda b: -cpct(ci(b, win), rv(b, win)))
+        pv_ = [cpct(ci(b, win), rv(b, win)) for b in cb_]
+        ch = bar_chart(s, 6.8, yb + 0.26, 6.3, SH - 0.32 - (yb + 0.26), [short(b) for b in cb_], [("Coverage %", pv_)], [TEAL], legend=False, gap=45, cat_size=7.5, label_size=8.5, number_format='0"%"', label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        color_points(ch, 0, [(GREEN if v >= 70 else GOLD if v >= 40 else RED) for v in pv_])
+
     # ------------------------------------------------------------------ 10b. PSR (labor) collections
     D.section = "cash_backup"
     pbu = sorted(data.get("CASH_PSR_BU", []), key=lambda r: -(r["cumulative"] or 0))
@@ -1264,39 +1339,96 @@ def build(data, meta, out):
     D.section = "ap"
     apb = data["AP_BU"]; bk = data["AP_BUCKETS"]
     s = D.slide("Accounts Payable – supplier payables & LC", f"Payables incl. LC of {f0(ap_tot['current'])} MMAD ({fd(ap_tot['current']-ap_tot['prev_week'])} WoW): parked {f0(ap_pk['current'])}, 4411 {f0(ap_44['current'])}, downpayments {f0(ap_dp['current'])}, LC {f0(ap_lc['current'])}")
-    cw = (SW - 0.6 - 0.12 * 4) / 5
-    for i, (lab, r) in enumerate([("Total payables incl. LC", ap_tot), ("Parked invoices", ap_pk), ("Invoices 4411 (open items)", ap_44), ("Downpayments", ap_dp), ("LC opened (bank situation)", ap_lc)]):
-        kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.05, lab, r["current"], delta_wow=r["current"] - r["prev_week"], good_when_negative=True)
-    tb(s, 0.4, 2.45, 6.5, 0.3, "Payables by business unit – this week and Δ WoW (MMAD)", size=13, bold=True, color=NAVY)
-    rows, colors = [], {}
-    apbs = sorted([r for r in apb if sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")) > 0.05], key=lambda r: -sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")))
-    for i, r in enumerate(apbs):
-        cur = sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")); prev = sum((r[k] or 0) for k in ("downpayment_prev", "parked_prev", "inv4411_prev", "lc_prev"))
-        rows.append([short(r["bu"]), f0(r["downpayment_cur"]), f0(r["parked_cur"]), f0(r["inv4411_cur"]), f0(r["lc_cur"]), f0(cur), fd(cur - prev)]); colors[(i, 6)] = delta_color(cur - prev)
-    rows.append(["Total", f0(ap_dp["current"]), f0(ap_pk["current"]), f0(ap_44["current"]), f0(ap_lc["current"]), f0(ap_tot["current"]), fd(ap_tot["current"] - ap_tot["prev_week"])])
-    table(s, 0.4, 2.75, 6.5, ["BU", "Down-payment", "Parked", "4411", "LC", "Total", "Δ WoW"], rows, col_w=[1.5, 0.9, 0.8, 0.8, 0.8, 0.85, 0.85], font_size=9.5, header_size=8.5, row_h=0.33, header_h=0.36, colors=colors, total_last=True)
-    if not LEAN: tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs; parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers.", size=8, italic=True, color=GREY)
-    # right: due date buckets from the invoice file
+    api = data.get("AP_BU_INDICATORS", [])
     origins = ["Invoices - 4411", "Parked Invoice", "Downpayment"]; buckets = ["Overdue", "Due ≤ 30d", "Due 31–60d", "Due > 60d", "No due date"]
     bm = {(r["origin"], r["bucket"]): r["amount"] or 0 for r in bk}
     buckets = [b for b in buckets if any(bm.get((o, b), 0) > 0.05 for o in origins)]
     ap_file_tot = sum(bm.values()); overdue = sum(bm.get((o, "Overdue"), 0) for o in origins)
-    tb(s, 7.2, 2.45, 5.9, 0.3, "Open supplier invoices by due date (MMAD)", size=13, bold=True, color=NAVY)
-    tb(s, 7.2, 2.75, 5.9, 0.3, f"{f0(ap_file_tot)} MMAD of open lines, of which {f0(overdue)} MMAD ({overdue/ap_file_tot*100:.0f}%) past due at {asof}", size=9.5, color=SLATE)
-    ch = bar_chart(s, 7.1, 3.0, 6.0, 2.45, buckets, [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=True, gap=50, cat_size=8.5, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM, label_colors=[WHITE, WHITE, DARK])
-    hide_small_labels(ch, [[bm.get((o, b), 0) for b in buckets] for o in origins], 30)
-    tiers = sorted(data["AP_TIERS"], key=lambda r: -(r["amount"] or 0))
-    def tier_group(t):
-        t = str(t).lower()
-        if "international" in t: return "International"
-        if "national" in t: return "National (tiers 1–3)"
-        return "Other / not tiered"
-    tg = {}
-    for r in tiers: tg[tier_group(r["tier"])] = tg.get(tier_group(r["tier"]), 0) + (r["amount"] or 0)
-    tb(s, 7.2, 5.45, 5.9, 0.3, "By supplier tier (MMAD)", size=11, bold=True, color=NAVY)
-    rows = [[k, f0(v), f"{v/ap_file_tot*100:.0f}%"] for k, v in sorted(tg.items(), key=lambda x: -x[1])]
-    table(s, 7.2, 5.72, 5.9, ["Tier group", "MMAD", "%"], rows, col_w=[3, 1.4, 1.4], font_size=8.5, header_size=8, row_h=0.22, header_h=0.26)
-    if not LEAN: tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
+    if api:
+        # ---- indicators: past due, factoring, penalties, aging of the past due, paid vs open invoices by tier
+        inv_tot = sum((r["open_invoices"] or 0) for r in api); pd_tot = sum((r["past_due"] or 0) for r in api)
+        has_f = any(r.get("factoring") is not None for r in api); f_tot = sum((r.get("factoring") or 0) for r in api); f_pd = sum((r.get("factoring_past_due") or 0) for r in api)
+        pen = meta.get("ap_penalties"); pen = float(pen) if pen not in (None, "", "None") else None
+        pen_bu = {r["bu"]: r.get("penalties") for r in api if r.get("penalties") not in (None, "")}
+        def _prev(k):
+            v = meta.get(k); return float(v) if v not in (None, "", "None") else None
+        inv_prev, pd_prev = _prev("ap_total_prev"), _prev("ap_overdue_prev")
+        cards = [("Total payables incl. LC", ap_tot["current"], ap_tot["current"] - ap_tot["prev_week"], None, NAVY),
+                 ("Open supplier invoices", inv_tot, (inv_tot - inv_prev) if inv_prev is not None else None, None, NAVY2),
+                 (f"Past due ({pd_tot/(inv_tot or 1)*100:.0f}% of invoices)", pd_tot, (pd_tot - pd_prev) if pd_prev is not None else None, None, RED)]
+        if has_f: cards.append(("Invoices under factoring", f_tot, None, f"{f_tot/(inv_tot or 1)*100:.0f}% of invoices  ·  {f0(f_pd)} past due", GOLD))
+        if pen is not None: cards.append(("Penalties on past due", pen, None, meta.get("ap_penalties_label") or "Late-payment penalties on the past due balance", ORANGE))
+        cards.append(("LC opened", ap_lc["current"], ap_lc["current"] - ap_lc["prev_week"], None, BLUE))
+        cw = (SW - 0.6 - 0.12 * (len(cards) - 1)) / len(cards)
+        for i, (lab, val, dw_, sub, col) in enumerate(cards):
+            xk = 0.3 + i * (cw + 0.12)
+            kpi_card(s, xk, 1.25, cw, 1.05, lab, val, delta_wow=dw_, good_when_negative=True, accent=col, value_size=(22 if abs(val) >= 0.5 or dw_ is not None else 20))
+            if sub: tb(s, xk + 0.15, 1.25 + 1.05 - 0.32, cw - 0.25, 0.26, sub, size=8, color=SLATE)
+        # ---- left: by business unit
+        tb(s, 0.4, 2.45, 6.5, 0.3, "Payables by business unit – past due and factoring (MMAD)", size=13, bold=True, color=NAVY)
+        apm = {r["bu"]: r for r in apb}; aim = {r["bu"]: r for r in api}
+        def btot(b, sfx): return sum(((apm.get(b) or {}).get(k + sfx) or 0) for k in ("downpayment", "parked", "inv4411", "lc"))
+        bl = sorted({*[b for b in apm if btot(b, "_cur") > 0.5], *[b for b in aim if (aim[b]["open_invoices"] or 0) > 0.5]}, key=lambda b: -max(btot(b, "_cur"), (aim.get(b) or {}).get("open_invoices") or 0))
+        hdr = ["BU", "Open\ninvoices", "LC", "Total", "Δ WoW", "Past due", "% past\ndue"] + (["Under\nfactoring"] if has_f else []) + (["Penalties"] if pen_bu else [])
+        rows, colors = [], {}
+        for i, b in enumerate(bl):
+            a_ = aim.get(b) or {}; inv = a_.get("open_invoices") or 0; lcv = (apm.get(b) or {}).get("lc_cur") or 0; pdv = a_.get("past_due") or 0
+            dlt = (btot(b, "_cur") - btot(b, "_prev")) if b in apm else None
+            rows.append([short(b), f0(inv), f0(lcv), f0(inv + lcv), fd(dlt), f0(pdv), (f"{pdv/inv*100:.0f}%" if inv > 0.5 else "–")] + ([f0(a_.get("factoring"))] if has_f else []) + ([f0(pen_bu.get(b)) if pen_bu.get(b) is not None else "–"] if pen_bu else []))
+            colors[(i, 4)] = delta_color(dlt); colors[(i, 5)] = RED if pdv > 0.5 else DARK
+        rows.append(["Total", f0(inv_tot), f0(ap_lc["current"]), f0(inv_tot + ap_lc["current"]), fd(ap_tot["current"] - ap_tot["prev_week"]), f0(pd_tot), f"{pd_tot/(inv_tot or 1)*100:.0f}%"] + ([f0(f_tot)] if has_f else []) + ([f0(sum(v or 0 for v in pen_bu.values()))] if pen_bu else []))
+        table(s, 0.4, 2.75, 6.5, hdr, rows, col_w=[1.45, 0.8, 0.65, 0.75, 0.72, 0.78, 0.65] + ([0.8] if has_f else []) + ([0.75] if pen_bu else []), font_size=9, header_size=8, row_h=min(0.4, 3.9 / len(rows)), header_h=0.42, colors=colors, total_last=True, first_col_bold=True)
+        # ---- right top: aging of the past due
+        agp = data.get("AP_AGING_PAST_DUE", []); o90 = sum((r["amount"] or 0) for r in agp if str(r["bucket"]).startswith(("91", ">")))
+        tb(s, 7.2, 2.45, 5.9, 0.3, "Aging of past due invoices (MMAD)", size=13, bold=True, color=NAVY)
+        tb(s, 7.2, 2.74, 5.9, 0.26, f"{f0(pd_tot)} MMAD past due at {asof}; {f0(o90)} MMAD ({o90/(pd_tot or 1)*100:.0f}%) more than 90 days late", size=9.5, color=SLATE)
+        a_all = [(r["amount"] or 0) for r in agp]; a_f = [(r.get("factoring") or 0) for r in agp]
+        ser = ([("Suppliers under factoring", a_f), ("Other suppliers", [x - y for x, y in zip(a_all, a_f)])] if has_f else [("Past due", a_all)])
+        ch = bar_chart(s, 7.1, 2.98, 6.0, 1.6, [f"{r['bucket']}\n{f0(r['amount'])}" for r in agp], ser, ([GOLD, NAVY2] if has_f else [NAVY2]), stacked=True, gap=50, cat_size=8, label_size=8, legend=has_f, legend_pos=XL_LEGEND_POSITION.RIGHT, label_colors=([DARK, WHITE] if has_f else [WHITE]))
+        hide_small_labels(ch, [v for _, v in ser], max(a_all + [1]) * 0.09)
+        # ---- right bottom: paid vs open invoices by supplier tier
+        tp = data.get("AP_TIER_PAID", []); has_paid = any(r.get("paid_actual_months") is not None for r in tp)
+        tb(s, 7.2, 4.6, 5.9, 0.3, ("Paid since July vs open invoices by supplier tier (MMAD)" if has_paid else "Open invoices by supplier tier (MMAD)"), size=13, bold=True, color=NAVY)
+        rows, colors = [], {}
+        def _p(a_, b_): return f"{a_/(a_ + b_)*100:.0f}%" if (a_ + b_) > 0.5 else "–"
+        for i, r in enumerate(tp):
+            pa, og, op_, pdv = r.get("paid_actual_months") or 0, r.get("ongoing_month") or 0, r.get("open_invoices") or 0, r.get("past_due") or 0
+            rows.append([r["tier"]] + ([f0(pa), f0(og)] if has_paid else []) + [f0(op_), f0(pdv)] + ([_p(pa + og, op_)] if has_paid else []))
+            colors[(i, 4 if has_paid else 2)] = RED if pdv > 0.5 else DARK
+        T = {k: sum((r.get(k) or 0) for r in tp) for k in ("paid_actual_months", "ongoing_month", "open_invoices", "past_due")}
+        rows.append(["Total"] + ([f0(T["paid_actual_months"]), f0(T["ongoing_month"])] if has_paid else []) + [f0(T["open_invoices"]), f0(T["past_due"])] + ([_p(T["paid_actual_months"] + T["ongoing_month"], T["open_invoices"])] if has_paid else []))
+        table(s, 7.2, 4.88, 5.9, ["Supplier tier"] + ([f"Paid\nJul–{cam}", f"Ongoing payments\n{com}"] if has_paid else []) + ["Open\ninvoices", "o/w\npast due"] + (["Paid ÷\n(paid + open)"] if has_paid else []), rows,
+              col_w=[1.7] + ([0.7, 1.1] if has_paid else []) + [0.72, 0.72] + ([0.86] if has_paid else []), font_size=8.5, header_size=7, row_h=0.185, header_h=0.34, colors=colors, total_last=True)
+    else:
+        cw = (SW - 0.6 - 0.12 * 4) / 5
+        for i, (lab, r) in enumerate([("Total payables incl. LC", ap_tot), ("Parked invoices", ap_pk), ("Invoices 4411 (open items)", ap_44), ("Downpayments", ap_dp), ("LC opened (bank situation)", ap_lc)]):
+            kpi_card(s, 0.3 + i * (cw + 0.12), 1.25, cw, 1.05, lab, r["current"], delta_wow=r["current"] - r["prev_week"], good_when_negative=True)
+        tb(s, 0.4, 2.45, 6.5, 0.3, "Payables by business unit – this week and Δ WoW (MMAD)", size=13, bold=True, color=NAVY)
+        rows, colors = [], {}
+        apbs = sorted([r for r in apb if sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")) > 0.05], key=lambda r: -sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")))
+        for i, r in enumerate(apbs):
+            cur = sum((r[k] or 0) for k in ("downpayment_cur", "parked_cur", "inv4411_cur", "lc_cur")); prev = sum((r[k] or 0) for k in ("downpayment_prev", "parked_prev", "inv4411_prev", "lc_prev"))
+            rows.append([short(r["bu"]), f0(r["downpayment_cur"]), f0(r["parked_cur"]), f0(r["inv4411_cur"]), f0(r["lc_cur"]), f0(cur), fd(cur - prev)]); colors[(i, 6)] = delta_color(cur - prev)
+        rows.append(["Total", f0(ap_dp["current"]), f0(ap_pk["current"]), f0(ap_44["current"]), f0(ap_lc["current"]), f0(ap_tot["current"]), fd(ap_tot["current"] - ap_tot["prev_week"])])
+        table(s, 0.4, 2.75, 6.5, ["BU", "Down-payment", "Parked", "4411", "LC", "Total", "Δ WoW"], rows, col_w=[1.5, 0.9, 0.8, 0.8, 0.8, 0.85, 0.85], font_size=9.5, header_size=8.5, row_h=0.33, header_h=0.36, colors=colors, total_last=True)
+        if not LEAN: tb(s, 0.4, 2.75 + 0.36 + 0.33 * len(rows) + 0.1, 6.5, 0.5, "LC = outstanding on opened LCs; parked = invoices parked in SAP pending validation; 4411 = posted supplier open items; downpayments = advance invoices due to suppliers.", size=8, italic=True, color=GREY)
+        # right: due date buckets from the invoice file
+        tb(s, 7.2, 2.45, 5.9, 0.3, "Open supplier invoices by due date (MMAD)", size=13, bold=True, color=NAVY)
+        tb(s, 7.2, 2.75, 5.9, 0.3, f"{f0(ap_file_tot)} MMAD of open lines, of which {f0(overdue)} MMAD ({overdue/ap_file_tot*100:.0f}%) past due at {asof}", size=9.5, color=SLATE)
+        ch = bar_chart(s, 7.1, 3.0, 6.0, 2.45, buckets, [(o.replace("Invoices - ", ""), [bm.get((o, b), 0) for b in buckets]) for o in origins], [NAVY2, BLUE, GOLD], stacked=True, gap=50, cat_size=8.5, label_size=8, legend_pos=XL_LEGEND_POSITION.BOTTOM, label_colors=[WHITE, WHITE, DARK])
+        hide_small_labels(ch, [[bm.get((o, b), 0) for b in buckets] for o in origins], 30)
+        tiers = sorted(data["AP_TIERS"], key=lambda r: -(r["amount"] or 0))
+        def tier_group(t):
+            t = str(t).lower()
+            if "international" in t: return "International"
+            if "national" in t: return "National (tiers 1–3)"
+            return "Other / not tiered"
+        tg = {}
+        for r in tiers: tg[tier_group(r["tier"])] = tg.get(tier_group(r["tier"]), 0) + (r["amount"] or 0)
+        tb(s, 7.2, 5.45, 5.9, 0.3, "By supplier tier (MMAD)", size=11, bold=True, color=NAVY)
+        rows = [[k, f0(v), f"{v/ap_file_tot*100:.0f}%"] for k, v in sorted(tg.items(), key=lambda x: -x[1])]
+        table(s, 7.2, 5.72, 5.9, ["Tier group", "MMAD", "%"], rows, col_w=[3, 1.4, 1.4], font_size=8.5, header_size=8, row_h=0.22, header_h=0.26)
+        if not LEAN: tb(s, 7.2, 5.72 + 0.26 + 0.22 * len(rows) + 0.04, 5.9, 0.4, "Due-date buckets follow the invoice due date; lines without a due date are not bucketed.", size=7.5, italic=True, color=GREY)
 
     # ------------------------------------------------------------------ 13. Letters of credit
     D.section = "lc"

@@ -10,6 +10,8 @@
 #   OCP*Payments*.xlsx      OCP payments weekly workbook ('Summary by BU'): monthly collections per OCP payment report (kept in inputs/ocp_payments/)
 #   *DSO*.xlsx              DSO calculation workbook ('12 Months Trailing' revenue per project, 'Trend'); if absent, the
 #                           latest inputs/dso_calc/*.xlsx is used (the revenue side only changes monthly)
+# Optional JSON kept in the repository: inputs/rfq1/psr_rfq1_<YYYY-MM>.json  {"month": "2026-11", "psr": {"<BU>": MMAD, ...}}  (RFQ1 PSR revenue of the open month)
+#                                      inputs/penalties/penalties_<date>.json  {"total": MMAD, "label": "...", "by_bu": {"<BU>": MMAD}}  (late-payment penalties)
 # The beginning-of-month AR file and its date are read from inputs/month_start.txt (two lines: path, date).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -60,9 +62,13 @@ PY
   [ -n "$BASE_IN" ] || { echo "month-start baseline $MS_FILE is missing and no saved inputs carry the $MS_DATE position"; exit 1; }
   BASEARG=(--baseline-inputs "$BASE_IN" --ar-baseline-date "$MS_DATE")
 fi
+# optional: RFQ1 PSR revenue of the month not yet closed (coverage slide) and late-payment penalties on the past due payables
+CM=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")
+XARG=(); [ -f "inputs/rfq1/psr_rfq1_${CM}.json" ] && XARG+=(--rfq1 "inputs/rfq1/psr_rfq1_${CM}.json")
+PEN=$(ls inputs/penalties/penalties_*.json 2>/dev/null | sort | tail -1); [ -n "$PEN" ] && XARG+=(--penalties "$PEN")
 echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; echo "DSO calc=$DSO"; echo "previous week=$PREV"; echo "month start=$MS_FILE ($MS_DATE)"
 python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" "${BASEARG[@]}" \
-  --cash "$CASH" "${LCARG[@]}" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" --coll-month "$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")" \
+  --cash "$CASH" "${LCARG[@]}" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" "${XARG[@]}" --coll-month "$CM" \
   --as-of "$ASOF" --ar-date "$ARDATE" --ar-prev-date "$PREVDATE" --out inputs/weekly_inputs.xlsx
 WK=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); print(a.strftime('%b')+'_W'+str((a.day-1)//7+1))")
 OUT="output/JESA_AR_Cash_Position_${WK}_${ASOF}.pptx"
