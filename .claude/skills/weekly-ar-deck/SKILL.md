@@ -265,6 +265,13 @@ deck after the LC slide, only when asked). Content:
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 
+## 7d-bis. "Total AP in our books" visual (stand-alone, on request)
+
+`build_deck.py --only ap_books --out output/JESA_Total_AP_in_books_<week>.pptx`: one slide with the total of open
+supplier invoices and its three categories (parked invoices, posted invoices = 4411 open items, downpayments), each
+with its share, past due part, movement vs last week and number of lines. LC is not part of it. Same JESA blue theme
+as the cash risks slide.
+
 ## 7e. Late-payment penalties estimate (AP team, "DDP")
 
 Received 26-Nov-2026 by email from the AP team ("Delai de payment – risk in 2027"), three workbooks:
