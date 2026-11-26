@@ -217,7 +217,9 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
 deck after the LC slide, only when asked). Content:
 
-- Top: **total cash exposure** = supplier invoices + LC outstanding + customs projected to next March + penalties, with a
+- Top: **total cash exposure** = supplier invoices + LC outstanding + customs from the month in progress to next March
+  (paid to date in the month + projection; earlier months are not counted) + **T4 penalties only** (first payment date,
+  December; the March and June amounts are shown in the penalties section but stay out of the total), with a
   waterfall by category: past due invoices excl. factoring, invoices not yet due excl. factoring, invoices under
   factoring (past due part quoted), LC outstanding, customs projection, penalties, total. Factoring is carved out of the
   two invoice bars so nothing is counted twice. No KPI boxes.
@@ -225,7 +227,7 @@ deck after the LC slide, only when asked). Content:
   months; customs paid by month plus a projection to March at the average of the closed months since July (the month
   in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
   June, split between project and non-project invoices.
-- The penalties boxes and the penalties bar stay blank ("–") and the total reads "before penalties" until the
+- The penalties boxes and the T4 penalties bar stay blank ("–") and the total reads "before T4 penalties" until the
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 

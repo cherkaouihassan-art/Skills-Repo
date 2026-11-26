@@ -1488,23 +1488,31 @@ def build(data, meta, out):
         while _mn[_k] != "Mar" and len(proj_m) < 11: _k = (_k + 1) % 12; proj_m.append(_mn[_k])
         _ad = dt.date.fromisoformat(str(meta["as_of_date"])[:10]); mar_lab = f"Mar-{(_ad.year + (1 if _ad.month > 3 else 0)) % 100:02d}"
         cus_proj = cus_avg * len(proj_m)
+        cus_expo = cus_m[-1][1] + cus_proj   # exposure: month in progress (paid to date) + projection to March; earlier months are left out
+        dues = []; yy, mm = _ad.year, _ad.month   # penalties payment dates: next December, March and June
+        while len(dues) < 3:
+            mm += 1
+            if mm > 12: mm, yy = 1, yy + 1
+            if mm in (12, 3, 6): dues.append(f"{yy}-{mm:02d}")
         # penalties (blank until the penalties file is received)
         ps = {str(r["due"])[:7]: r for r in data.get("AP_PENALTIES", [])}
-        pen_tot = sum((r.get("project") or 0) + (r.get("non_project") or 0) for r in ps.values()) if ps else None
-        expo = r_inv + lc_all + cus_proj + (pen_tot or 0)
-        s = D.slide("JESA Cash Risks", f"Total cash exposure {f0(expo)} MMAD" + ("" if pen_tot is not None else " before penalties") + f": invoices {f0(r_inv)} ({f0(r_pd)} past due), LC {f0(lc_all)}, customs {f0(cus_proj)} to {mar_lab}")
+        # only the T4 balance (first payment date) counts in the exposure; the later dates are shown in the penalties section
+        pen_tot = ((ps[dues[0]].get("project") or 0) + (ps[dues[0]].get("non_project") or 0)) if dues[0] in ps else None
+        pen_lab = "T4 penalties"; pen_when = dt.date.fromisoformat(dues[0] + "-01").strftime("%B")
+        expo = r_inv + lc_all + cus_expo + (pen_tot or 0)
+        s = D.slide("JESA Cash Risks", f"Total cash exposure {f0(expo)} MMAD" + ("" if pen_tot is not None else " before T4 penalties") + f": invoices {f0(r_inv)} ({f0(r_pd)} past due), LC {f0(lc_all)}, customs {f0(cus_expo)} {com}–{mar_lab}")
         # ---- top: total exposure and its build-up by category
         ty, th = 1.2, 1.88
         rect(s, 0.3, ty, 2.75, th, NAVY, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06)
         tb(s, 0.45, ty + 0.1, 2.5, 0.26, "TOTAL CASH EXPOSURE", size=10, bold=True, color=GOLD)
         tb(s, 0.45, ty + 0.36, 2.5, 0.6, [[(f0(expo), {"size": 32, "bold": True, "color": WHITE}), ("  MMAD", {"size": 11, "color": LBLUE})]])
         tb(s, 0.45, ty + 1.0, 2.5, 0.8, [[("Supplier invoices ", {}), (f0(r_inv), {"bold": True}), (f"  ·  past due {f0(r_pd)}", {})],
-                                           [("LC ", {}), (f0(lc_all), {"bold": True}), ("  ·  customs ", {}), (f0(cus_proj), {"bold": True}), ("  ·  penalties ", {}), ((f1(pen_tot) if pen_tot is not None else "–"), {"bold": True})],
+                                           [("LC ", {}), (f0(lc_all), {"bold": True}), ("  ·  customs ", {}), (f0(cus_expo), {"bold": True}), ("  ·  T4 penalties ", {}), ((f1(pen_tot) if pen_tot is not None else "–"), {"bold": True})],
                                            [("Final cash position ", {}), (fd(net_all), {"bold": True})]], size=8.5, color=WHITE, line_spacing=1.2)
         wcat = [("Past due invoices", "excl. factoring", r_pd - r_fpd, RED), ("Invoices not yet due", "excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), NAVY2),
                 ("Under factoring", f"{f0(r_fpd)} past due", r_f, GOLD), ("LC outstanding", f"{f0(appr_lc)} due end of {com}", lc_all, BLUE),
-                (f"Customs to {mar_lab}", f"projection, {f0(cus_avg)} per month", cus_proj, SLATE), ("Penalties", "Dec · Mar · Jun", pen_tot, ORANGE),
-                ("Total cash exposure", ("" if pen_tot is not None else "before penalties"), expo, NAVY)]
+                (f"Customs {com}–{mar_lab}", f"{com} {f0(cus_m[-1][1])} + {f0(cus_avg)} per month", cus_expo, SLATE), (pen_lab, f"payable in {pen_when}", pen_tot, ORANGE),
+                ("Total cash exposure", ("" if pen_tot is not None else "before T4 penalties"), expo, NAVY)]
         wx, ww = 3.25, SW - 0.3 - 3.25; n_ = len(wcat); slot = ww / n_; bwid = slot * 0.62; base_y = ty + th - 0.5; top_y = ty + 0.3; sc = (base_y - top_y) / (expo or 1)
         rect(s, wx, base_y, ww, 0.012, GREY); run = 0.0
         for i, (lab, sub, v, col) in enumerate(wcat):
@@ -1542,18 +1550,13 @@ def build(data, meta, out):
         panel(x3, y1, pw, h1, "Letters of credit – payments due (MMAD)", f"{n_lc} opened LCs  ·  {f0(lc_all - lc_sched)} without payment date" + (f"  ·  {f0(lc_ext)} need extension" if lc_ext > 0.5 else ""), BLUE)
         bar_chart(s, x3 + 0.05, y1 + 0.56, pw - 0.1, h1 - 0.6, [dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b-%y") for m in lm], [("LC payments", [mt[m] for m in lm])], [BLUE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
         # ---- 4. customs fees: paid and projected
-        panel(x1, y2, pw, h2, "Customs fees – paid and projected (MMAD)", f"Paid {f0(cus_tot)} since July  ·  {proj_m[0]}–{proj_m[-1]} projection {f0(cus_proj)} (Jul–{cam} average)" if proj_m else f"Paid since July {f0(cus_tot)}", SLATE)
+        panel(x1, y2, pw, h2, "Customs fees – paid and projected (MMAD)", f"{com}–{proj_m[-1]}: {f0(cus_expo)}  =  {com} {f0(cus_m[-1][1])} paid + projection {f0(cus_proj)} (Jul–{cam} average)" if proj_m else f"Paid since July {f0(cus_tot)}", SLATE)
         ccats = [m for m, _ in cus_m] + proj_m
         ch = bar_chart(s, x1 + 0.05, y2 + 0.56, pw - 0.1, h2 - 0.58, ccats, [("Paid", [v for _, v in cus_m] + [0] * len(proj_m)), ("Projection", [0] * len(cus_m) + [cus_avg] * len(proj_m))], [SLATE, LBLUE], stacked=True, legend=False, gap=45, cat_size=8, label_size=8, label_colors=[WHITE, DARK])
         # ---- 5. late-payment penalties by payment date (filled from the penalties file; project and non-project invoices)
         px, pww = x2, 2 * pw + 0.12
         panel(px, y2, pww, h2, "Late-payment penalties – amounts to be paid (MMAD)", None, ORANGE)
-        dues = []; yy, mm = _ad.year, _ad.month
-        while len(dues) < 3:
-            mm += 1
-            if mm > 12: mm, yy = 1, yy + 1
-            if mm in (12, 3, 6): dues.append(f"{yy}-{mm:02d}")
-        boxes = [(dt.date.fromisoformat(d_ + "-01").strftime("%B %Y"), ps.get(d_)) for d_ in dues] + [("Total", ({"project": sum((ps[d_].get("project") or 0) for d_ in dues if d_ in ps), "non_project": sum((ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps)} if ps else None))]
+        boxes = [(("T4 – " if j == 0 else "") + dt.date.fromisoformat(d_ + "-01").strftime("%B %Y"), ps.get(d_)) for j, d_ in enumerate(dues)] + [("Total", ({"project": sum((ps[d_].get("project") or 0) for d_ in dues if d_ in ps), "non_project": sum((ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps)} if ps else None))]
         bw = (pww - 0.3 - 0.12 * 3) / 4; by = y2 + 0.42; bh = h2 - 0.52
         for i, (lab, r) in enumerate(boxes):
             bx = px + 0.15 + i * (bw + 0.12); tot_ = i == len(boxes) - 1
