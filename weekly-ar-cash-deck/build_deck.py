@@ -1498,9 +1498,10 @@ def build(data, meta, out):
             if mm in (12, 3, 6): dues.append(f"{yy}-{mm:02d}")
         # penalties (blank until the penalties file is received)
         ps = {str(r["due"])[:7]: r for r in data.get("AP_PENALTIES", [])}
-        # only the T4 balance (first payment date) counts in the exposure; the later dates are shown in the penalties section
-        pen_tot = ((ps[dues[0]].get("project") or 0) + (ps[dues[0]].get("non_project") or 0)) if dues[0] in ps else None
-        pen_lab = "T4 penalties"; pen_when = dt.date.fromisoformat(dues[0] + "-01").strftime("%B")
+        # the global exposure carries the penalties of the three payment dates (December, March, June); the first priority only the December invoices
+        pen_tot = sum((ps[d_].get("project") or 0) + (ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps) if any(d_ in ps for d_ in dues) else None
+        pen_t4 = ((ps[dues[0]].get("project") or 0) + (ps[dues[0]].get("non_project") or 0)) if dues[0] in ps else None
+        pen_end = dt.date.fromisoformat(dues[-1] + "-01").strftime("%b-%y"); pen_lab = f"Penalties to {pen_end}"; pen_when = dt.date.fromisoformat(dues[0] + "-01").strftime("%B")
         expo = r_inv + lc_all + cus_expo + (pen_tot or 0)
         _im0 = r_fpd + sum(mt[m] for m in months[:2]) + cus_cur + (cus_avg if proj_m else 0)
         s = D.slide("JESA Cash Risks", f"First priority: {f0(_im0)} MMAD of imminent payments (factoring past due, LC and customs {dt.date.fromisoformat(str(months[0])[:7] + '-01').strftime('%b')}–{dt.date.fromisoformat(str(months[1])[:7] + '-01').strftime('%b')}); global exposure {f0(expo)} MMAD")
@@ -1542,9 +1543,9 @@ def build(data, meta, out):
         rect(s, gx_, ty, gw_, th, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.05); rect(s, gx_, ty + 0.1, 0.07, th - 0.2, NAVY)
         tb(s, gx_ + 0.15, ty + 0.07, 1.35, 0.24, "GLOBAL EXPOSURE", size=9, bold=True, color=SLATE)
         tb(s, gx_ + 0.15, ty + 0.4, 1.45, 0.5, f0(expo), size=28, bold=True, color=NAVY)
-        tb(s, gx_ + 0.15, ty + 0.95, 1.45, 0.5, ["MMAD" + ("" if pen_tot is not None else ","), ("" if pen_tot is not None else "before T4 penalties")], size=8, color=SLATE, line_spacing=1.0)
+        tb(s, gx_ + 0.15, ty + 0.95, 1.45, 0.5, ["MMAD" + ("" if pen_tot is not None else ","), ("" if pen_tot is not None else "before penalties")], size=8, color=SLATE, line_spacing=1.0)
         grow = [("Past due excl. factoring", r_pd - r_fpd, RED), ("Not yet due excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), NAVY2), ("Under factoring", r_f, GOLD),
-                ("LC outstanding", lc_all, BLUE), (f"Customs {com}–{mar_lab}", cus_expo, SLATE), (f"{pen_lab} ({pen_when})", pen_tot, ORANGE)]
+                ("LC outstanding", lc_all, BLUE), (f"Customs {com}–{mar_lab}", cus_expo, SLATE), (pen_lab, pen_tot, ORANGE)]
         rx = gx_ + 1.5; rw = gw_ - 1.5 - 0.12
         for k, (lab, v, col) in enumerate(grow):
             ry = ty + 0.14 + k * 0.255
@@ -1592,7 +1593,7 @@ def build(data, meta, out):
         boxes = [(("T4 – " if j == 0 else "") + dt.date.fromisoformat(d_ + "-01").strftime("%B %Y"), ps.get(d_)) for j, d_ in enumerate(dues)] + [("Total", ({"project": sum((ps[d_].get("project") or 0) for d_ in dues if d_ in ps), "non_project": sum((ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps)} if ps else None))]
         bw = (pww - 0.3 - 0.12 * 3) / 4; by = y2 + 0.4; bh = h2 - 0.46 - ST
         pall = sum((r.get("project") or 0) + (r.get("non_project") or 0) for r in ps.values()) if ps else None
-        total_strip(px, y2, pww, h2, "Total penalties", (f1(pall) if pall is not None else "–"), [("of which ", {}), B("T4 " + (f1(pen_tot) if pen_tot is not None else "–"), ORANGE), (f" payable in {pen_when}, counted in the total cash exposure; later payment dates shown for information", {})])
+        total_strip(px, y2, pww, h2, f"Total penalties to {pen_end}", (f1(pall) if pall is not None else "–"), [("counted in the global exposure; of which ", {}), B("T4 " + (f1(pen_t4) if pen_t4 is not None else "–"), ORANGE), (f" payable in {pen_when}", {})])
         for i, (lab, r) in enumerate(boxes):
             bx = px + 0.15 + i * (bw + 0.12); tot_ = i == len(boxes) - 1
             pj = (r or {}).get("project"); npj = (r or {}).get("non_project"); tv = ((pj or 0) + (npj or 0)) if r else None

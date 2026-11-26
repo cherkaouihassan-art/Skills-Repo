@@ -224,8 +224,8 @@ deck after the LC slide, only when asked). Content:
   penalties JSON; do not count twice invoices already in the factoring past due), total first priority.
 - Top right: **global exposure** box, no waterfall = supplier invoices (past due excl. factoring, not yet due excl.
   factoring, under factoring) + LC outstanding + customs from the month in progress to next March (paid to date in the
-  month + projection; earlier months are not counted) + **T4 penalties only** (December; March and June are shown in
-  the penalties section but stay out of the total).
+  month + projection; earlier months are not counted) + **penalties of the three payment dates up to June** (December,
+  March and June; reviewer's instruction of 26-Nov-2026, replacing the earlier "T4 only").
 - Panels: past due payables by age; factoring by BU (factoring, past due, not yet due); LC payments due over the next six
   months; customs paid by month plus a projection to March at the average of the closed months since July (the month
   in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
@@ -237,7 +237,7 @@ deck after the LC slide, only when asked). Content:
 - Each panel ends with a total band that ties it to the waterfall, in the colours of the bars (e.g. "Total past due
   1,309 = 1,007 excl. factoring + 302 under factoring"; LC = next six months + later + undated; customs = paid in the
   month + projection).
-- The penalties boxes and the T4 penalties bar stay blank ("–") and the total reads "before T4 penalties" until the
+- The penalties boxes, the penalty-invoices bar and the penalties line of the global exposure stay blank ("–") and the total reads "before penalties" until the
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 
