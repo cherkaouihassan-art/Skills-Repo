@@ -1483,12 +1483,14 @@ def build(data, meta, out):
         # customs: paid by month, then projection to next March on the average of the closed months
         cus_m = [("Jul", -(cus["jul"] or 0)), ("Aug", -(cus["aug"] or 0)), ("Sep", -(cus["sep"] or 0)), (cam, -(cus["oct_actual"] or 0)), (com, -(cus["oct_ongoing"] or 0))]
         cus_tot = sum(v for _, v in cus_m); cus_avg = sum(v for _, v in cus_m[:4]) / 4
+        # month in progress: paid to date, or the full-month estimate given for the week (--customs-month)
+        cus_est = meta.get("_customs_month"); cus_cur = float(cus_est) if cus_est not in (None, "") else cus_m[-1][1]
         _mn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; _k = _mn.index(com) if com in _mn else 10
         proj_m = []
         while _mn[_k] != "Mar" and len(proj_m) < 11: _k = (_k + 1) % 12; proj_m.append(_mn[_k])
         _ad = dt.date.fromisoformat(str(meta["as_of_date"])[:10]); mar_lab = f"Mar-{(_ad.year + (1 if _ad.month > 3 else 0)) % 100:02d}"
         cus_proj = cus_avg * len(proj_m)
-        cus_expo = cus_m[-1][1] + cus_proj   # exposure: month in progress (paid to date) + projection to March; earlier months are left out
+        cus_expo = cus_cur + cus_proj   # exposure: month in progress (paid to date) + projection to March; earlier months are left out
         dues = []; yy, mm = _ad.year, _ad.month   # penalties payment dates: next December, March and June
         while len(dues) < 3:
             mm += 1
@@ -1500,24 +1502,27 @@ def build(data, meta, out):
         pen_tot = ((ps[dues[0]].get("project") or 0) + (ps[dues[0]].get("non_project") or 0)) if dues[0] in ps else None
         pen_lab = "T4 penalties"; pen_when = dt.date.fromisoformat(dues[0] + "-01").strftime("%B")
         expo = r_inv + lc_all + cus_expo + (pen_tot or 0)
-        _im0 = r_fpd + sum(mt[m] for m in months[:2])
-        s = D.slide("JESA Cash Risks", f"First priority: {f0(_im0)} MMAD of imminent payments (factoring past due, LC due {dt.date.fromisoformat(str(months[0])[:7] + '-01').strftime('%b')}–{dt.date.fromisoformat(str(months[1])[:7] + '-01').strftime('%b')}); global exposure {f0(expo)} MMAD")
+        _im0 = r_fpd + sum(mt[m] for m in months[:2]) + cus_cur + (cus_avg if proj_m else 0)
+        s = D.slide("JESA Cash Risks", f"First priority: {f0(_im0)} MMAD of imminent payments (factoring past due, LC and customs {dt.date.fromisoformat(str(months[0])[:7] + '-01').strftime('%b')}–{dt.date.fromisoformat(str(months[1])[:7] + '-01').strftime('%b')}); global exposure {f0(expo)} MMAD")
         # ---- top: first priority (imminent payments, waterfall) and the global exposure
         ty, th = 1.2, 1.76
         def _ml(m): return dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b")
         lc_im = [(m, mt[m]) for m in months[:2]]   # LC payments due in the month in progress and the next one
         pinv = meta.get("ap_penalty_priority_invoices"); pinv = float(pinv) if pinv not in (None, "", "None") else None   # invoices that generate the highest penalties at the first payment date
-        imm = r_fpd + sum(v for _, v in lc_im) + (pinv or 0)
+        cus_im = cus_cur + (cus_avg if proj_m else 0)   # customs of the same two months: paid to date in the month in progress + next month at the average
+        imm = r_fpd + sum(v for _, v in lc_im) + cus_im + (pinv or 0)
         rect(s, 0.3, ty, 2.55, th, NAVY, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06)
         tb(s, 0.43, ty + 0.08, 2.35, 0.24, "FIRST PRIORITY", size=10, bold=True, color=GOLD)
         tb(s, 0.43, ty + 0.3, 2.35, 0.22, "Imminent payments", size=9, color=LBLUE)
         tb(s, 0.43, ty + 0.5, 2.35, 0.56, [[(f0(imm), {"size": 30, "bold": True, "color": WHITE}), ("  MMAD", {"size": 10, "color": LBLUE})]])
-        tb(s, 0.43, ty + 1.1, 2.35, 0.62, [[("Factoring past due ", {}), (f0(r_fpd), {"bold": True})],
+        tb(s, 0.43, ty + 1.06, 2.35, 0.68, [[("Factoring past due ", {}), (f0(r_fpd), {"bold": True})],
                                             [("LC due ", {})] + [x for j, (m, v) in enumerate(lc_im) for x in (((" · ", {}),) if j else ()) + ((f"{_ml(m)} ", {}), (f0(v), {"bold": True}))],
-                                            [(f"Highest-penalty invoices, end {pen_when[:3]} ", {}), ((f0(pinv) if pinv is not None else "–"), {"bold": True})]], size=8, color=WHITE, line_spacing=1.15)
+                                            [(f"Customs {com}–{proj_m[0] if proj_m else com} ", {}), (f0(cus_im), {"bold": True})],
+                                            [(f"Highest-penalty invoices, end {pen_when[:3]} ", {}), ((f0(pinv) if pinv is not None else "–"), {"bold": True})]], size=8, color=WHITE, line_spacing=1.08)
         wcat = [("Factoring past due", f"of {f0(r_f)} under factoring", r_fpd, GOLD)] + [(f"LC due {_ml(m)}-{str(m)[2:4]}", "payment schedule", v, BLUE) for m, v in lc_im] + \
-               [("Penalty invoices", f"highest at end {pen_when[:3]}", pinv, ORANGE), ("First priority", "imminent payments", imm, NAVY)]
-        wx, ww = 3.0, 5.75; n_ = len(wcat); slot = ww / n_; bwid = slot * 0.6; base_y = ty + th - 0.5; top_y = ty + 0.3; sc = (base_y - top_y) / (imm or 1)
+               [(f"Customs {com}–{proj_m[0] if proj_m else com}", f"{com} {f0(cus_cur)} + {proj_m[0]} {f0(cus_avg)}" if proj_m else f"{com} {f0(cus_cur)}", cus_im, SLATE),
+                ("Penalty invoices", f"highest at end {pen_when[:3]}", pinv, ORANGE), ("First priority", "imminent payments", imm, NAVY)]
+        wx, ww = 2.95, 6.1; n_ = len(wcat); slot = ww / n_; bwid = slot * 0.6; base_y = ty + th - 0.5; top_y = ty + 0.3; sc = (base_y - top_y) / (imm or 1)
         rect(s, wx, base_y, ww, 0.012, GREY); run = 0.0
         for i, (lab, sub, v, col) in enumerate(wcat):
             bx = wx + i * slot + (slot - bwid) / 2; last = i == n_ - 1
@@ -1530,15 +1535,15 @@ def build(data, meta, out):
                 tb(s, bx - 0.2, y_top - 0.26, bwid + 0.4, 0.24, f0(v), size=(12 if last else 10.5), bold=True, color=(NAVY if last else DARK), align=PP_ALIGN.CENTER)
                 if not last: run += v
             if not last: rect(s, bx + bwid, base_y - run * sc - 0.004, slot - bwid, 0.008, GREY)   # connector to the next bar
-            tb(s, wx + i * slot - 0.05, base_y + 0.03, slot + 0.1, 0.22, lab, size=8.5, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+            tb(s, wx + i * slot - 0.06, base_y + 0.03, slot + 0.12, 0.22, lab, size=8, bold=True, color=NAVY, align=PP_ALIGN.CENTER, margin=0.0)
             if sub: tb(s, wx + i * slot - 0.05, base_y + 0.23, slot + 0.1, 0.2, sub, size=7.5, color=SLATE, align=PP_ALIGN.CENTER)
         # global exposure: one box, by category
         gx_ = wx + ww + 0.15; gw_ = SW - 0.3 - gx_
         rect(s, gx_, ty, gw_, th, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.05); rect(s, gx_, ty + 0.1, 0.07, th - 0.2, NAVY)
-        tb(s, gx_ + 0.15, ty + 0.07, 1.5, 0.24, "GLOBAL EXPOSURE", size=9.5, bold=True, color=SLATE)
+        tb(s, gx_ + 0.15, ty + 0.07, 1.35, 0.24, "GLOBAL EXPOSURE", size=9, bold=True, color=SLATE)
         tb(s, gx_ + 0.15, ty + 0.4, 1.45, 0.5, f0(expo), size=28, bold=True, color=NAVY)
         tb(s, gx_ + 0.15, ty + 0.95, 1.45, 0.5, ["MMAD" + ("" if pen_tot is not None else ","), ("" if pen_tot is not None else "before T4 penalties")], size=8, color=SLATE, line_spacing=1.0)
-        grow = [("Past due, excl. factoring", r_pd - r_fpd, RED), ("Not yet due, excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), NAVY2), (f"Under factoring ({f0(r_fpd)} past due)", r_f, GOLD),
+        grow = [("Past due excl. factoring", r_pd - r_fpd, RED), ("Not yet due excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), NAVY2), ("Under factoring", r_f, GOLD),
                 ("LC outstanding", lc_all, BLUE), (f"Customs {com}–{mar_lab}", cus_expo, SLATE), (f"{pen_lab} ({pen_when})", pen_tot, ORANGE)]
         rx = gx_ + 1.5; rw = gw_ - 1.5 - 0.12
         for k, (lab, v, col) in enumerate(grow):
@@ -1576,10 +1581,11 @@ def build(data, meta, out):
         lc6 = sum(mt[m] for m in lm)
         total_strip(x3, y1, pw, h1, "Total LC outstanding", f0(lc_all), [("= ", {}), B(f0(sum(mt[m] for m in months[:2])), BLUE), (f" {dt.date.fromisoformat(str(months[0])[:7] + '-01').strftime('%b')}–{dt.date.fromisoformat(str(months[1])[:7] + '-01').strftime('%b')} + ", {}), B(f0(lc_sched - sum(mt[m] for m in months[:2])), BLUE), (" later + ", {}), B(f0(lc_all - lc_sched), BLUE), (" undated", {})])
         # ---- 4. customs fees: paid and projected
-        panel(x1, y2, pw, h2, "Customs fees – paid and projected (MMAD)", f"Projection at the Jul–{cam} average of {f0(cus_avg)} per month" if proj_m else f"Paid since July {f0(cus_tot)}", SLATE)
+        panel(x1, y2, pw, h2, "Customs fees – paid and projected (MMAD)", (f"{com} at {f0(cus_cur)} ({f0(cus_m[-1][1])} paid to date)  ·  " if cus_est not in (None, "") else "") + f"{proj_m[0]}–{proj_m[-1]} at the Jul–{cam} average of {f0(cus_avg)}" if proj_m else f"Paid since July {f0(cus_tot)}", SLATE)
         ccats = [m for m, _ in cus_m] + proj_m
-        total_strip(x1, y2, pw, h2, f"Total {com}–{mar_lab}", f0(cus_expo), [("= ", {}), B(f0(cus_m[-1][1]), SLATE), (f" paid in {com} + ", {}), B(f0(cus_proj), SLATE), (f" projected {proj_m[0]}–{proj_m[-1]}" if proj_m else "", {})])
-        ch = bar_chart(s, x1 + 0.05, y2 + 0.52, pw - 0.1, h2 - 0.54 - ST, ccats, [("Paid", [v for _, v in cus_m] + [0] * len(proj_m)), ("Projection", [0] * len(cus_m) + [cus_avg] * len(proj_m))], [SLATE, LBLUE], stacked=True, legend=False, gap=45, cat_size=8, label_size=8, label_colors=[WHITE, DARK])
+        total_strip(x1, y2, pw, h2, f"Total {com}–{mar_lab}", f0(cus_expo), [("= ", {}), B(f0(cus_cur), SLATE), ((f" {com} + " if cus_est not in (None, "") else f" paid in {com} + "), {}), B(f0(cus_proj), SLATE), (f" projected {proj_m[0]}–{proj_m[-1]}" if proj_m else "", {})])
+        ch = bar_chart(s, x1 + 0.05, y2 + 0.52, pw - 0.1, h2 - 0.54 - ST, ccats, ([("Paid", [v for _, v in cus_m[:-1]] + [0] * (len(proj_m) + 1)), ("Projection", [0] * (len(cus_m) - 1) + [cus_cur] + [cus_avg] * len(proj_m))] if cus_est not in (None, "") else
+                        [("Paid", [v for _, v in cus_m] + [0] * len(proj_m)), ("Projection", [0] * len(cus_m) + [cus_avg] * len(proj_m))]), [SLATE, LBLUE], stacked=True, legend=False, gap=45, cat_size=8, label_size=8, label_colors=[WHITE, DARK])
         # ---- 5. late-payment penalties by payment date (filled from the penalties file; project and non-project invoices)
         px, pww = x2, 2 * pw + 0.12
         panel(px, y2, pww, h2, "Late-payment penalties – amounts to be paid (MMAD)", None, ORANGE)
@@ -1790,11 +1796,13 @@ if __name__ == "__main__":
     ap.add_argument("--no-unrecognized", action="store_true", help="variant without unrecognized revenue and gross exposure (e.g. for a client-facing review)")
     ap.add_argument("--full-notes", action="store_true", help="keep the explanatory footnotes, detailed dividers, payments-detail and sources slides")
     ap.add_argument("--with-risk", action="store_true", help="include the cash risks dashboard in the deck, after the letters of credit slide")
+    ap.add_argument("--customs-month", type=float, default=None, help="cash risks slide: customs fees of the month in progress, full-month figure in MMAD given by the reviewer (default: paid to date)")
     ap.add_argument("--only", default=None, help="keep the slides of one section only, e.g. 'risk' for the one-slide cash risks dashboard")
     a = ap.parse_args()
     data, meta = read_inputs(a.inputs)
     if a.no_unrecognized: meta["_no_unrecognized"] = True
     if a.full_notes: meta["_full_notes"] = True
     if a.only: meta["_only"] = a.only
+    if a.customs_month is not None: meta["_customs_month"] = a.customs_month
     if a.with_risk: meta["_with_risk"] = True
     build(data, meta, a.out)

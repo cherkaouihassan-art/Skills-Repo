@@ -218,7 +218,8 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 deck after the LC slide, only when asked). Content:
 
 - Top left: **first priority – imminent payments**, with the waterfall: factoring past due, LC due in the month in
-  progress, LC due next month (LC payment schedule, same figures as the LC panel), invoices that generate the highest
+  progress, LC due next month (LC payment schedule, same figures as the LC panel), customs of the same two months
+  (paid to date in the month in progress + next month at the average), invoices that generate the highest
   penalties at the December payment date (blank until the penalties file gives them: `"priority_invoices": MMAD` in the
   penalties JSON; do not count twice invoices already in the factoring past due), total first priority.
 - Top right: **global exposure** box, no waterfall = supplier invoices (past due excl. factoring, not yet due excl.
@@ -229,6 +230,10 @@ deck after the LC slide, only when asked). Content:
   months; customs paid by month plus a projection to March at the average of the closed months since July (the month
   in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
   June, split between project and non-project invoices.
+- Customs of the month in progress: paid to date by default; when the reviewer gives a full-month figure, pass it with
+  `--customs-month <MMAD>` (26-Nov-2026: "make November customs fees 40 MDH"). It then feeds the first-priority
+  waterfall, the global exposure and the customs panel, which quotes the amount paid to date next to it. It is a
+  one-week figure: ask again the following week.
 - Each panel ends with a total band that ties it to the waterfall, in the colours of the bars (e.g. "Total past due
   1,309 = 1,007 excl. factoring + 302 under factoring"; LC = next six months + later + undated; customs = paid in the
   month + projection).
