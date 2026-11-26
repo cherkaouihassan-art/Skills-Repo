@@ -66,6 +66,11 @@ fi
 CM=$(python3 -c "import datetime as d; a=d.date.fromisoformat('$ASOF'); m=(a.replace(day=1)-d.timedelta(days=1)) if a.day<=7 else a; print(m.strftime('%Y-%m'))")
 XARG=(); [ -f "inputs/rfq1/psr_rfq1_${CM}.json" ] && XARG+=(--rfq1 "inputs/rfq1/psr_rfq1_${CM}.json")
 PEN=$(ls inputs/penalties/penalties_*.json 2>/dev/null | sort | tail -1); [ -n "$PEN" ] && XARG+=(--penalties "$PEN")
+# AP team penalties estimate (late-payment penalties by quarter end): a 'DDP estimate' / '4411 DDP' workbook dropped in the source folder is kept, the latest ones are used
+DE=$(find1 '*DDP*estimate*.xlsx'); D4=$(find1 '*4411*DDP*.xlsx'); mkdir -p inputs/penalties
+[ -n "$DE" ] && cp "$DE" "inputs/penalties/DDP_estimate_${ASOF}.xlsx"; [ -n "$D4" ] && cp "$D4" "inputs/penalties/DDP_4411_${ASOF}.xlsx"
+DE=$(ls inputs/penalties/DDP_estimate_*.xlsx 2>/dev/null | sort | tail -1); D4=$(ls inputs/penalties/DDP_4411_*.xlsx 2>/dev/null | sort | tail -1)
+[ -n "$DE" ] && XARG+=(--ddp-estimate "$DE"); [ -n "$D4" ] && XARG+=(--ddp-4411 "$D4")
 echo "AR=$AR"; echo "CASH=$CASH"; echo "AP=$AP"; echo "LC=$LC"; echo "UR=$UR"; echo "DSO calc=$DSO"; echo "previous week=$PREV"; echo "month start=$MS_FILE ($MS_DATE)"
 python3 -W ignore extract_inputs.py --ar "$AR" --prev-inputs "$PREV" "${BASEARG[@]}" \
   --cash "$CASH" "${LCARG[@]}" --ap "$AP" --ur "$UR" "${DSOARG[@]}" "${OCPARG[@]}" "${SUSPARG[@]}" "${XARG[@]}" --coll-month "$CM" \

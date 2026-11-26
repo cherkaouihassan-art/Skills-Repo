@@ -253,6 +253,34 @@ deck after the LC slide, only when asked). Content:
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 
+## 7e. Late-payment penalties estimate (AP team, "DDP")
+
+Received 26-Nov-2026 by email from the AP team ("Delai de payment – risk in 2027"), three workbooks:
+
+- `DDP estimate.xlsx`, sheet `All(Unpaid+unbilled)`: **accumulated** penalties by the end of Q4, Q1 and Q2 if the
+  balances stay unpaid, for unpaid invoices (4411) and for goods / services received not yet invoiced (4417).
+  26-Nov-2026: 57.4 / 93.3 / 127.1 MMAD. The slide shows the amount **per payment date** (increments: 57.4 in December,
+  35.9 in March, 33.8 in June).
+- `4411 DDP.xlsx`, sheet `All data`: penalty by SAP document and the AP team comment per supplier: `DDP` = refuses to
+  change invoice dates (100% subject to penalties), `A risque` = may refuse, `Ok pour changement` = can change its
+  invoice dates. The AP team asks to pay the first two before year end.
+- `4417 DDP JESA & JEBI.xlsx`: detail of the unbilled side (not read; the total comes from the estimate workbook).
+
+Pass `--ddp-estimate` and `--ddp-4411` (`run_week.sh` picks the latest `inputs/penalties/DDP_estimate_*.xlsx` and
+`DDP_4411_*.xlsx`; raw files are git-ignored). Effects:
+
+- Cash risks slide: penalties table (unpaid / not yet invoiced x December, March, June), "Penalties end Dec" bar of the
+  first-priority waterfall = T4 amount, "Penalties to Jun" line of the global exposure = accumulated Q2 amount.
+- Critical invoices section: after the tier 3 and international groups, the unpaid invoices of the suppliers
+  **refusing** and **at risk**, with their penalty by end of December, and an "of which" line naming the three at-risk
+  suppliers with the highest penalties. Suppliers under factoring (join on the SAP document number with the supplier
+  invoice file) and the tier 3 group are left out of these two lines so nothing is counted twice. Suppliers that can
+  change their invoice dates are not critical. The section total feeds the "Critical invoices" bar.
+- Accounts Payable slide of the deck: card "Penalties end Q4 (est.)" with the Q1 and Q2 accumulated amounts.
+- The file also covers invoices not related to a project (overheads): they are in the totals; about 33 MMAD of the
+  4411 detail has no match in the supplier invoice file.
+- Ask for a refreshed estimate when the payables move materially; quote it as an estimate, never recompute penalties.
+
 ## 8. Reviewer preferences (apply every week without being asked)
 
 - Do not send files unless asked ("send me the presentation"); when the reviewer says "do not send", only confirm the change.

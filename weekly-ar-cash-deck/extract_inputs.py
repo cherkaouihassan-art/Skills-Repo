@@ -403,12 +403,14 @@ def extract_ap(path, as_of):
     f_col = next((i for i, h in enumerate(hdr) if "factoring" in h), None)   # 'Does the supplier have a factoring?'
     bu_x = collections.defaultdict(float); aging = collections.defaultdict(float); tier_x = collections.defaultdict(float)
     inv_x = {}   # past due invoices: one entry per supplier and invoice reference (a 4411 invoice is often several lines with the same reference)
+    doc_info = {}   # SAP document number -> (supplier under factoring, tier, BU, days past due): join key with the penalties detail
     for r in data:
         bu = canon_bu(r[3]) or str(r[3]); origin = str(r[10]).strip(); amt = -num(r[14], 1e6)  # payables shown positive
         fact = f_col is not None and str(r[f_col] or "").strip().upper() in ("YES", "OUI", "Y", "O")
         od = (as_of - (r[9].date() if isinstance(r[9], dt.datetime) else r[9])).days if isinstance(r[9], (dt.datetime, dt.date)) else None
         late = od is not None and od > 0; ts = tier_std(r[6])
         bu_x[(bu, "total")] += amt; tier_x[(ts, "open")] += amt
+        doc_info[str(r[2]).strip()] = (fact, ts, bu, od)
         if fact: bu_x[(bu, "factoring")] += amt
         if late:
             bu_x[(bu, "past_due")] += amt; tier_x[(ts, "past_due")] += amt
@@ -416,8 +418,8 @@ def extract_ap(path, as_of):
             ab = "1–30 days" if od <= 30 else "31–60 days" if od <= 60 else "61–90 days" if od <= 90 else "91–180 days" if od <= 180 else "> 180 days"
             aging[(ab, "all")] += amt
             ik = (str(r[5]).strip(), str(r[8]).strip() if r[8] is not None else str(r[2]))
-            e = inv_x.setdefault(ik, {"bu": bu, "origin": origin, "amount": 0.0, "days": od, "factoring": fact, "tier": ts})
-            e["amount"] += amt; e["days"] = max(e["days"], od)
+            e = inv_x.setdefault(ik, {"bu": bu, "origin": origin, "amount": 0.0, "days": od, "factoring": fact, "tier": ts, "docs": set()})
+            e["amount"] += amt; e["days"] = max(e["days"], od); e["docs"].add(str(r[2]).strip())
             if fact: aging[(ab, "factoring")] += amt
         by_bu_origin[(bu, origin)] += amt; cnt[(bu, origin)] += 1
         d = r[9]
@@ -434,7 +436,8 @@ def extract_ap(path, as_of):
             "count": {f"{k[0]}|{k[1]}": v for k, v in cnt.items()},
             "buckets": {f"{k[0]}|{k[1]}": v for k, v in buckets.items()},
             "tiers": dict(tiers), "top_suppliers": [[s, v, sup_bu[s]] for s, v in top], "n_lines": len(data),
-            "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None,
+            "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None, "doc_info": doc_info,
+            "tier3_docs": {d for k, v in inv_x.items() if v["tier"].startswith("National") and "tier 3" in v["tier"] and not v["factoring"] and v["days"] > 60 and v["amount"] > 0 for d in v["docs"]},
             # critical invoices: ranked by amount x days past due (what drives late-payment penalties: amount and time)
             "critical": sorted([[k[0], v["bu"], k[1], v["origin"], v["days"], v["amount"], ("Yes" if v["factoring"] else "No"), v["tier"], v["amount"] * v["days"]] for k, v in inv_x.items() if v["amount"] > 0.05],
                                key=lambda x: -x[8])[:80], "n_past_due_invoices": sum(1 for v in inv_x.values() if v["amount"] > 0.05),
@@ -461,6 +464,53 @@ def tier_std(t):
     if t.startswith("etranger") or t.startswith("étranger") or t == "international": return "International – not tiered"
     if "filiale" in t: return "OCP & subsidiaries"
     return "Other / not tiered"
+
+DDP_CATS = {"ddp": ("refusing", "Suppliers refusing to change invoice dates"), "a risque": ("at_risk", "Suppliers likely to refuse (at risk)"), "ok pour changement": ("can_change", "Suppliers that can change invoice dates")}
+
+def extract_ddp(detail_path, estimate_path, ap):
+    """Late-payment penalties estimate of the AP team (MMAD).
+    estimate workbook, sheet 'All(Unpaid+unbilled)': accumulated penalties by end of Q4, Q1 and Q2 for unpaid invoices (4411) and unbilled accruals (4417).
+    detail workbook, sheet 'All data': one line per 4411 document with the penalty if paid at each quarter end and the AP team comment
+    (DDP = supplier refuses to change invoice dates, A risque = may refuse, Ok pour changement = can change). Joined to the supplier invoice file
+    on the SAP document number to leave out suppliers under factoring and the tier 3 group already listed apart."""
+    out = {"lines": [], "cats": [], "suppliers": []}
+    if estimate_path:
+        wbk = openpyxl.load_workbook(estimate_path, data_only=True, read_only=True)
+        sh = next((n for n in wbk.sheetnames if n.lower().startswith("all")), None)
+        for r in (wbk[sh].iter_rows(values_only=True) if sh else []):
+            lab = str(r[1] or "").strip()
+            if lab.lower().startswith("unpaid"): out["lines"].append(["Unpaid invoices (4411)"] + [num(c, 1e6) for c in r[2:6]])
+            elif lab.lower().startswith("unbilled"): out["lines"].append(["Received, not yet invoiced (4417)"] + [num(c, 1e6) for c in r[2:6]])
+    if detail_path:
+        wbk = openpyxl.load_workbook(detail_path, data_only=True, read_only=True)
+        ws = wbk["All data"] if "All data" in wbk.sheetnames else wbk.worksheets[-1]
+        it = ws.iter_rows(values_only=True); hdr = None
+        for r in it:
+            if str(r[0] or "").strip().lower() == "company code": hdr = [str(c or "").strip().lower() for c in r]; break
+        ci = lambda pfx: next(i for i, h in enumerate(hdr) if h.startswith(pfx))
+        c_doc, c_ven, c_amt, c_com = ci("document number"), ci("vendor account"), ci("montant ttc"), ci("commentaire")
+        c_pen = [i for i, h in enumerate(hdr) if h.startswith("pénalité") or h.startswith("penalite")][:3]
+        cat = collections.defaultdict(lambda: collections.defaultdict(float)); sup = collections.defaultdict(lambda: collections.defaultdict(float)); sup_cat = {}; sup_set = collections.defaultdict(set)
+        t3_pen = 0.0; unp = [0.0, 0.0, 0.0, 0.0]
+        for r in it:
+            if r[c_doc] is None: continue
+            d = str(r[c_doc]).strip(); key = DDP_CATS.get(str(r[c_com] or "").strip().lower(), ("other", "Other"))[0]
+            a = num(r[c_amt], 1e6); p = [num(r[i], 1e6) for i in c_pen]; v = str(r[c_ven] or "").strip()
+            unp[0] += a
+            for j in range(3): unp[j + 1] += p[j]
+            fact = bool(ap["doc_info"].get(d, (False,))[0]); t3 = d in ap["tier3_docs"]
+            cat[key]["amount"] += a; cat[key]["q4"] += p[0]; cat[key]["q1"] += p[1]; cat[key]["q2"] += p[2]
+            if t3: t3_pen += p[0]
+            if not fact and not t3:
+                cat[key]["amount_x"] += a; cat[key]["q4_x"] += p[0]; sup[v]["amount"] += a; sup[v]["q4"] += p[0]; sup[v]["q1"] += p[1]; sup[v]["q2"] += p[2]; sup_cat[v] = key; sup_set[key].add(v)
+        for k_, (key, lab) in DDP_CATS.items():
+            tops = sorted(sup_set[key], key=lambda v: -sup[v]["q4"])[:3]
+            out["cats"].append([key, lab, cat[key]["amount"], cat[key]["q4"], cat[key]["q1"], cat[key]["q2"], cat[key]["amount_x"], cat[key]["q4_x"], len(sup_set[key]),
+                                ", ".join(v.title() if v.isupper() and len(v) > 6 else v for v in tops), sum(sup[v]["amount"] for v in tops), sum(sup[v]["q4"] for v in tops)])
+        out["suppliers"] = [[v, sup_cat[v], x["amount"], x["q4"], x["q1"], x["q2"]] for v, x in sorted(sup.items(), key=lambda kv: -kv[1]["q4"])[:25]]
+        out["tier3_q4"] = t3_pen
+        if not any(l[0].startswith("Unpaid") for l in out["lines"]): out["lines"].insert(0, ["Unpaid invoices (4411)"] + unp)
+    return out
 
 def extract_cash_report(path):
     """Cash flow workbook, sheet 'REPORT - Cashflow by BU': revenue posted by BU and month (PSR and procurement) and, for the group block,
@@ -917,6 +967,8 @@ def main():
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", default=None); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--lc-inputs", default=None, help="saved weekly_inputs.xlsx whose LC_LINES tab is reused when no new bank LC situation is provided")
     ap_.add_argument("--rfq1", default=None, help='JSON {"month": "2026-11", "psr": {bu: MMAD}}: forecast PSR revenue (RFQ1) of the month not yet closed, for the PSR cash-in coverage slide')
+    ap_.add_argument("--ddp-estimate", default=None, help="AP team penalties estimate workbook ('DDP estimate': accumulated late-payment penalties by quarter end, unpaid 4411 and unbilled 4417)")
+    ap_.add_argument("--ddp-4411", default=None, help="AP team penalties detail workbook ('4411 DDP', sheet 'All data': penalty by document and supplier category)")
     ap_.add_argument("--penalties", default=None, help='JSON {"total": MMAD, "label": "...", "by_bu": {bu: MMAD}, "schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}]}: late-payment penalties on the past due supplier balance')
     ap_.add_argument("--psr-note", default=None, help="one-line note shown in a highlighted band on the PSR signature slide (e.g. an achievement to celebrate)")
     ap_.add_argument("--baseline-inputs", default=None, help="saved weekly_inputs.xlsx of the month-start week, used when the raw baseline AR extract is not available")
@@ -976,6 +1028,11 @@ def main():
     crep = extract_cash_report(a.cash)
     rfq1 = json.load(open(a.rfq1)) if a.rfq1 else None
     pen = json.load(open(a.penalties)) if a.penalties else None
+    ddp = extract_ddp(a.ddp_4411, a.ddp_estimate, ap) if (a.ddp_4411 or a.ddp_estimate) else None
+    if ddp and ddp["lines"]:
+        _q = [sum(l[i] for l in ddp["lines"]) for i in (2, 3, 4)]
+        pen = dict(pen or {}); pen.setdefault("total", _q[0]); pen.setdefault("label", f"{_q[1]:,.0f} by Q1  ·  {_q[2]:,.0f} by Q2 if unpaid")
+        print("penalties estimate (MMAD, accumulated Q4 / Q1 / Q2):", [round(x, 1) for x in _q])
     if not cash.get("lc_oct_maturity_total"):
         # 'LC Ongoing' sheet absent: ongoing LC payments line of the cash workbook, else the LC situation column of the ongoing month
         lcp_line = next((r for r in cash["cash_monthly"] if r[0] == "Cash OUT LC payments"), None)
@@ -1276,17 +1333,21 @@ def main():
                 [[b, bx.get((b, "total"), 0.0), bx.get((b, "past_due"), 0.0), (bx.get((b, "factoring"), 0.0) if ap["has_factoring"] else None), (bx.get((b, "factoring_past_due"), 0.0) if ap["has_factoring"] else None),
                   ((pen or {}).get("by_bu") or {}).get(b)] for b in ap_bus],
                 note=f"Supplier invoice file ({meta['ap_label']}): open invoices by BU, past due at {as_of.isoformat()}, invoices of suppliers under factoring, late-payment penalties when provided (MMAD).", widths=[28])
-    if (pen or {}).get("schedule"):
-        write_sheet(wb, "AP_PENALTIES", ["due", "project", "non_project"], [[x["due"], x.get("project"), x.get("non_project")] for x in pen["schedule"]],
-                    note="Late-payment penalties to be paid, by payment month (YYYY-MM): invoices related to a project and other invoices (MMAD).", widths=[12, 14, 14])
+    if ddp:
+        write_sheet(wb, "AP_PENALTIES", ["line", "amount", "acc_q4", "acc_q1", "acc_q2"], ddp["lines"],
+                    note="AP team estimate of late-payment penalties, accumulated by the end of Q4, Q1 and Q2 if the balances are not paid (MMAD).", widths=[36, 12, 12, 12, 12])
+        write_sheet(wb, "AP_PENALTY_CATEGORIES", ["key", "category", "amount", "penalty_q4", "penalty_q1", "penalty_q2", "amount_excl", "penalty_q4_excl", "suppliers_excl", "top_suppliers", "top_amount", "top_penalty_q4"], ddp["cats"],
+                    note="Unpaid invoices (4411) by AP team category; *_excl = without suppliers under factoring and without the national tier 3 invoices more than 60 days past due (both listed apart); top = three suppliers with the highest Q4 penalties (MMAD).", widths=[12, 44, 12, 12, 12, 12, 12, 14, 12, 50, 12, 12])
+        write_sheet(wb, "AP_PENALTY_SUPPLIERS", ["supplier", "category", "amount", "penalty_q4", "penalty_q1", "penalty_q2"], ddp["suppliers"],
+                    note="Unpaid invoices (4411): 25 suppliers with the highest Q4 penalties, factoring and tier 3 group apart (MMAD).", widths=[40, 12, 12, 12, 12, 12])
     write_sheet(wb, "AP_AGING_PAST_DUE", ["bucket", "amount", "factoring"], [[k, ap["aging_past_due"].get((k, "all"), 0.0), ap["aging_past_due"].get((k, "factoring"), 0.0)] for k in AGING_PAST_DUE],
                 note=f"Supplier invoice file: past due open invoices by days past the due date at {as_of.isoformat()} (MMAD); factoring = suppliers under factoring.", widths=[18])
     pinv_ = (pen or {}).get("by_invoice") or {}   # {"<supplier>|<invoice reference>": MMAD} penalties generated, from the penalties file
     write_sheet(wb, "AP_CRITICAL_INVOICES", ["supplier", "bu", "reference", "origin", "days_past_due", "amount", "factoring", "tier", "amount_x_days", "penalty"],
                 [c + [pinv_.get(f"{c[0]}|{c[2]}")] for c in ap["critical"]],
                 note=f"Supplier invoice file: past due invoices at {as_of.isoformat()} ranked by amount x days past due (80 largest of {ap['n_past_due_invoices']}); penalty = penalties generated per the penalties file when provided (MMAD).", widths=[34, 22, 20, 16, 12, 12, 10, 24, 14, 12])
-    write_sheet(wb, "AP_CRITICAL_GROUPS", ["key", "group", "amount", "invoices", "suppliers", "min_days_past_due", "max_days_past_due"],
-                [[k_, lab_, ap[k_]["amount"], ap[k_]["invoices"], ap[k_]["suppliers"], ap[k_]["min_days"], ap[k_]["max_days"]] for k_, lab_ in
+    write_sheet(wb, "AP_CRITICAL_GROUPS", ["key", "group", "amount", "invoices", "suppliers", "min_days_past_due", "max_days_past_due", "penalty_q4"],
+                [[k_, lab_, ap[k_]["amount"], ap[k_]["invoices"], ap[k_]["suppliers"], ap[k_]["min_days"], ap[k_]["max_days"], ((ddp or {}).get("tier3_q4") if k_ == "tier3_long" else None)] for k_, lab_ in
                  (("tier3_long", "National tier 3 suppliers, more than 60 days past due, excl. factoring"), ("intl_old", "International suppliers, more than 180 days past due, excl. factoring (no late-payment penalties)"))],
                 note=f"Supplier invoice file at {as_of.isoformat()}: groups shown among the critical invoices (MMAD).", widths=[12, 70, 12, 10, 10, 16, 16])
     tp = (crep or {}).get("tiers") or {}
