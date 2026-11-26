@@ -227,6 +227,9 @@ deck after the LC slide, only when asked). Content:
   months; customs paid by month plus a projection to March at the average of the closed months since July (the month
   in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
   June, split between project and non-project invoices.
+- Each panel ends with a total band that ties it to the waterfall, in the colours of the bars (e.g. "Total past due
+  1,309 = 1,007 excl. factoring + 302 under factoring"; LC = next six months + later + undated; customs = paid in the
+  month + projection).
 - The penalties boxes and the T4 penalties bar stay blank ("–") and the total reads "before T4 penalties" until the
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
