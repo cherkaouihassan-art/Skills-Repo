@@ -217,19 +217,24 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
 deck after the LC slide, only when asked). Content:
 
-- Top left: **first priority – imminent payments**, with the waterfall: factoring past due, LC due in the month in
-  progress, LC due next month (LC payment schedule, same figures as the LC panel), customs of the same two months
-  (paid to date in the month in progress + next month at the average), invoices that generate the highest
-  penalties at the December payment date (blank until the penalties file gives them: `"priority_invoices": MMAD` in the
-  penalties JSON; do not count twice invoices already in the factoring past due), total first priority.
+- Top left: **first priority payments**, with the waterfall: factoring past due, LC due in the month in progress, LC
+  due next month (LC payment schedule, same figures as the LC panel; no sub-label under the LC bars), customs of the
+  same two months (month in progress + next month at the average), critical invoices (blank until the penalties file
+  identifies them: `"priority_invoices": MMAD`; do not count twice invoices already in the factoring past due),
+  penalties to be paid at end December (T4, from the penalties schedule), total first priority.
 - Top right: **global exposure** box, no waterfall = supplier invoices (past due excl. factoring, not yet due excl.
   factoring, under factoring) + LC outstanding + customs from the month in progress to next March (paid to date in the
   month + projection; earlier months are not counted) + **penalties of the three payment dates up to June** (December,
   March and June; reviewer's instruction of 26-Nov-2026, replacing the earlier "T4 only").
-- Panels: past due payables by age; factoring by BU (factoring, past due, not yet due); LC payments due over the next six
-  months; customs paid by month plus a projection to March at the average of the closed months since July (the month
-  in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
-  June, split between project and non-project invoices.
+- Panels, row 1: past due payables by age; factoring by BU (factoring, past due, not yet due); LC payments due over
+  the next six months (do not mention LCs without a payment date or needing an extension: band = due in the two
+  imminent months + after).
+- Panels, row 2: customs paid by month plus the projection to March at the average of the closed months since July;
+  penalties to be paid in December (T4), March and June as a small table, project / non-project invoices; **critical
+  invoices to be paid first**: the five largest past due invoices ranked by amount x days past due (tab
+  `AP_CRITICAL_INVOICES`, one line per supplier and invoice reference), with days late, factoring flag and a penalty
+  column. When the penalties file gives penalties by invoice (`"by_invoice": {"<supplier>|<reference>": MMAD}`), the
+  list is re-ranked on the penalties generated.
 - Customs of the month in progress: paid to date by default; when the reviewer gives a full-month figure, pass it with
   `--customs-month <MMAD>` (26-Nov-2026: "make November customs fees 40 MDH"). It then feeds the first-priority
   waterfall, the global exposure and the customs panel, which quotes the amount paid to date next to it. It is a

@@ -402,6 +402,7 @@ def extract_ap(path, as_of):
     hdr = [str(c or "").strip().lower() for c in rows[hdr_i]]
     f_col = next((i for i, h in enumerate(hdr) if "factoring" in h), None)   # 'Does the supplier have a factoring?'
     bu_x = collections.defaultdict(float); aging = collections.defaultdict(float); tier_x = collections.defaultdict(float)
+    inv_x = {}   # past due invoices: one entry per supplier and invoice reference (a 4411 invoice is often several lines with the same reference)
     for r in data:
         bu = canon_bu(r[3]) or str(r[3]); origin = str(r[10]).strip(); amt = -num(r[14], 1e6)  # payables shown positive
         fact = f_col is not None and str(r[f_col] or "").strip().upper() in ("YES", "OUI", "Y", "O")
@@ -414,6 +415,9 @@ def extract_ap(path, as_of):
             if fact: bu_x[(bu, "factoring_past_due")] += amt
             ab = "1–30 days" if od <= 30 else "31–60 days" if od <= 60 else "61–90 days" if od <= 90 else "91–180 days" if od <= 180 else "> 180 days"
             aging[(ab, "all")] += amt
+            ik = (str(r[5]).strip(), str(r[8]).strip() if r[8] is not None else str(r[2]))
+            e = inv_x.setdefault(ik, {"bu": bu, "origin": origin, "amount": 0.0, "days": od, "factoring": fact, "tier": ts})
+            e["amount"] += amt; e["days"] = max(e["days"], od)
             if fact: aging[(ab, "factoring")] += amt
         by_bu_origin[(bu, origin)] += amt; cnt[(bu, origin)] += 1
         d = r[9]
@@ -430,7 +434,10 @@ def extract_ap(path, as_of):
             "count": {f"{k[0]}|{k[1]}": v for k, v in cnt.items()},
             "buckets": {f"{k[0]}|{k[1]}": v for k, v in buckets.items()},
             "tiers": dict(tiers), "top_suppliers": [[s, v, sup_bu[s]] for s, v in top], "n_lines": len(data),
-            "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None}
+            "bu_x": dict(bu_x), "aging_past_due": dict(aging), "tier_x": dict(tier_x), "has_factoring": f_col is not None,
+            # critical invoices: ranked by amount x days past due (what drives late-payment penalties: amount and time)
+            "critical": sorted([[k[0], v["bu"], k[1], v["origin"], v["days"], v["amount"], ("Yes" if v["factoring"] else "No"), v["tier"], v["amount"] * v["days"]] for k, v in inv_x.items() if v["amount"] > 0.05],
+                               key=lambda x: -x[8])[:25], "n_past_due_invoices": sum(1 for v in inv_x.values() if v["amount"] > 0.05)}
 
 AGING_PAST_DUE = ["1–30 days", "31–60 days", "61–90 days", "91–180 days", "> 180 days"]
 TIER_ORDER = ["National – tier 1", "National – tier 2", "National – tier 3", "International – tier 1", "International – tier 2", "International – tier 3",
@@ -1267,6 +1274,10 @@ def main():
                     note="Late-payment penalties to be paid, by payment month (YYYY-MM): invoices related to a project and other invoices (MMAD).", widths=[12, 14, 14])
     write_sheet(wb, "AP_AGING_PAST_DUE", ["bucket", "amount", "factoring"], [[k, ap["aging_past_due"].get((k, "all"), 0.0), ap["aging_past_due"].get((k, "factoring"), 0.0)] for k in AGING_PAST_DUE],
                 note=f"Supplier invoice file: past due open invoices by days past the due date at {as_of.isoformat()} (MMAD); factoring = suppliers under factoring.", widths=[18])
+    pinv_ = (pen or {}).get("by_invoice") or {}   # {"<supplier>|<invoice reference>": MMAD} penalties generated, from the penalties file
+    write_sheet(wb, "AP_CRITICAL_INVOICES", ["supplier", "bu", "reference", "origin", "days_past_due", "amount", "factoring", "tier", "amount_x_days", "penalty"],
+                [c + [pinv_.get(f"{c[0]}|{c[2]}")] for c in ap["critical"]],
+                note=f"Supplier invoice file: past due invoices at {as_of.isoformat()} ranked by amount x days past due (25 largest of {ap['n_past_due_invoices']}); penalty = penalties generated per the penalties file when provided (MMAD).", widths=[34, 22, 20, 16, 12, 12, 10, 24, 14, 12])
     tp = (crep or {}).get("tiers") or {}
     write_sheet(wb, "AP_TIER_PAID", ["tier", "paid_actual_months", "ongoing_month", "pending_approval", "open_invoices", "past_due"],
                 [[t, (tp.get(t) or [None] * 3)[0], (tp.get(t) or [None] * 3)[1], (tp.get(t) or [None] * 3)[2], ap["tier_x"].get((t, "open"), 0.0), ap["tier_x"].get((t, "past_due"), 0.0)]
