@@ -246,6 +246,9 @@ deck after the LC slide, only when asked). Content:
   `--customs-month <MMAD>` (26-Nov-2026: "make November customs fees 40 MDH"). It then feeds the first-priority
   waterfall, the global exposure and the customs panel, which quotes the amount paid to date next to it. It is a
   one-week figure: ask again the following week.
+- Colours (reviewer, 26-Nov-2026: "less colourful, more in the JESA logo theme"): this slide uses only the blues of
+  the JESA logo (dark blue for totals and headers, lighter blues for bars and bullets) and greys: no red, orange, gold
+  or teal, including the top band and the subtitle.
 - Each panel ends with a total band that ties it to the waterfall, in the colours of the bars (e.g. "Total past due
   1,309 = 1,007 excl. factoring + 302 under factoring"; LC = next six months + later + undated; customs = paid in the
   month + projection).
