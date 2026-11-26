@@ -903,7 +903,7 @@ def main():
     ap_.add_argument("--cash", required=True); ap_.add_argument("--lc", default=None); ap_.add_argument("--ap", required=True)
     ap_.add_argument("--lc-inputs", default=None, help="saved weekly_inputs.xlsx whose LC_LINES tab is reused when no new bank LC situation is provided")
     ap_.add_argument("--rfq1", default=None, help='JSON {"month": "2026-11", "psr": {bu: MMAD}}: forecast PSR revenue (RFQ1) of the month not yet closed, for the PSR cash-in coverage slide')
-    ap_.add_argument("--penalties", default=None, help='JSON {"total": MMAD, "label": "...", "by_bu": {bu: MMAD}}: late-payment penalties on the past due supplier balance')
+    ap_.add_argument("--penalties", default=None, help='JSON {"total": MMAD, "label": "...", "by_bu": {bu: MMAD}, "schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}]}: late-payment penalties on the past due supplier balance')
     ap_.add_argument("--psr-note", default=None, help="one-line note shown in a highlighted band on the PSR signature slide (e.g. an achievement to celebrate)")
     ap_.add_argument("--baseline-inputs", default=None, help="saved weekly_inputs.xlsx of the month-start week, used when the raw baseline AR extract is not available")
     ap_.add_argument("--ur", default=None, help="UR Tracking Consolidation workbook (unrecognized revenue)")
@@ -1261,6 +1261,9 @@ def main():
                 [[b, bx.get((b, "total"), 0.0), bx.get((b, "past_due"), 0.0), (bx.get((b, "factoring"), 0.0) if ap["has_factoring"] else None), (bx.get((b, "factoring_past_due"), 0.0) if ap["has_factoring"] else None),
                   ((pen or {}).get("by_bu") or {}).get(b)] for b in ap_bus],
                 note=f"Supplier invoice file ({meta['ap_label']}): open invoices by BU, past due at {as_of.isoformat()}, invoices of suppliers under factoring, late-payment penalties when provided (MMAD).", widths=[28])
+    if (pen or {}).get("schedule"):
+        write_sheet(wb, "AP_PENALTIES", ["due", "project", "non_project"], [[x["due"], x.get("project"), x.get("non_project")] for x in pen["schedule"]],
+                    note="Late-payment penalties to be paid, by payment month (YYYY-MM): invoices related to a project and other invoices (MMAD).", widths=[12, 14, 14])
     write_sheet(wb, "AP_AGING_PAST_DUE", ["bucket", "amount", "factoring"], [[k, ap["aging_past_due"].get((k, "all"), 0.0), ap["aging_past_due"].get((k, "factoring"), 0.0)] for k in AGING_PAST_DUE],
                 note=f"Supplier invoice file: past due open invoices by days past the due date at {as_of.isoformat()} (MMAD); factoring = suppliers under factoring.", widths=[18])
     tp = (crep or {}).get("tiers") or {}

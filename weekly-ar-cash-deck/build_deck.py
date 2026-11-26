@@ -1472,6 +1472,79 @@ def build(data, meta, out):
     bar_chart(s, 8.1, 2.75, 5.0, 4.2, [k for k, _ in acts], [("Encours", [v for _, v in acts])], [TEAL], horizontal=True, legend=False, gap=30, cat_size=7.5, label_size=8)
 
     # ------------------------------------------------------------------ 7b. Zoom per business unit
+    # ------------------------------------------------------------------ 13b. Cash risks dashboard (payables, factoring, LC, customs, penalties) – one slide
+    D.section = "risk"
+    if api:
+        r_inv = sum((r["open_invoices"] or 0) for r in api); r_pd = sum((r["past_due"] or 0) for r in api)
+        r_f = sum((r.get("factoring") or 0) for r in api); r_fpd = sum((r.get("factoring_past_due") or 0) for r in api)
+        r_ag = data.get("AP_AGING_PAST_DUE", []); r_o90 = sum((r["amount"] or 0) for r in r_ag if str(r["bucket"]).startswith(("91", ">")))
+        lc_ext = sum((r["encours_mad"] or 0) for r in lcl if short_action(r["action"]) == "LC extension needed")
+        lc_sched = sum(mt.values()); n_lc = sum(1 for r in lcl if r["opened"] == "Yes")
+        cus_m = [("Jul", -(cus["jul"] or 0)), ("Aug", -(cus["aug"] or 0)), ("Sep", -(cus["sep"] or 0)), (cam, -(cus["oct_actual"] or 0)), (com, -(cus["oct_ongoing"] or 0))]
+        cus_tot = sum(v for _, v in cus_m)
+        s = D.slide("JESA Cash Risks", f"Supplier invoices {f0(r_inv)} MMAD, {f0(r_pd)} past due; {f0(r_f)} under factoring; LC outstanding {f0(lc_all)}; customs {f0(cus_tot)} since July")
+        def _pv(k):
+            v = meta.get(k); return float(v) if v not in (None, "", "None") else None
+        _ip, _pp = _pv("ap_total_prev"), _pv("ap_overdue_prev")
+        cards = [("Supplier invoices", f0(r_inv), (f"WoW {fd(r_inv - _ip)}" if _ip is not None else "Parked, 4411 and downpayments"), NAVY2),
+                 ("Past due", f0(r_pd), f"{r_pd/(r_inv or 1)*100:.0f}% of invoices" + (f"  ·  WoW {fd(r_pd - _pp)}" if _pp is not None else ""), RED),
+                 ("Past due > 90 days", f0(r_o90), f"{r_o90/(r_pd or 1)*100:.0f}% of the past due", ORANGE),
+                 ("Under factoring", f0(r_f), f"of which past due {f0(r_fpd)} ({r_fpd/(r_f or 1)*100:.0f}%)", GOLD),
+                 ("LC outstanding", f0(lc_all), f"{f0(appr_lc)} due end of {com}", BLUE),
+                 ("Customs since July", f0(cus_tot), f"{com} to date {f0(cus_m[-1][1])}", SLATE),
+                 ("Final cash position", fd(net_all), f"Net {fd(net_appr)}  ·  pending {f0(pend)}", (RED if net_all < 0 else GREEN))]
+        cw = (SW - 0.6 - 0.1 * (len(cards) - 1)) / len(cards)
+        for i, (lab, val, sub, col) in enumerate(cards):
+            card(s, 0.3 + i * (cw + 0.1), 1.2, cw, 0.98, lab, val, sub, fill=col, value_size=20, sub_size=7.5, label_size=8)
+        def panel(x, y, w, h, title, sub=None, accent=NAVY2):
+            rect(s, x, y, w, h, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.04); rect(s, x, y + 0.1, 0.07, 0.32, accent)
+            tb(s, x + 0.15, y + 0.07, w - 0.3, 0.3, title, size=12, bold=True, color=NAVY)
+            if sub: tb(s, x + 0.15, y + 0.37, w - 0.3, 0.26, sub, size=8.5, color=SLATE)
+        pw = (SW - 0.6 - 0.24) / 3; y1, h1 = 2.3, 2.72; y2 = y1 + h1 + 0.12; h2 = SH - 0.36 - y2
+        x1, x2, x3 = 0.3, 0.3 + pw + 0.12, 0.3 + 2 * (pw + 0.12)
+        # ---- 1. payables: past due by age
+        panel(x1, y1, pw, h1, "Accounts payable – past due by age (MMAD)", "  ·  ".join(f"{short(r['bu'])} {f0(r['past_due'])}" for r in sorted(api, key=lambda r: -(r["past_due"] or 0))[:4]), RED)
+        ch = bar_chart(s, x1 + 0.05, y1 + 0.62, pw - 0.1, h1 - 0.68, [str(r["bucket"]) for r in r_ag], [("Past due", [(r["amount"] or 0) for r in r_ag])], [NAVY2], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        color_points(ch, 0, [GOLD, GOLD, ORANGE, RED, RED][:len(r_ag)])
+        # ---- 2. invoices under factoring, with the past due part
+        panel(x2, y1, pw, h1, "Invoices under factoring (MMAD)", f"{r_f/(r_inv or 1)*100:.0f}% of supplier invoices; {f0(r_fpd)} MMAD already past due", GOLD)
+        fr = sorted([r for r in api if (r.get("factoring") or 0) > 0.5], key=lambda r: -(r.get("factoring") or 0))
+        rows = [[short(r["bu"]), f0(r["factoring"]), f0(r.get("factoring_past_due")), f"{(r.get('factoring_past_due') or 0)/(r['factoring'] or 1)*100:.0f}%", f0((r["factoring"] or 0) - (r.get("factoring_past_due") or 0))] for r in fr]
+        rows.append(["Total", f0(r_f), f0(r_fpd), f"{r_fpd/(r_f or 1)*100:.0f}%", f0(r_f - r_fpd)])
+        table(s, x2 + 0.12, y1 + 0.62, pw - 0.24, ["BU", "Under\nfactoring", "o/w\npast due", "% past\ndue", "Not yet\ndue"], rows, col_w=[1.4, 0.75, 0.75, 0.65, 0.7], font_size=8.5, header_size=7.5, row_h=0.2, header_h=0.32,
+              colors={(i, 2): RED for i in range(len(rows))}, total_last=True, first_col_bold=True)
+        fa = [(str(r["bucket"]).replace(" days", "d"), r.get("factoring") or 0) for r in r_ag if (r.get("factoring") or 0) > 0.5]
+        if fa: tb(s, x2 + 0.15, y1 + h1 - 0.27, pw - 0.3, 0.24, [[("Past due by age:  ", {"bold": True, "color": NAVY})] + [(("  ·  " if i else "") + f"{k} {f0(v)}", {}) for i, (k, v) in enumerate(fa)]], size=8, color=DARK)
+        # ---- 3. letters of credit: payments due by month
+        lm = months[:6]
+        panel(x3, y1, pw, h1, "Letters of credit – payments due (MMAD)", f"{n_lc} opened LCs  ·  {f0(lc_all - lc_sched)} without payment date" + (f"  ·  {f0(lc_ext)} need extension" if lc_ext > 0.5 else ""), BLUE)
+        bar_chart(s, x3 + 0.05, y1 + 0.62, pw - 0.1, h1 - 0.68, [dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b-%y") for m in lm], [("LC payments", [mt[m] for m in lm])], [BLUE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        # ---- 4. customs fees
+        cb_ = sorted([r for r in data["CASH_BU"] if abs(r.get("cash_out_customs") or 0) > 0.5], key=lambda r: (r["cash_out_customs"] or 0))
+        panel(x1, y2, pw, h2, "Customs fees paid (MMAD)", ("  ·  ".join(f"{short(r['bu'])} {f0(-r['cash_out_customs'])}" for r in cb_[:3]) + f"  (Jul–{cam})" if cb_ else f"{f0(cus_tot)} since July"), SLATE)
+        bar_chart(s, x1 + 0.05, y2 + 0.68, pw - 0.1, h2 - 0.72, [m for m, _ in cus_m], [("Customs", [v for _, v in cus_m])], [SLATE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        # ---- 5. late-payment penalties by payment date (filled from the penalties file; project and non-project invoices)
+        px, pww = x2, 2 * pw + 0.12
+        panel(px, y2, pww, h2, "Late-payment penalties – amounts to be paid (MMAD)", "On the past due supplier balance, by payment date; invoices related to a project and other invoices", ORANGE)
+        ps = {str(r["due"])[:7]: r for r in data.get("AP_PENALTIES", [])}
+        ad = dt.date.fromisoformat(str(meta["as_of_date"])[:10]); dues = []
+        yy, mm = ad.year, ad.month
+        while len(dues) < 3:
+            mm += 1
+            if mm > 12: mm, yy = 1, yy + 1
+            if mm in (12, 3, 6): dues.append(f"{yy}-{mm:02d}")
+        boxes = [(dt.date.fromisoformat(d_ + "-01").strftime("%B %Y"), ps.get(d_)) for d_ in dues] + [("Total", ({"project": sum((ps[d_].get("project") or 0) for d_ in dues if d_ in ps), "non_project": sum((ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps)} if ps else None))]
+        bw = (pww - 0.3 - 0.12 * 3) / 4; by = y2 + 0.66; bh = h2 - 0.78
+        for i, (lab, r) in enumerate(boxes):
+            bx = px + 0.15 + i * (bw + 0.12); tot_ = i == len(boxes) - 1
+            pj = (r or {}).get("project"); npj = (r or {}).get("non_project"); tv = ((pj or 0) + (npj or 0)) if r else None
+            rect(s, bx, by, bw, bh, (LIGHT if tot_ else LIGHT2), line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06); rect(s, bx, by, bw, 0.28, (NAVY if tot_ else ORANGE), shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
+            tb(s, bx, by, bw, 0.28, lab.upper(), size=8.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+            tb(s, bx, by + 0.3, bw, 0.42, (f1(tv) if tv is not None else "–"), size=20, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+            for k, (rl, rv_) in enumerate((("Project invoices", pj), ("Non-project invoices", npj))):
+                ry = by + 0.78 + k * 0.22
+                tb(s, bx + 0.1, ry, bw * 0.66, 0.2, rl, size=8, color=SLATE); tb(s, bx + bw * 0.6, ry, bw * 0.4 - 0.1, 0.2, (f1(rv_) if rv_ is not None else "–"), size=8.5, bold=True, color=DARK, align=PP_ALIGN.RIGHT)
+
     D.section = "bu"
     det = {}
     for r in data.get("AR_BU_DETAIL", []): det.setdefault(r["bu"], {}).setdefault(r["section"], []).append(r)
@@ -1653,7 +1726,10 @@ def build(data, meta, out):
 
     if NO_UR: D.remove_section("unrec")
     D.remove_section("drop")
-    D.reorder(["front", "ar", "ar_signed", "ar_jesa", "ar_nonocp", "unrec", "coll", "cash", "ap", "lc", "bu", "backup_divider", "ar_backup", "cash_backup", "backup", "sources"])
+    if meta.get("_only") != "risk" and not meta.get("_with_risk"): D.remove_section("risk")   # the cash risks dashboard is a stand-alone slide unless asked for in the deck
+    if meta.get("_only"):
+        for sec in sorted({e[1] for e in D.entries} - {meta["_only"]}): D.remove_section(sec)
+    D.reorder(["front", "ar", "ar_signed", "ar_jesa", "ar_nonocp", "unrec", "coll", "cash", "ap", "lc", "risk", "bu", "backup_divider", "ar_backup", "cash_backup", "backup", "sources"])
     D.save(out)
     print("saved", out, "slides:", len(D.prs.slides))
 
@@ -1661,8 +1737,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--inputs", default="inputs/weekly_inputs.xlsx"); ap.add_argument("--out", required=True)
     ap.add_argument("--no-unrecognized", action="store_true", help="variant without unrecognized revenue and gross exposure (e.g. for a client-facing review)")
     ap.add_argument("--full-notes", action="store_true", help="keep the explanatory footnotes, detailed dividers, payments-detail and sources slides")
+    ap.add_argument("--with-risk", action="store_true", help="include the cash risks dashboard in the deck, after the letters of credit slide")
+    ap.add_argument("--only", default=None, help="keep the slides of one section only, e.g. 'risk' for the one-slide cash risks dashboard")
     a = ap.parse_args()
     data, meta = read_inputs(a.inputs)
     if a.no_unrecognized: meta["_no_unrecognized"] = True
     if a.full_notes: meta["_full_notes"] = True
+    if a.only: meta["_only"] = a.only
+    if a.with_risk: meta["_with_risk"] = True
     build(data, meta, a.out)

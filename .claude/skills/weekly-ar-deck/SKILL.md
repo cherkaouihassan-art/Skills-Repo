@@ -212,6 +212,16 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
   `inputs/penalties/penalties_<date>.json` (`{"total": MMAD, "label": "...", "by_bu": {"<BU>": MMAD}}`); a card and a
   "Penalties" column by BU then appear. Never compute or estimate penalties.
 
+## 7d. One-slide "JESA Cash Risks" dashboard (stand-alone)
+
+`build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
+deck after the LC slide, only when asked). Content: cards for supplier invoices, past due, past due > 90 days, invoices
+under factoring (with the past due part), LC outstanding, customs paid since July and the final cash position; panels
+for the aging of the past due, factoring by BU (factoring, past due, not yet due), LC payments due over the next six
+months, customs paid by month, and late-payment penalties to be paid in December, March and June, split between project
+invoices and non-project invoices. The penalties boxes stay blank ("–") until the reviewer's penalties file is
+received; then add `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
+
 ## 8. Reviewer preferences (apply every week without being asked)
 
 - Do not send files unless asked ("send me the presentation"); when the reviewer says "do not send", only confirm the change.
