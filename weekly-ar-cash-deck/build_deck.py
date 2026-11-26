@@ -1576,9 +1576,17 @@ def build(data, meta, out):
         tb(s, gx_ + 0.15, ty + 1.08, 1.45, 0.5, ["MMAD" + ("" if pen_tot is not None else ","), ("" if pen_tot is not None else "before penalties")], size=8, color=SLATE, line_spacing=1.0)
         grow = [("Past due excl. factoring", r_pd - r_fpd, JB), ("Not yet due excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), JB3), ("Under factoring", r_f, JB2),
                 ("LC outstanding", lc_all, JCY), (f"Customs {com}–{mar_lab}", cus_expo, SLATE), (pen_lab, pen_tot, JGD)]
-        rx = gx_ + 1.5; rw = gw_ - 1.5 - 0.12
+        # the first three lines are the supplier invoices: a sub-total line shows that together they make the total AP in the books
+        grow = grow[:3] + [("= Total AP in our books", r_inv, None)] + grow[3:]
+        rx = gx_ + 1.62; rw = gw_ - 1.62 - 0.12; rstep = (th - 0.2) / len(grow); ry0 = ty + 0.1
+        rect(s, rx - 0.09, ry0 + 0.03, 0.02, 3 * rstep + 0.1, JB)   # bracket along the three AP lines, down to their total
         for k, (lab, v, col) in enumerate(grow):
-            ry = ty + 0.2 + k * (th - 0.36) / len(grow)
+            ry = ry0 + k * rstep
+            if col is None:
+                rect(s, rx - 0.09, ry - 0.01, rw + 0.12, 0.215, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
+                tb(s, rx - 0.03, ry - 0.01, rw - 0.6, 0.215, lab, size=8.5, bold=True, color=JB, anchor=MSO_ANCHOR.MIDDLE)
+                tb(s, rx + rw - 0.65, ry - 0.01, 0.65, 0.215, f0(v), size=9.5, bold=True, color=JB, align=PP_ALIGN.RIGHT, anchor=MSO_ANCHOR.MIDDLE)
+                continue
             rect(s, rx, ry + 0.05, 0.12, 0.12, col); tb(s, rx + 0.17, ry, rw - 0.72, 0.22, lab, size=8, color=DARK)
             tb(s, rx + rw - 0.6, ry, 0.6, 0.22, (f0(v) if v is not None else "–"), size=9, bold=True, color=NAVY, align=PP_ALIGN.RIGHT)
         def panel(x, y, w, h, title, sub=None, accent=JB):
@@ -1670,42 +1678,6 @@ def build(data, meta, out):
             table(s, bxb + 0.15, by2 + 0.66, bw_ - 0.3, ["Suppliers", "Invoices", f"Penalties by\nend {pen_when[:3]}", "by end\nMarch", "by end\nJune"], crow2, col_w=[2.5, 0.8, 0.95, 0.8, 0.8], font_size=9, header_size=8, row_h=0.3, header_h=0.36, total_last=True, header_fill=JB)
             _ra = sum((pcat.get(k) or {}).get("amount") or 0 for k in ("refusing", "at_risk")); _rx = sum((pcat.get(k) or {}).get("amount_excl") or 0 for k in ("refusing", "at_risk"))
             total_strip(bxb, by2, bw_, bh2, "Refusing + at risk", f1(_ra), [("= ", {}), B(f1(_rx), JB), (" in the critical invoices + ", {}), B(f1(_ra - _rx), JB), (" under factoring or Tier 3", {})])
-
-    # ------------------------------------------------------------------ 13c. Total AP in our books: the three categories (stand-alone visual)
-    D.section = "ap_books"
-    cats3 = [("Parked Invoice", "Parked invoices", "Received and parked, pending validation", ap_pk, JB), ("Invoices - 4411", "Posted invoices", "Booked supplier invoices, open items", ap_44, JB2),
-             ("Downpayment", "Downpayments", "Advance invoices due to suppliers", ap_dp, JCY)]
-    a3 = {o: sum(v for (oo, _), v in bm.items() if oo == o) for o, *_ in cats3}; od3 = {o: bm.get((o, "Overdue"), 0) for o, *_ in cats3}
-    ln3 = {}
-    for r in data.get("AP_BU_ORIGIN", []): ln3[r["origin"]] = ln3.get(r["origin"], 0) + int(r["lines"] or 0)
-    T3 = sum(a3.values()); OD3 = sum(od3.values())
-    if T3 > 0.5:
-        s = D.slide("Total AP in our books")
-        tb(s, 0.52, 0.78, 11.2, 0.35, f"{f0(T3)} MMAD of open supplier invoices at {asof}, in three categories; {f0(OD3)} MMAD ({OD3/T3*100:.0f}%) past due", size=12.5, bold=True, color=JB)
-        # left: the total and its split
-        rect(s, 0.3, 1.3, 4.9, 5.85, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.04)
-        doughnut(s, 0.45, 1.5, 4.6, 4.6, [c[1] for c in cats3], [a3[c[0]] for c in cats3], [c[4] for c in cats3], hole=62)
-        tb(s, 0.45, 3.2, 4.6, 0.3, "TOTAL AP", size=10, bold=True, color=SLATE, align=PP_ALIGN.CENTER)
-        tb(s, 0.45, 3.45, 4.6, 0.7, f0(T3), size=36, bold=True, color=JB, align=PP_ALIGN.CENTER)
-        tb(s, 0.45, 4.1, 4.6, 0.3, "MMAD", size=10, color=SLATE, align=PP_ALIGN.CENTER)
-        d3 = (ap_pk["current"] + ap_44["current"] + ap_dp["current"]) - (ap_pk["prev_week"] + ap_44["prev_week"] + ap_dp["prev_week"])
-        tb(s, 0.45, 6.3, 4.6, 0.3, [[("vs last week  ", {"color": SLATE}), (fd(d3), {"bold": True, "color": JB}), ("     past due  ", {"color": SLATE}), (f"{f0(OD3)}  ({OD3/T3*100:.0f}%)", {"bold": True, "color": JB})]], size=10, align=PP_ALIGN.CENTER)
-        # right: one card per category
-        cx, cw_, ch_ = 5.4, SW - 0.3 - 5.4, 1.85
-        for i, (o, name, desc, k_, col) in enumerate(cats3):
-            cy = 1.3 + i * (ch_ + 0.15); v = a3[o]; odv = od3[o]
-            rect(s, cx, cy, cw_, ch_, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.05); rect(s, cx, cy + 0.12, 0.1, ch_ - 0.24, col)
-            tb(s, cx + 0.25, cy + 0.12, 3.6, 0.32, name, size=15, bold=True, color=NAVY)
-            tb(s, cx + 0.25, cy + 0.46, 3.6, 0.26, desc, size=9, color=SLATE)
-            tb(s, cx + 0.25, cy + 0.82, 3.0, 0.7, [[(f0(v), {"size": 32, "bold": True, "color": col}), ("  MMAD", {"size": 10, "color": SLATE})]])
-            # share bar
-            bx0, bw0 = cx + 4.0, cw_ - 4.3
-            tb(s, bx0, cy + 0.14, bw0, 0.26, [[("Share of total AP  ", {"color": SLATE}), (f"{v/T3*100:.0f}%", {"bold": True, "color": NAVY})]], size=10)
-            rect(s, bx0, cy + 0.46, bw0, 0.14, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5); rect(s, bx0, cy + 0.46, max(bw0 * v / T3, 0.05), 0.14, col, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
-            tb(s, bx0, cy + 0.74, bw0, 0.26, [[("Past due  ", {"color": SLATE}), (f0(odv), {"bold": True, "color": NAVY}), (f"  ({odv/(v or 1)*100:.0f}% of the category)", {"color": SLATE})]], size=10)
-            rect(s, bx0, cy + 1.06, bw0, 0.14, LIGHT, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5); rect(s, bx0, cy + 1.06, max(bw0 * odv / T3, 0.05), 0.14, JGD, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.5)
-            dv = (k_["current"] or 0) - (k_["prev_week"] or 0)
-            tb(s, bx0, cy + 1.34, bw0, 0.26, [[("vs last week  ", {"color": SLATE}), (fd(dv), {"bold": True, "color": NAVY}), (f"     {ln3.get(o, 0):,} lines", {"color": SLATE})]], size=10)
 
     D.section = "bu"
     det = {}
@@ -1888,7 +1860,6 @@ def build(data, meta, out):
 
     if NO_UR: D.remove_section("unrec")
     D.remove_section("drop")
-    if meta.get("_only") != "ap_books": D.remove_section("ap_books")   # stand-alone visual: total AP in the books by category
     if meta.get("_only") != "risk" and not meta.get("_with_risk"): D.remove_section("risk")   # the cash risks dashboard is a stand-alone slide unless asked for in the deck
     if meta.get("_only"):
         for sec in sorted({e[1] for e in D.entries} - {meta["_only"]}): D.remove_section(sec)
