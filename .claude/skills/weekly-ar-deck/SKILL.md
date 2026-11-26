@@ -219,8 +219,8 @@ deck after the LC slide, only when asked). Content:
 
 - Top left: **first priority payments**, with the waterfall: factoring past due, LC due in the month in progress, LC
   due next month (LC payment schedule, same figures as the LC panel; no sub-label under the LC bars), customs of the
-  same two months (month in progress + next month at the average), critical invoices (blank until the penalties file
-  identifies them: `"priority_invoices": MMAD`; do not count twice invoices already in the factoring past due),
+  same two months (month in progress + next month at the average), critical invoices (total of the critical invoices
+  section, factoring excluded so nothing is counted twice),
   penalties to be paid at end December (T4, from the penalties schedule), total first priority.
 - Top right: **global exposure** box, no waterfall = supplier invoices (past due excl. factoring, not yet due excl.
   factoring, under factoring) + LC outstanding + customs from the month in progress to next March (paid to date in the
@@ -231,10 +231,13 @@ deck after the LC slide, only when asked). Content:
   imminent months + after).
 - Panels, row 2: customs paid by month plus the projection to March at the average of the closed months since July;
   penalties to be paid in December (T4), March and June as a small table, project / non-project invoices; **critical
-  invoices to be paid first**: the five largest past due invoices ranked by amount x days past due (tab
-  `AP_CRITICAL_INVOICES`, one line per supplier and invoice reference), with days late, factoring flag and a penalty
-  column. When the penalties file gives penalties by invoice (`"by_invoice": {"<supplier>|<reference>": MMAD}`), the
-  list is re-ranked on the penalties generated.
+  invoices to be paid first**, suppliers under factoring left out (they are paid in full as factoring past due): one
+  grouped line "Tier 3 suppliers > 60 days late" with its total (tab `AP_CRITICAL_GROUPS`), then the four other invoices
+  that generate the most penalties (tab `AP_CRITICAL_INVOICES`, one line per supplier and invoice reference, ranked by
+  amount x days past due until the penalties file gives penalties by invoice:
+  `"by_invoice": {"<supplier>|<reference>": MMAD}`). The section total feeds the "Critical invoices" bar of the
+  first-priority waterfall (`"priority_invoices"` in the penalties JSON overrides it).
+- The global exposure box carries the label "incl. Q1 <year> horizon".
 - Customs of the month in progress: paid to date by default; when the reviewer gives a full-month figure, pass it with
   `--customs-month <MMAD>` (26-Nov-2026: "make November customs fees 40 MDH"). It then feeds the first-priority
   waterfall, the global exposure and the customs panel, which quotes the amount paid to date next to it. It is a
