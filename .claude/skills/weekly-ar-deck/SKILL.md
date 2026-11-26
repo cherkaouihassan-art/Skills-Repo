@@ -215,12 +215,19 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 ## 7d. One-slide "JESA Cash Risks" dashboard (stand-alone)
 
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
-deck after the LC slide, only when asked). Content: cards for supplier invoices, past due, past due > 90 days, invoices
-under factoring (with the past due part), LC outstanding, customs paid since July and the final cash position; panels
-for the aging of the past due, factoring by BU (factoring, past due, not yet due), LC payments due over the next six
-months, customs paid by month, and late-payment penalties to be paid in December, March and June, split between project
-invoices and non-project invoices. The penalties boxes stay blank ("–") until the reviewer's penalties file is
-received; then add `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
+deck after the LC slide, only when asked). Content:
+
+- Top: **total cash exposure** = supplier invoices + LC outstanding + customs projected to next March + penalties, with a
+  waterfall by category: past due invoices excl. factoring, invoices not yet due excl. factoring, invoices under
+  factoring (past due part quoted), LC outstanding, customs projection, penalties, total. Factoring is carved out of the
+  two invoice bars so nothing is counted twice. No KPI boxes.
+- Panels: past due payables by age; factoring by BU (factoring, past due, not yet due); LC payments due over the next six
+  months; customs paid by month plus a projection to March at the average of the closed months since July (the month
+  in progress is shown as paid to date and not topped up); late-payment penalties to be paid in December, March and
+  June, split between project and non-project invoices.
+- The penalties boxes and the penalties bar stay blank ("–") and the total reads "before penalties" until the
+  reviewer's penalties file is received; then add
+  `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 
 ## 8. Reviewer preferences (apply every week without being asked)
 

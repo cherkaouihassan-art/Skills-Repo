@@ -1477,72 +1477,92 @@ def build(data, meta, out):
     if api:
         r_inv = sum((r["open_invoices"] or 0) for r in api); r_pd = sum((r["past_due"] or 0) for r in api)
         r_f = sum((r.get("factoring") or 0) for r in api); r_fpd = sum((r.get("factoring_past_due") or 0) for r in api)
-        r_ag = data.get("AP_AGING_PAST_DUE", []); r_o90 = sum((r["amount"] or 0) for r in r_ag if str(r["bucket"]).startswith(("91", ">")))
+        r_ag = data.get("AP_AGING_PAST_DUE", [])
         lc_ext = sum((r["encours_mad"] or 0) for r in lcl if short_action(r["action"]) == "LC extension needed")
         lc_sched = sum(mt.values()); n_lc = sum(1 for r in lcl if r["opened"] == "Yes")
+        # customs: paid by month, then projection to next March on the average of the closed months
         cus_m = [("Jul", -(cus["jul"] or 0)), ("Aug", -(cus["aug"] or 0)), ("Sep", -(cus["sep"] or 0)), (cam, -(cus["oct_actual"] or 0)), (com, -(cus["oct_ongoing"] or 0))]
-        cus_tot = sum(v for _, v in cus_m)
-        s = D.slide("JESA Cash Risks", f"Supplier invoices {f0(r_inv)} MMAD, {f0(r_pd)} past due; {f0(r_f)} under factoring; LC outstanding {f0(lc_all)}; customs {f0(cus_tot)} since July")
-        def _pv(k):
-            v = meta.get(k); return float(v) if v not in (None, "", "None") else None
-        _ip, _pp = _pv("ap_total_prev"), _pv("ap_overdue_prev")
-        cards = [("Supplier invoices", f0(r_inv), (f"WoW {fd(r_inv - _ip)}" if _ip is not None else "Parked, 4411 and downpayments"), NAVY2),
-                 ("Past due", f0(r_pd), f"{r_pd/(r_inv or 1)*100:.0f}% of invoices" + (f"  ·  WoW {fd(r_pd - _pp)}" if _pp is not None else ""), RED),
-                 ("Past due > 90 days", f0(r_o90), f"{r_o90/(r_pd or 1)*100:.0f}% of the past due", ORANGE),
-                 ("Under factoring", f0(r_f), f"of which past due {f0(r_fpd)} ({r_fpd/(r_f or 1)*100:.0f}%)", GOLD),
-                 ("LC outstanding", f0(lc_all), f"{f0(appr_lc)} due end of {com}", BLUE),
-                 ("Customs since July", f0(cus_tot), f"{com} to date {f0(cus_m[-1][1])}", SLATE),
-                 ("Final cash position", fd(net_all), f"Net {fd(net_appr)}  ·  pending {f0(pend)}", (RED if net_all < 0 else GREEN))]
-        cw = (SW - 0.6 - 0.1 * (len(cards) - 1)) / len(cards)
-        for i, (lab, val, sub, col) in enumerate(cards):
-            card(s, 0.3 + i * (cw + 0.1), 1.2, cw, 0.98, lab, val, sub, fill=col, value_size=20, sub_size=7.5, label_size=8)
+        cus_tot = sum(v for _, v in cus_m); cus_avg = sum(v for _, v in cus_m[:4]) / 4
+        _mn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; _k = _mn.index(com) if com in _mn else 10
+        proj_m = []
+        while _mn[_k] != "Mar" and len(proj_m) < 11: _k = (_k + 1) % 12; proj_m.append(_mn[_k])
+        _ad = dt.date.fromisoformat(str(meta["as_of_date"])[:10]); mar_lab = f"Mar-{(_ad.year + (1 if _ad.month > 3 else 0)) % 100:02d}"
+        cus_proj = cus_avg * len(proj_m)
+        # penalties (blank until the penalties file is received)
+        ps = {str(r["due"])[:7]: r for r in data.get("AP_PENALTIES", [])}
+        pen_tot = sum((r.get("project") or 0) + (r.get("non_project") or 0) for r in ps.values()) if ps else None
+        expo = r_inv + lc_all + cus_proj + (pen_tot or 0)
+        s = D.slide("JESA Cash Risks", f"Total cash exposure {f0(expo)} MMAD" + ("" if pen_tot is not None else " before penalties") + f": invoices {f0(r_inv)} ({f0(r_pd)} past due), LC {f0(lc_all)}, customs {f0(cus_proj)} to {mar_lab}")
+        # ---- top: total exposure and its build-up by category
+        ty, th = 1.2, 1.88
+        rect(s, 0.3, ty, 2.75, th, NAVY, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06)
+        tb(s, 0.45, ty + 0.1, 2.5, 0.26, "TOTAL CASH EXPOSURE", size=10, bold=True, color=GOLD)
+        tb(s, 0.45, ty + 0.36, 2.5, 0.6, [[(f0(expo), {"size": 32, "bold": True, "color": WHITE}), ("  MMAD", {"size": 11, "color": LBLUE})]])
+        tb(s, 0.45, ty + 1.0, 2.5, 0.8, [[("Supplier invoices ", {}), (f0(r_inv), {"bold": True}), (f"  ·  past due {f0(r_pd)}", {})],
+                                           [("LC ", {}), (f0(lc_all), {"bold": True}), ("  ·  customs ", {}), (f0(cus_proj), {"bold": True}), ("  ·  penalties ", {}), ((f1(pen_tot) if pen_tot is not None else "–"), {"bold": True})],
+                                           [("Final cash position ", {}), (fd(net_all), {"bold": True})]], size=8.5, color=WHITE, line_spacing=1.2)
+        wcat = [("Past due invoices", "excl. factoring", r_pd - r_fpd, RED), ("Invoices not yet due", "excl. factoring", (r_inv - r_pd) - (r_f - r_fpd), NAVY2),
+                ("Under factoring", f"{f0(r_fpd)} past due", r_f, GOLD), ("LC outstanding", f"{f0(appr_lc)} due end of {com}", lc_all, BLUE),
+                (f"Customs to {mar_lab}", f"projection, {f0(cus_avg)} per month", cus_proj, SLATE), ("Penalties", "Dec · Mar · Jun", pen_tot, ORANGE),
+                ("Total cash exposure", ("" if pen_tot is not None else "before penalties"), expo, NAVY)]
+        wx, ww = 3.25, SW - 0.3 - 3.25; n_ = len(wcat); slot = ww / n_; bwid = slot * 0.62; base_y = ty + th - 0.5; top_y = ty + 0.3; sc = (base_y - top_y) / (expo or 1)
+        rect(s, wx, base_y, ww, 0.012, GREY); run = 0.0
+        for i, (lab, sub, v, col) in enumerate(wcat):
+            bx = wx + i * slot + (slot - bwid) / 2; last = i == n_ - 1
+            y_top = base_y - ((expo if last else run + (v or 0)) * sc); y_bot = base_y if last else base_y - run * sc
+            if v is None:   # nothing to show yet: dotted placeholder at the running level
+                ph = rect(s, bx, y_bot - 0.12, bwid, 0.12, BG, line=col); ph.line.dash_style = 4
+                tb(s, bx - 0.2, y_bot - 0.38, bwid + 0.4, 0.24, "–", size=11, bold=True, color=col, align=PP_ALIGN.CENTER)
+            else:
+                rect(s, bx, y_top, bwid, max(y_bot - y_top, 0.02), col)
+                tb(s, bx - 0.2, y_top - 0.26, bwid + 0.4, 0.24, f0(v), size=(12 if last else 10.5), bold=True, color=(NAVY if last else DARK), align=PP_ALIGN.CENTER)
+                if not last: run += v
+            if not last: rect(s, bx + bwid, base_y - run * sc - 0.004, slot - bwid, 0.008, GREY)   # connector to the next bar
+            tb(s, wx + i * slot, base_y + 0.03, slot, 0.22, lab, size=8.5, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+            if sub: tb(s, wx + i * slot, base_y + 0.23, slot, 0.2, sub, size=7.5, color=SLATE, align=PP_ALIGN.CENTER)
         def panel(x, y, w, h, title, sub=None, accent=NAVY2):
-            rect(s, x, y, w, h, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.04); rect(s, x, y + 0.1, 0.07, 0.32, accent)
-            tb(s, x + 0.15, y + 0.07, w - 0.3, 0.3, title, size=12, bold=True, color=NAVY)
-            if sub: tb(s, x + 0.15, y + 0.37, w - 0.3, 0.26, sub, size=8.5, color=SLATE)
-        pw = (SW - 0.6 - 0.24) / 3; y1, h1 = 2.3, 2.72; y2 = y1 + h1 + 0.12; h2 = SH - 0.36 - y2
+            rect(s, x, y, w, h, WHITE, line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.04); rect(s, x, y + 0.08, 0.07, 0.28, accent)
+            tb(s, x + 0.15, y + 0.05, w - 0.3, 0.28, title, size=11.5, bold=True, color=NAVY)
+            if sub: tb(s, x + 0.15, y + 0.32, w - 0.3, 0.24, sub, size=8, color=SLATE)
+        pw = (SW - 0.6 - 0.24) / 3; y1 = ty + th + 0.12; h1 = 2.2; y2 = y1 + h1 + 0.1; h2 = SH - 0.34 - y2
         x1, x2, x3 = 0.3, 0.3 + pw + 0.12, 0.3 + 2 * (pw + 0.12)
         # ---- 1. payables: past due by age
-        panel(x1, y1, pw, h1, "Accounts payable – past due by age (MMAD)", "  ·  ".join(f"{short(r['bu'])} {f0(r['past_due'])}" for r in sorted(api, key=lambda r: -(r["past_due"] or 0))[:4]), RED)
-        ch = bar_chart(s, x1 + 0.05, y1 + 0.62, pw - 0.1, h1 - 0.68, [str(r["bucket"]) for r in r_ag], [("Past due", [(r["amount"] or 0) for r in r_ag])], [NAVY2], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        panel(x1, y1, pw, h1, "Past due payables by age (MMAD)", "  ·  ".join(f"{short(r['bu'])} {f0(r['past_due'])}" for r in sorted(api, key=lambda r: -(r["past_due"] or 0))[:4]), RED)
+        ch = bar_chart(s, x1 + 0.05, y1 + 0.56, pw - 0.1, h1 - 0.6, [str(r["bucket"]) for r in r_ag], [("Past due", [(r["amount"] or 0) for r in r_ag])], [NAVY2], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
         color_points(ch, 0, [GOLD, GOLD, ORANGE, RED, RED][:len(r_ag)])
         # ---- 2. invoices under factoring, with the past due part
-        panel(x2, y1, pw, h1, "Invoices under factoring (MMAD)", f"{r_f/(r_inv or 1)*100:.0f}% of supplier invoices; {f0(r_fpd)} MMAD already past due", GOLD)
+        panel(x2, y1, pw, h1, "Invoices under factoring (MMAD)", None, GOLD)
         fr = sorted([r for r in api if (r.get("factoring") or 0) > 0.5], key=lambda r: -(r.get("factoring") or 0))
         rows = [[short(r["bu"]), f0(r["factoring"]), f0(r.get("factoring_past_due")), f"{(r.get('factoring_past_due') or 0)/(r['factoring'] or 1)*100:.0f}%", f0((r["factoring"] or 0) - (r.get("factoring_past_due") or 0))] for r in fr]
         rows.append(["Total", f0(r_f), f0(r_fpd), f"{r_fpd/(r_f or 1)*100:.0f}%", f0(r_f - r_fpd)])
-        table(s, x2 + 0.12, y1 + 0.62, pw - 0.24, ["BU", "Under\nfactoring", "o/w\npast due", "% past\ndue", "Not yet\ndue"], rows, col_w=[1.4, 0.75, 0.75, 0.65, 0.7], font_size=8.5, header_size=7.5, row_h=0.2, header_h=0.32,
+        table(s, x2 + 0.12, y1 + 0.4, pw - 0.24, ["BU", "Under\nfactoring", "o/w\npast due", "% past\ndue", "Not yet\ndue"], rows, col_w=[1.4, 0.75, 0.75, 0.65, 0.7], font_size=8.5, header_size=7.5, row_h=0.2, header_h=0.32,
               colors={(i, 2): RED for i in range(len(rows))}, total_last=True, first_col_bold=True)
-        fa = [(str(r["bucket"]).replace(" days", "d"), r.get("factoring") or 0) for r in r_ag if (r.get("factoring") or 0) > 0.5]
-        if fa: tb(s, x2 + 0.15, y1 + h1 - 0.27, pw - 0.3, 0.24, [[("Past due by age:  ", {"bold": True, "color": NAVY})] + [(("  ·  " if i else "") + f"{k} {f0(v)}", {}) for i, (k, v) in enumerate(fa)]], size=8, color=DARK)
         # ---- 3. letters of credit: payments due by month
         lm = months[:6]
         panel(x3, y1, pw, h1, "Letters of credit – payments due (MMAD)", f"{n_lc} opened LCs  ·  {f0(lc_all - lc_sched)} without payment date" + (f"  ·  {f0(lc_ext)} need extension" if lc_ext > 0.5 else ""), BLUE)
-        bar_chart(s, x3 + 0.05, y1 + 0.62, pw - 0.1, h1 - 0.68, [dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b-%y") for m in lm], [("LC payments", [mt[m] for m in lm])], [BLUE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
-        # ---- 4. customs fees
-        cb_ = sorted([r for r in data["CASH_BU"] if abs(r.get("cash_out_customs") or 0) > 0.5], key=lambda r: (r["cash_out_customs"] or 0))
-        panel(x1, y2, pw, h2, "Customs fees paid (MMAD)", ("  ·  ".join(f"{short(r['bu'])} {f0(-r['cash_out_customs'])}" for r in cb_[:3]) + f"  (Jul–{cam})" if cb_ else f"{f0(cus_tot)} since July"), SLATE)
-        bar_chart(s, x1 + 0.05, y2 + 0.68, pw - 0.1, h2 - 0.72, [m for m, _ in cus_m], [("Customs", [v for _, v in cus_m])], [SLATE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        bar_chart(s, x3 + 0.05, y1 + 0.56, pw - 0.1, h1 - 0.6, [dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b-%y") for m in lm], [("LC payments", [mt[m] for m in lm])], [BLUE], legend=False, gap=55, cat_size=8, label_size=8.5, label_pos=XL_LABEL_POSITION.OUTSIDE_END)
+        # ---- 4. customs fees: paid and projected
+        panel(x1, y2, pw, h2, "Customs fees – paid and projected (MMAD)", f"Paid {f0(cus_tot)} since July  ·  {proj_m[0]}–{proj_m[-1]} projection {f0(cus_proj)} (Jul–{cam} average)" if proj_m else f"Paid since July {f0(cus_tot)}", SLATE)
+        ccats = [m for m, _ in cus_m] + proj_m
+        ch = bar_chart(s, x1 + 0.05, y2 + 0.56, pw - 0.1, h2 - 0.58, ccats, [("Paid", [v for _, v in cus_m] + [0] * len(proj_m)), ("Projection", [0] * len(cus_m) + [cus_avg] * len(proj_m))], [SLATE, LBLUE], stacked=True, legend=False, gap=45, cat_size=8, label_size=8, label_colors=[WHITE, DARK])
         # ---- 5. late-payment penalties by payment date (filled from the penalties file; project and non-project invoices)
         px, pww = x2, 2 * pw + 0.12
-        panel(px, y2, pww, h2, "Late-payment penalties – amounts to be paid (MMAD)", "On the past due supplier balance, by payment date; invoices related to a project and other invoices", ORANGE)
-        ps = {str(r["due"])[:7]: r for r in data.get("AP_PENALTIES", [])}
-        ad = dt.date.fromisoformat(str(meta["as_of_date"])[:10]); dues = []
-        yy, mm = ad.year, ad.month
+        panel(px, y2, pww, h2, "Late-payment penalties – amounts to be paid (MMAD)", None, ORANGE)
+        dues = []; yy, mm = _ad.year, _ad.month
         while len(dues) < 3:
             mm += 1
             if mm > 12: mm, yy = 1, yy + 1
             if mm in (12, 3, 6): dues.append(f"{yy}-{mm:02d}")
         boxes = [(dt.date.fromisoformat(d_ + "-01").strftime("%B %Y"), ps.get(d_)) for d_ in dues] + [("Total", ({"project": sum((ps[d_].get("project") or 0) for d_ in dues if d_ in ps), "non_project": sum((ps[d_].get("non_project") or 0) for d_ in dues if d_ in ps)} if ps else None))]
-        bw = (pww - 0.3 - 0.12 * 3) / 4; by = y2 + 0.66; bh = h2 - 0.78
+        bw = (pww - 0.3 - 0.12 * 3) / 4; by = y2 + 0.42; bh = h2 - 0.52
         for i, (lab, r) in enumerate(boxes):
             bx = px + 0.15 + i * (bw + 0.12); tot_ = i == len(boxes) - 1
             pj = (r or {}).get("project"); npj = (r or {}).get("non_project"); tv = ((pj or 0) + (npj or 0)) if r else None
-            rect(s, bx, by, bw, bh, (LIGHT if tot_ else LIGHT2), line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06); rect(s, bx, by, bw, 0.28, (NAVY if tot_ else ORANGE), shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
-            tb(s, bx, by, bw, 0.28, lab.upper(), size=8.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-            tb(s, bx, by + 0.3, bw, 0.42, (f1(tv) if tv is not None else "–"), size=20, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
+            rect(s, bx, by, bw, bh, (LIGHT if tot_ else LIGHT2), line=LBLUE, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06); rect(s, bx, by, bw, 0.26, (NAVY if tot_ else ORANGE), shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.2)
+            tb(s, bx, by, bw, 0.26, lab.upper(), size=8.5, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+            tb(s, bx, by + 0.27, bw, 0.36, (f1(tv) if tv is not None else "–"), size=18, bold=True, color=NAVY, align=PP_ALIGN.CENTER)
             for k, (rl, rv_) in enumerate((("Project invoices", pj), ("Non-project invoices", npj))):
-                ry = by + 0.78 + k * 0.22
+                ry = by + 0.66 + k * 0.2
                 tb(s, bx + 0.1, ry, bw * 0.66, 0.2, rl, size=8, color=SLATE); tb(s, bx + bw * 0.6, ry, bw * 0.4 - 0.1, 0.2, (f1(rv_) if rv_ is not None else "–"), size=8.5, bold=True, color=DARK, align=PP_ALIGN.RIGHT)
 
     D.section = "bu"
