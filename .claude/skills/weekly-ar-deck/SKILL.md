@@ -212,7 +212,16 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
   `inputs/penalties/penalties_<date>.json` (`{"total": MMAD, "label": "...", "by_bu": {"<BU>": MMAD}}`); a card and a
   "Penalties" column by BU then appear. Never compute or estimate penalties.
 
-## 7d. One-slide "JESA Cash Risks" dashboard (stand-alone)
+## 7d. "JESA Cash Risks" dashboard (stand-alone: executive slide + detail slide)
+
+**Executive format (reviewer, 26-Nov-2026).** Slide 1 = headline with the cost of not acting (penalties by end December
+and by June), the first-priority box and waterfall, the global exposure box, three panels only (past due by age, LC
+payments due, critical invoices) and a **"Decision needed"** band: 1. release the first-priority payments before the
+end of December; 2. have the suppliers that accept it change their invoice dates before the December closing (invoices
+and penalties avoided = AP team category "can change", totals as in their email). Slide 2 "detail" = factoring by BU,
+penalties by payment date, customs paid and projected, unpaid invoices by supplier position on invoice dates. No
+ledger account numbers (4411 / 4417) and "Q4", not "T4", on the slides. The reviewer may change the wording of the
+decision line: ask before a presentation to a new audience. The notes below describe the content of the blocks.
 
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
 deck after the LC slide, only when asked). Content:
