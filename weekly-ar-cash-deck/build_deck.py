@@ -1614,12 +1614,12 @@ def build(data, meta, out):
         # ---- 4. late-payment penalties by quarter: unpaid invoices and unbilled (received, not yet invoiced)
         panel(x1, y2, pw, h2, "Penalties by quarter (MMAD)", ("Unpaid and unbilled; estimate if the balances are not paid" if pen_rows else None), JGD)
         if pen_rows:
-            JGD2 = RGBColor(0xE6, 0xCB, 0x8A)
+            pcol = lambda lab: JB if str(lab).lower().startswith("unpaid") else JGD   # unpaid in JESA blue, unbilled in gold
             def _pname(lab): return "Unpaid" if str(lab).lower().startswith("unpaid") else "Unbilled"
             pser = [(_pname(lab), v) for lab, v in pen_rows]
             pcats = [f"{dt.date.fromisoformat(d_ + '-01').strftime('%b-%y')}\n{f0(pen_q[j])}" for j, d_ in enumerate(dues)]
-            bar_chart(s, x1 + 0.05, y2 + 0.52, pw - 0.1, h2 - 0.56 - ST, pcats, pser, [JGD, JGD2][:len(pser)], stacked=True, legend=True, legend_pos=XL_LEGEND_POSITION.RIGHT, gap=55, cat_size=8, label_size=8.5, number_format='#,##0.0', label_colors=[WHITE, DARK][:len(pser)])
-            total_strip(x1, y2, pw, h2, f"Total to {pen_end}", f0(pen_tot), [("= ", {})] + [x for j, (lab, v) in enumerate(pen_rows) for x in (B(("+ " if j else "") + f0(sum(v)), JGD), (" unpaid " if str(lab).lower().startswith("unpaid") else " unbilled ", {}))])
+            bar_chart(s, x1 + 0.05, y2 + 0.52, pw - 0.1, h2 - 0.56 - ST, pcats, pser, [pcol(lab) for lab, _ in pen_rows], stacked=True, legend=True, legend_pos=XL_LEGEND_POSITION.RIGHT, gap=55, cat_size=8, label_size=8.5, number_format='#,##0.0', label_colors=[WHITE] * len(pser))
+            total_strip(x1, y2, pw, h2, f"Total to {pen_end}", f0(pen_tot), [("= ", {})] + [x for j, (lab, v) in enumerate(pen_rows) for x in (B(("+ " if j else "") + f0(sum(v)), pcol(lab)), (" unpaid " if str(lab).lower().startswith("unpaid") else " unbilled ", {}))])
         else:
             total_strip(x1, y2, pw, h2, f"Total to {pen_end}", "–", [])
         # ---- 5. critical invoices: to be paid first, by aging and penalties generated
