@@ -1,0 +1,25 @@
+# Weekly prompt (paste as-is, attach the two files)
+
+```
+/ocp-payments-weekly
+
+Weekly OCP payments refresh.
+Inputs (read them from Google Drive with the Google_Drive connector; the connector downloads files up to 10 MB):
+  1. Workbook: "OCP Payments Weekly.xlsx" in Drive folder "AR CASH DECK  OCP Payments Weekly" (folder id 1w4CHGD5Pzgj3I1bb2tLUAK6p3F6ryK9B).
+  2. Extract: the newest "JESA-_<MM.DD.YYYY>.xlsx" in Drive folder "AR CASH DECK / Inbox" (folder id 1rMF0u4ZvaNLQWH4QERpgBF0-fBbDpVnJ), tab JESA, 35 columns A:AI.
+  3. [optional] AR file for a mapping rebuild: attached in chat (it is 24-47 MB, too big for the connector).
+The connector is read-only: send the updated workbook back in chat and I will overwrite the Drive copy myself.
+
+Rules:
+- Frozen months (Config!FrozenThrough and earlier) are never touched. Never repoint Jul-26 / Aug-26.
+- Apply every Overrides row before any lookup; Overrides > Mapping > fallback rules.
+- Invoices 91000988, 7X000855, 7X000851, 90021244, 70000859 are in frozen months: exclude them from live months even if the extract re-dates them.
+- Do not assign a BU yourself. Unmapped live-month payments go to Unmapped Invoices; I will answer and you write my answer to Overrides.
+- Re-date sweep against Payments Key (same Pièce comptable + Réf Paiement, different month): report, do not fix.
+- Reconcile: gross extract per live month → ± overrides → mapped total = Summary month total = Proservices + Procurement. Stop and report if it does not tie.
+- Log the run in Data Sources. No notes in Summary!B2. No hardcodes outside Overrides.
+- Return the updated workbook plus a short run report: per live month this week vs last week, every delta by invoice, new unmapped invoices, re-dated payments, open decisions.
+```
+
+First run only, add: `Reproduce the 19/10/2026 baseline from standing-exceptions.md
+before processing the new extract.`
