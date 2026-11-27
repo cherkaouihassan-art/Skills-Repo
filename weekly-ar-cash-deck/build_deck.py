@@ -1700,9 +1700,9 @@ def build(data, meta, out):
             _ra = sum((pcat.get(k) or {}).get("amount") or 0 for k in ("refusing", "at_risk")); _rx = sum((pcat.get(k) or {}).get("amount_excl") or 0 for k in ("refusing", "at_risk"))
             total_strip(bxb, by2, bw_, bh2, "Refusing + at risk", f1(_ra), [("= ", {}), B(f1(_rx), JB), (" in the critical invoices + ", {}), B(f1(_ra - _rx), JB), (" under factoring or Tier 3", {})])
 
-    # ------------------------------------------------------------------ 13c. PSR cash in vs revenue posted, OCP clients only, without JESA Technologies (stand-alone, cash risks theme)
+    # ------------------------------------------------------------------ 13c. PSR cash in (OCP payment report, cash position file) vs revenue posted, all BUs (stand-alone, cash risks theme)
     D.section = "psr_ocp"
-    pco = [r for r in data.get("PSR_COVERAGE", []) if r.get("bu") != "JESA Technologies"]
+    pco = list(data.get("PSR_COVERAGE", []))
     if api and pco:
         def _mm(m): return dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%b")
         pv = {(r["bu"], str(r["month"])[:7]): r for r in pco}; pm = sorted({k[1] for k in pv})
@@ -1710,18 +1710,26 @@ def build(data, meta, out):
         p_fc = [m for m in pm if m not in p_act and any(r["revenue_basis"] == "RFQ1" for (b, mm), r in pv.items() if mm == m)]
         p_rev = p_act + p_fc; p_open = [m for m in pm if m not in p_rev]   # month in progress: cash in to date, no revenue posted yet
         def prv(b, ms): return sum(((pv.get((b, m)) or {}).get("revenue") or 0) for m in ms)
-        def pci(b, ms): return sum(((pv.get((b, m)) or {}).get("cash_in") or 0) - ((pv.get((b, m)) or {}).get("cash_in_nonocp") or 0) for m in ms)   # OCP clients only
+        # cash in: PSR collections per the OCP payment report, as carried in the cash position file (OCP only by construction); the AR
+        # report is the fallback, without the lines flagged non-OCP
+        coo_ = {r["bu"]: r for r in data.get("CASH_PSR_BU", [])}
+        ckey = {m: k for m, k in zip(p_act, ("jul", "aug", "sep", "oct_actual"))}
+        for m in pm: ckey.setdefault(m, "oct_ongoing" if (p_act and m > p_act[-1]) else None)
+        use_coo = bool(coo_) and len(p_act) <= 4
+        def pci(b, ms):
+            if use_coo: return sum(((coo_.get(b) or {}).get(ckey[m]) or 0) for m in ms if ckey.get(m))
+            return sum(((pv.get((b, m)) or {}).get("cash_in") or 0) - ((pv.get((b, m)) or {}).get("cash_in_nonocp") or 0) for m in ms)
         pb = sorted({r["bu"] for r in pco}, key=lambda b: -prv(b, p_rev))
         PR = sum(prv(b, p_rev) for b in pb); PC = sum(pci(b, pm) for b in pb); PCo = sum(pci(b, p_open) for b in pb)
         def pct_(c_, r_): return (c_ / r_ * 100) if r_ and r_ > 0.05 else None
-        rspan = f"{_mm(p_rev[0])}–{_mm(p_rev[-1])}"; cspan = f"{_mm(pm[0])}–{_mm(pm[-1])}"; to_ = f"to {cur_s}"
+        rspan = f"{_mm(p_rev[0])}–{_mm(p_rev[-1])}"; cspan = f"{_mm(pm[0])}–{_mm(pm[-1])}"; to_ = "to date" if use_coo else f"to {cur_s}"
         s = D.slide("PSR – Cash In vs Revenue Posted by Business Unit")
-        tb(s, 0.52, 0.78, 12.3, 0.35, f"OCP clients: PSR cash in {f0(PC)} MMAD ({cspan}, {to_}) vs PSR revenue posted {f0(PR)} MMAD ({rspan}) → {pct_(PC, PR):.0f}% coverage", size=12.5, bold=True, color=JB)
+        tb(s, 0.52, 0.78, 12.3, 0.35, f"OCP: PSR cash in {f0(PC)} MMAD ({cspan}, {_mm(pm[-1])} {to_}) vs PSR revenue {f0(PR)} MMAD ({rspan}" + (f", {_mm(p_fc[0])} per RFQ1" if p_fc else "") + f") → {pct_(PC, PR):.0f}% coverage", size=12.5, bold=True, color=JB)
         ty, th = 1.16, 1.72
         # ---- headline box
         rect(s, 0.3, ty, 2.55, th, JB, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06)
         tb(s, 0.43, ty + 0.05, 2.35, 0.22, "PSR COVERAGE – OCP", size=10, bold=True, color=JGD)
-        tb(s, 0.43, ty + 0.25, 2.35, 0.2, f"cash in {to_}, excl. JESA Tech", size=8.5, bold=True, color=LBLUE)
+        tb(s, 0.43, ty + 0.25, 2.35, 0.2, f"cash in {cspan}, {_mm(pm[-1])} {to_}", size=8.5, bold=True, color=LBLUE)
         tb(s, 0.43, ty + 0.42, 2.35, 0.54, [[(f"{pct_(PC, PR):.0f}%", {"size": 28, "bold": True, "color": WHITE}), ("  covered", {"size": 10, "color": LBLUE})]])
         tb(s, 0.43, ty + 1.0, 2.35, 0.7, [[(f"Revenue posted {rspan} ", {}), (f0(PR), {"bold": True})], [(f"Cash in {cspan} ", {}), (f0(PC), {"bold": True})], [("Not yet covered ", {}), (f0(PR - PC), {"bold": True})]], size=8.5, color=WHITE, line_spacing=1.1)
         # ---- by month
@@ -1742,7 +1750,7 @@ def build(data, meta, out):
         # ---- table by BU and month
         y1 = ty + th + 0.1; h1 = SH - 0.3 - y1
         panel(0.3, y1, SW - 0.6, h1, "By business unit and month (MMAD)", None, JB)
-        tb(s, SW - 0.3 - 5.2, y1 + 0.08, 5.05, 0.22, "OCP clients only  ·  JESA Technologies excluded  ·  cash in per the AR report, by payment date", size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
+        tb(s, SW - 0.3 - 5.2, y1 + 0.08, 5.05, 0.22, ("Cash in per the OCP payment report (cash position file)" if use_coo else "OCP clients only  ·  cash in per the AR report, by payment date"), size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
         nr_, nc_ = len(p_rev) + 1, len(pm) + 1
         hdr = ["Business Unit"] + [_mm(m) + (" RFQ1" if m in p_fc else "") for m in p_rev] + ["Total"] + [_mm(m) + (f"\n{to_}" if m in p_open else "") for m in pm] + ["Total", "Coverage", "Revenue −\ncash in"]
         colw = [1.75] + [0.72] * (nr_ + nc_) + [0.85, 0.9]; tx_, tw_ = 0.45, SW - 0.9
@@ -1757,9 +1765,9 @@ def build(data, meta, out):
         gy = y1 + 0.42; xw = [tw_ * w_ / sum(colw) for w_ in colw]
         x_rev = tx_ + xw[0]; w_rev = sum(xw[1:1 + nr_]); x_ca = x_rev + w_rev; w_ca = sum(xw[1 + nr_:1 + nr_ + nc_])
         rect(s, x_rev, gy, w_rev - 0.03, 0.22, JB); tb(s, x_rev, gy, w_rev - 0.03, 0.22, f"PSR REVENUE POSTED, {rspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-        rect(s, x_ca, gy, w_ca - 0.03, 0.22, JCY); tb(s, x_ca, gy, w_ca - 0.03, 0.22, f"PSR CASH IN – OCP CLIENTS, {cspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        rect(s, x_ca, gy, w_ca - 0.03, 0.22, JCY); tb(s, x_ca, gy, w_ca - 0.03, 0.22, f"PSR CASH IN – OCP, {cspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         table(s, tx_, gy + 0.24, tw_, hdr, rows, col_w=colw, font_size=9, header_size=8, row_h=min(0.34, (h1 - 0.42 - 0.24 - 0.36 - ST - 0.1) / len(rows)), header_h=0.36, colors=colors, fills=fills, total_last=True, first_col_bold=True, header_fill=JB)
-        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in, OCP clients", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB)] if p_open else []))
+        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in, OCP", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB), (" (no revenue posted yet)", {})] if p_open else []))
 
     D.section = "bu"
     det = {}
