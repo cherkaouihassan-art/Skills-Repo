@@ -1,0 +1,15 @@
+{
+ "month": "2026-11",
+ "source": "RFQ1 - JESA GROUP workbook, sheet 'RFQ1', line 'PSR - Professional Services Revenue', column Nov (received 27-Nov-2026); MMAD",
+ "psr": {
+  "AM": 48.31,
+  "SP2M Ad Hoc Program": 32.92,
+  "Fertilizers & Chemicals": 28.06,
+  "Water & Environment": 24.22,
+  "Energy Operations": 19.92,
+  "Global Mining": 16.77,
+  "Building & Infrastructure": 13.19,
+  "Advisory": 7.38,
+  "JESA Technologies": 6.49
+ }
+}

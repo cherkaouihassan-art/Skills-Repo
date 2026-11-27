@@ -298,6 +298,22 @@ the coverage slide of the deck, in the cash risks theme, for OCP only.
 - Revenue is not split by client in the cash flow workbook: BUs with non-OCP clients (Global Mining, JESA
   Technologies) show a low coverage for that reason; say so when sending.
 
+## 7d-ter. RFQ1 revenue of the month in progress and the P&L check (27-Nov-2026)
+
+- **RFQ1 source**: workbook "RFQ1 - JESA GROUP", sheet `RFQ1` (visible; the hidden `Monthly RFQ1` is the previous
+  year's). Row 3 names the blocks (JESA GROUP, SP2M, Mining, F&C, JET, PTX, ENE, WATER, B&I, ADS, AM), row 5 the
+  months (Jul to Jun; the JET block carries dates), line "PSR - Professional Services Revenue". Take the column of the
+  month in progress for each BU and save it as `inputs/rfq1/psr_rfq1_<YYYY-MM>.json` (canonical BU names, MMAD); check
+  that the BUs add up to the JESA GROUP block (November 2026: 197.26). `run_week.sh` then passes it automatically.
+  Mapping: JET = JESA Technologies, ENE = Energy Operations, WATER = Water & Environment, ADS = Advisory, AM = AM,
+  Mining = Global Mining; PTX is empty (retired).
+- With RFQ1 the coverage slides compare cash in and revenue over the same months (July to the month in progress).
+- **P&L check**: the monthly performance file ("JESA <Month> Performance", one `P&L_<BU>` sheet per BU, line "PSR -
+  Professional Services Revenue", YTD Actuals) should match the revenue of the coverage slides, which comes from the
+  cash position file. October 2026: all BUs matched within 0.1 except SP2M (192.4 in the P&L vs 191.4); the group P&L
+  line (1,092.9) is about 10 above the nine BUs because it carries revenue outside them. Report differences, do not
+  adjust the slide silently.
+
 ## 7e. Late-payment penalties estimate (AP team, "DDP")
 
 Received 26-Nov-2026 by email from the AP team ("Delai de payment – risk in 2027"), three workbooks:

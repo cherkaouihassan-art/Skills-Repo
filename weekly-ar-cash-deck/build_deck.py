@@ -1752,7 +1752,7 @@ def build(data, meta, out):
         panel(0.3, y1, SW - 0.6, h1, "By business unit and month (MMAD)", None, JB)
         tb(s, SW - 0.3 - 5.2, y1 + 0.08, 5.05, 0.22, ("Cash in per the OCP payment report (cash position file)" if use_coo else "OCP clients only  ·  cash in per the AR report, by payment date"), size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
         nr_, nc_ = len(p_rev) + 1, len(pm) + 1
-        hdr = ["Business Unit"] + [_mm(m) + (" RFQ1" if m in p_fc else "") for m in p_rev] + ["Total"] + [_mm(m) + (f"\n{to_}" if m in p_open else "") for m in pm] + ["Total", "Coverage", "Revenue −\ncash in"]
+        hdr = ["Business Unit"] + [_mm(m) + (" RFQ1" if m in p_fc else "") for m in p_rev] + ["Total"] + [_mm(m) + (f"\n{to_}" if m not in p_act else "") for m in pm] + ["Total", "Coverage", "Revenue −\ncash in"]
         colw = [1.75] + [0.72] * (nr_ + nc_) + [0.85, 0.9]; tx_, tw_ = 0.45, SW - 0.9
         rows, colors, fills = [], {}, {}
         LOWF, MIDF, HIF = RGBColor(0xF6, 0xE9, 0xC8), RGBColor(0xE3, 0xEC, 0xFB), RGBColor(0xBF, 0xD4, 0xF6)
@@ -1767,7 +1767,8 @@ def build(data, meta, out):
         rect(s, x_rev, gy, w_rev - 0.03, 0.22, JB); tb(s, x_rev, gy, w_rev - 0.03, 0.22, f"PSR REVENUE POSTED, {rspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         rect(s, x_ca, gy, w_ca - 0.03, 0.22, JCY); tb(s, x_ca, gy, w_ca - 0.03, 0.22, f"PSR CASH IN – OCP, {cspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         table(s, tx_, gy + 0.24, tw_, hdr, rows, col_w=colw, font_size=9, header_size=8, row_h=min(0.34, (h1 - 0.42 - 0.24 - 0.36 - ST - 0.1) / len(rows)), header_h=0.36, colors=colors, fills=fills, total_last=True, first_col_bold=True, header_fill=JB)
-        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in, OCP", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB), (" (no revenue posted yet)", {})] if p_open else []))
+        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in, OCP", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB), (" (no revenue posted yet)", {})] if p_open else [])
+                    + ([(f";  {_mm(p_fc[0])}: revenue per RFQ1, cash in {to_}", {})] if p_fc else []))
 
     D.section = "bu"
     det = {}
