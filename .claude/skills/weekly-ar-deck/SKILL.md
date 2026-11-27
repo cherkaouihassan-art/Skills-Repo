@@ -283,6 +283,16 @@ deck after the LC slide, only when asked). Content:
   reviewer's penalties file is received; then add
   `"schedule": [{"due": "2026-12", "project": MMAD, "non_project": MMAD}, ...]` to the penalties JSON.
 
+## 7d-bis. PSR cash in vs revenue posted, OCP clients only (stand-alone, on request)
+
+`build_deck.py --only psr_ocp --out output/JESA_PSR_Coverage_OCP_<week>.pptx` (reviewer, 27-Nov-2026): same content as
+the coverage slide of the deck, in the cash risks theme, with **non-OCP cash in excluded** (Client 1 of the AR
+report), **JESA Technologies excluded**, and the cash in counted up to the AR date including the month in progress.
+Revenue is the "Revenue — PSR" line of the cash flow workbook, which is **not split by client**: say so when sending,
+because BUs with non-OCP clients (Global Mining above all) then show a coverage that is too low; ask for the PSR
+revenue of OCP clients only, or for the non-OCP revenue to deduct. The month in progress has no posted revenue until
+the RFQ1 figures are given (`inputs/rfq1/psr_rfq1_<YYYY-MM>.json`).
+
 ## 7e. Late-payment penalties estimate (AP team, "DDP")
 
 Received 26-Nov-2026 by email from the AP team ("Delai de payment – risk in 2027"), three workbooks:
