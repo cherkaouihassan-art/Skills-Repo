@@ -229,7 +229,8 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - Row 2 panels: penalties by quarter (unpaid in blue, unbilled in gold); **"Critical payments"** = the waterfall as a
   table, largest category first, with the lines under supplier payments (AP): past due factoring invoices, "Suppliers
   refusing to pay penalties" (reviewer's wording for refusing + likely to refuse, merged), tier 3 and old
-  international.
+  international. LC is one category too, with one line per month underneath (November, December, January). The panel
+  holds two tables side by side: supplier payments (AP) on the left; LC, customs and penalties on the right.
 - No "decision needed" band (tried and removed at the reviewer's request).
 
 Slide 2 "detail" = factoring by BU, penalties by payment date, customs paid and projected, unpaid invoices by supplier

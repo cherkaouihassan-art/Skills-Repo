@@ -1641,17 +1641,24 @@ def build(data, meta, out):
         wC = 2 * pw + 0.12; xC = x2
         panel(xC, y2, wC, h2, "Critical payments (MMAD)", None, JGD)
         tb(s, xC + wC - 3.3, y2 + 0.09, 3.15, 0.22, f"first priority, until {until}", size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
-        subl = {"Supplier payments (AP)": [("Past due factoring invoices", r_fpd)] + ([(f"Suppliers refusing to pay penalties ({ref_n} suppliers: refusing or likely to refuse to change invoice dates)", ref_amt)] if ref_amt > 0.05 else [])
-                                          + ([(("Tier 3 > 60 days late and international > 180 days late" if has_pen else "Critical invoices by aging"), oth_amt)] if oth_amt > 0.05 else [])}
-        crow, cbold, ccol = [], [], {}
-        for n_, t_, c_, bars in groups:
-            lab = n_ + ("   (" + "  ·  ".join(f"{_ml(m)} {f0(v)}" for m, v in lc_im) + ")" if n_.startswith("LC due") else "") + (f"   ({com} {f0(cus_cur)} + {proj_m[0]} {f0(cus_avg)})" if n_.startswith("Customs") and proj_m else "") + ("   (if nothing is paid)" if n_.startswith("Penalties") else "")
-            cbold.append(len(crow)); crow.append([lab, f0(t_), f"{t_/(imm or 1)*100:.0f}%"])
-            for sl, sv in subl.get(n_, []):
-                for j in range(3): ccol[(len(crow), j)] = SLATE
-                crow.append(["      " + sl, f1(sv), f"{sv/(imm or 1)*100:.0f}%"])
-        table(s, xC + 0.12, y2 + 0.38, wC - 0.24, ["Payment", "MMAD", "% of first priority"], crow, col_w=[6.3, 0.8, 1.0], font_size=8, header_size=7, row_h=min(0.21, (h2 - 0.38 - 0.22 - ST - 0.06) / len(crow)), header_h=0.22,
-              header_fill=JB, bold_rows=tuple(cbold), colors=ccol)
+        subl = {"Supplier payments (AP)": [("Past due factoring invoices", r_fpd)] + ([(f"Suppliers refusing to pay penalties ({ref_n} suppliers)", ref_amt)] if ref_amt > 0.05 else [])
+                                          + ([(("Tier 3 > 60 days and international > 180 days late" if has_pen else "Critical invoices by aging"), oth_amt)] if oth_amt > 0.05 else [])}
+        lc_key = next((n_ for n_, *_ in groups if n_.startswith("LC due")), None)
+        if lc_key: subl[lc_key] = [("Due " + dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%B %Y"), v) for m, v in lc_im]   # LC: one category, the months underneath
+        def ctab(gs_, x_, w_):
+            crow, cbold, ccol = [], [], {}
+            for n_, t_, c_, bars in gs_:
+                lab = n_ + (f"   ({com} {f0(cus_cur)} + {proj_m[0]} {f0(cus_avg)})" if n_.startswith("Customs") and proj_m else "") + ("   (if nothing is paid)" if n_.startswith("Penalties") else "")
+                cbold.append(len(crow)); crow.append([lab, f0(t_), f"{t_/(imm or 1)*100:.0f}%"])
+                for sl, sv in subl.get(n_, []):
+                    for j in range(3): ccol[(len(crow), j)] = SLATE
+                    crow.append(["      " + sl, f1(sv), f"{sv/(imm or 1)*100:.0f}%"])
+            table(s, x_, y2 + 0.38, w_, ["Payment", "MMAD", "% of first\npriority"], crow, col_w=[2.75, 0.6, 0.7], font_size=8, header_size=7, row_h=min(0.21, (h2 - 0.38 - 0.28 - ST - 0.06) / max(len(crow), 6)), header_h=0.28,
+                  header_fill=JB, bold_rows=tuple(cbold), colors=ccol)
+        # two tables side by side, largest category first: supplier payments (AP) on the left, then LC by month, customs and penalties
+        tw_ = (wC - 0.24 - 0.14) / 2
+        ctab(groups[:1], xC + 0.12, tw_)
+        if len(groups) > 1: ctab(groups[1:], xC + 0.12 + tw_ + 0.14, tw_)
         total_strip(xC, y2, wC, h2, f"Total first priority until {until.split()[0]}", f0(imm), [("= ", {})] + [x for j, (n_, t_, c_, _) in enumerate(groups) for x in (B(("+ " if j else "") + f0(t_), JB), (" " + (n_.split(" (")[0].replace("Supplier payments", "AP").split(" due")[0].split(" end")[0].split(" " + com)[0]).lower().replace("ap", "AP").replace("lc", "LC") + " ", {}))])
 
         # ============ detail slide: factoring by BU, penalties by payment date, customs, suppliers by attitude
