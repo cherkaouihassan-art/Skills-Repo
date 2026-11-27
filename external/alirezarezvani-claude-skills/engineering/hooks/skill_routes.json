@@ -1,0 +1,109 @@
+{
+  "plugin": "engineering-advanced-skills",
+  "note": "Patterns for hooks/skill_router.py. High precision first: a missed prompt costs nothing, a wrong hint costs attention.",
+  "routes": [
+    {
+      "skill": "self-eval",
+      "why": "honest two-axis grading of finished work",
+      "any": [
+        "\\b(rate|grade|score|evaluate|assess)\\b.{0,20}\\b(your|the|this) (work|output|answer|job|changes|solution|session)\\b",
+        "\\bhow (well )?did (that|this|it|you) (go|do)\\b",
+        "\\bhonest(ly)?\\b.{0,30}\\b(self[- ]review|self[- ]assessment|grade|rating)\\b",
+        "\\bself[- ]eval\\w*\\b",
+        "\\bbe honest\\b.{0,40}\\bhow (good|well)\\b",
+        "\\brate how (well|good)\\b",
+        "\\bhow good was (that|this|the) (work|job)\\b"
+      ]
+    },
+    {
+      "skill": "codebase-onboarding",
+      "why": "architecture brief and onboarding docs for an unfamiliar repo",
+      "any": [
+        "\\bnew to (this|the|our) (codebase|repo\\w*|project|code)\\b",
+        "\\b(how is|explain|walk me through)\\b.{0,20}\\b(this|the|our) (repo\\w*|codebase|project)\\b.{0,40}\\b(structured|organi[sz]ed|laid out|architecture|works?)\\b",
+        "\\bwhere (do|should) i (start|begin)\\b.{0,40}\\b(reading|code|repo\\w*|codebase)\\b",
+        "\\bonboard\\w*\\b.{0,40}\\b(engineers?|developers?|devs?|hires?|codebase|repo\\w*)\\b",
+        "\\b(architecture (overview|brief)|codebase tour|onboarding doc\\w*)\\b",
+        "\\bhow (this|the|our) (repo\\w*|codebase|project) is (laid out|structured|organi[sz]ed)\\b"
+      ]
+    },
+    {
+      "skill": "tech-debt-tracker",
+      "why": "find, rank and track tech debt in a codebase",
+      "any": [
+        "\\btech(nical)? debt\\b",
+        "\\bwhat (should|to) (we |i )?refactor first\\b",
+        "\\bcleanup sprint\\b|\\brefactor(ing)? (backlog|plan|roadmap)\\b",
+        "\\bhow (messy|bad) is (the|this|our) code(base)?\\b",
+        "\\blegacy (code|codebase)\\b.{0,40}\\b(moderni[sz]\\w*|clean\\w*|refactor\\w*|untangle)\\b"
+      ],
+      "not": [
+        "\\bshould (we|i) rewrite\\b",
+        "\\b(eng(ineering)?|dev) teams?\\b",
+        "\\b(okrs?|engineers across|change failure)\\b"
+      ]
+    },
+    {
+      "skill": "minimalist",
+      "why": "least-code ladder: YAGNI, reuse, stdlib, native platform",
+      "any": [
+        "\\bover[- ]?engineer\\w*\\b",
+        "\\byagni\\b",
+        "\\bdon'?t (go overboard|over-?do it|over-?build)\\b",
+        "\\bbefore you write anything\\b.{0,80}\\b(already|platform|stdlib|existing|installed)\\b"
+      ],
+      "pairs": [
+        [
+          [
+            "\\b(simplif\\w*|simpler|less code|too (complex|complicated|clever)|bloated|fewer (lines|dependencies|deps)|minimal|strip (it )?down)\\b"
+          ],
+          [
+            "\\b(code|codebase|function|implementation|module|class|component|script|service|dependenc\\w*|abstraction\\w*|architecture)\\b"
+          ]
+        ]
+      ]
+    },
+    {
+      "skill": "mobile-release",
+      "why": "App Store / Google Play submission rules and staged-rollout go/no-go",
+      "any": [
+        "\\bITMS-\\d+",
+        "\\bprivacy ?manifest\\b|\\bPrivacyInfo\\.xcprivacy\\b|\\brequired[- ]reason\\b|\\bNSPrivacyAccessed",
+        "\\b(app store( connect)?|testflight|play console|google play)\\b.{0,80}\\b(reject\\w*|warn\\w*|flag\\w*|blocked|submit\\w*|upload\\w*|review|policy)\\b",
+        "\\b(reject\\w*|submit\\w*|submission|upload\\w*)\\b.{0,60}\\b(app store|google play|play store|play console)\\b",
+        "\\b(target ?sdk|target api( level)?|targetSdkVersion)\\b",
+        "\\b16 ?kb page\\b",
+        "\\b(staged|phased|percentage) (roll ?out|release)\\b",
+        "\\b(roll ?out|release)\\b.{0,40}\\b(halt|pause|widen)\\b.{0,40}\\b(play|app store|android|ios)\\b",
+        "\\bbad behavio(u)?r threshold\\b|\\bANR rate\\b|\\buser[- ]perceived (crash|ANR)\\b",
+        "\\b(release readiness|ready to submit)\\b.{0,60}\\b(ios|android|app store|play)\\b",
+        "\\bdata safety (form|section)\\b|\\bpermission declaration\\b",
+        "\\b(ios|android|flutter|react native)\\b.{0,40}\\b(release|build|update)\\b.{0,60}\\b(store|play|review|reject\\w*|submit\\w*)\\b"
+      ],
+      "not": [
+        "\\b(aso|keywords?|screenshots?|rank\\w*|listing)\\b",
+        "\\bfastlane\\b",
+        "\\b(argo|kubernetes|k8s|canary deployment)\\b",
+        "\\b(coding agent|ai agent|feature flags?|engineering org)\\b"
+      ]
+    },
+    {
+      "skill": "cloud-finops",
+      "why": "cloud cost allocation, commitments and cost anomalies from a FOCUS export",
+      "any": [
+        "\\bfinops\\b|\\bFOCUS (export|billing|cost|data|1\\.\\d)\\b",
+        "\\b(aws|azure|gcp|google cloud|cloud)\\b.{0,30}\\b(bill|billing|cost|costs|spend|invoice)\\b.{0,80}\\b(jump\\w*|spik\\w*|grew|increase\\w*|doubl\\w*|tripl\\w*|anomal\\w*|untagged|allocat\\w*|team|owner)\\b",
+        "\\b(savings plans?|reserved instances?|committed use discounts?|commitment(s)? (coverage|utili[sz]ation)|effective savings rate)\\b",
+        "\\b(untagged|unallocated)\\b.{0,30}\\b(spend|cost|costs|resources)\\b",
+        "\\b(showback|chargeback)\\b",
+        "\\bcost anomal\\w*\\b",
+        "\\b(nat gateway|egress|data transfer)\\b.{0,40}\\b(charges?|costs?|bill)\\b",
+        "\\b(unit cost|cost per (order|customer|user|request))\\b"
+      ],
+      "not": [
+        "\\b(dcf|3[- ]statement|valuation|arr|net revenue retention|burn multiple|cac)\\b",
+        "\\bterraform\\b.{0,40}\\b(module|deploy)\\b"
+      ]
+    }
+  ]
+}

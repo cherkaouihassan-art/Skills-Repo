@@ -1,0 +1,207 @@
+site_name: Claude Code Skills & Agent Plugins
+site_url: https://alirezarezvani.github.io/claude-skills/
+site_description: "434 production-ready skills across 21 domains, 121 marketplace plugins, and 188 slash commands for engineering, product, marketing, compliance, finance, research, and agent tooling. Works with Claude Code, OpenAI Codex, Gemini CLI, Cursor, Hermes Agent, Mistral Vibe, OpenClaw, and 6 more AI coding tools. Open source, MIT licensed, zero dependencies."
+site_author: Alireza Rezvani
+repo_url: https://github.com/alirezarezvani/claude-skills
+repo_name: alirezarezvani/claude-skills
+edit_uri: edit/dev/docs/
+copyright: "Built by Alireza Rezvani"
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.path
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.tabs.link
+    - header.autohide
+    - toc.follow
+    - announce.dismiss
+  icon:
+    repo: fontawesome/brands/github
+    annotation: material/chevron-right-circle
+
+plugins:
+  - search:
+      separator: '[\s\-\.]+'
+  # Per-page social preview cards. Off by default (needs cairo + pillow);
+  # static.yml turns it on for the Pages deploy with SOCIAL_CARDS=true.
+  - social:
+      enabled: !ENV [SOCIAL_CARDS, false]
+  - tags
+  - redirects:
+      redirect_maps:
+        # Dual-publish duplicate cleanup (v2.5.6 docs refresh).
+        # The auto-generator created <name>-<name>.md alongside the canonical
+        # <name>.md for engineering plugins that publish both standalone and
+        # bundled. Redirect old URLs to the canonical page to preserve SEO.
+        'skills/engineering/chaos-engineering-chaos-engineering.md': 'skills/engineering/chaos-engineering.md'
+        'skills/engineering/feature-flags-architect-feature-flags-architect.md': 'skills/engineering/feature-flags-architect.md'
+        'skills/engineering/kubernetes-operator-kubernetes-operator.md': 'skills/engineering/kubernetes-operator.md'
+        'skills/engineering/slo-architect-slo-architect.md': 'skills/engineering/slo-architect.md'
+        # Skills removed/renamed upstream — redirect old indexed URLs to their successors.
+        'skills/marketing-skill/ai-seo.md': 'skills/marketing-skill/aeo.md'
+        'skills/engineering/release-manager.md': 'skills/engineering/changelog-generator.md'
+        'skills/engineering/command-guide.md': 'skills/engineering/index.md'
+        # Pages the generator renamed (sub-skill folders, c-level-agents domain split).
+        'skills/business-growth/business-growth.md': 'skills/business-growth/index.md'
+        'skills/c-level-advisor/c-level-advisor.md': 'skills/c-level-advisor/index.md'
+        'skills/c-level-advisor/c-level-agents-boardroom.md': 'skills/c-level-agents/boardroom.md'
+        'skills/c-level-advisor/c-level-agents-brief.md': 'skills/c-level-agents/brief.md'
+        'skills/c-level-advisor/c-level-agents-caio-review.md': 'skills/c-level-agents/caio-review.md'
+        'skills/c-level-advisor/c-level-agents-cco-review.md': 'skills/c-level-agents/cco-review.md'
+        'skills/c-level-advisor/c-level-agents-cdo-review.md': 'skills/c-level-agents/cdo-review.md'
+        'skills/c-level-advisor/c-level-agents-cfo-review.md': 'skills/c-level-agents/cfo-review.md'
+        'skills/c-level-advisor/c-level-agents-ciso-review.md': 'skills/c-level-agents/ciso-review.md'
+        'skills/c-level-advisor/c-level-agents-cmo-review.md': 'skills/c-level-agents/cmo-review.md'
+        'skills/c-level-advisor/c-level-agents-cpo-review.md': 'skills/c-level-agents/cpo-review.md'
+        'skills/c-level-advisor/c-level-agents-cro-review.md': 'skills/c-level-agents/cro-review.md'
+        'skills/c-level-advisor/c-level-agents-cross-eval.md': 'skills/c-level-agents/cross-eval.md'
+        'skills/c-level-advisor/c-level-agents-cto-review.md': 'skills/c-level-agents/cto-review.md'
+        'skills/c-level-advisor/c-level-agents-decide.md': 'skills/c-level-agents/decide.md'
+        'skills/c-level-advisor/c-level-agents-execute.md': 'skills/c-level-agents/execute.md'
+        'skills/c-level-advisor/c-level-agents-founder-mode.md': 'skills/c-level-agents/founder-mode.md'
+        'skills/c-level-advisor/c-level-agents-freeze.md': 'skills/c-level-agents/freeze.md'
+        'skills/c-level-advisor/c-level-agents-gc-review.md': 'skills/c-level-agents/gc-review.md'
+        'skills/c-level-advisor/c-level-agents-office-hours.md': 'skills/c-level-agents/office-hours.md'
+        'skills/c-level-advisor/c-level-agents-onboard.md': 'skills/c-level-agents/onboard.md'
+        'skills/c-level-advisor/c-level-agents-post-mortem.md': 'skills/c-level-agents/post-mortem.md'
+        'skills/c-level-advisor/c-level-agents-vpe-review.md': 'skills/c-level-agents/vpe-review.md'
+        'skills/c-level-advisor/c-level-agents.md': 'skills/c-level-agents/c-level-agents.md'
+        'skills/engineering-team/engineering-team.md': 'skills/engineering-team/index.md'
+        'skills/engineering-team/playwright-pro-init.md': 'skills/engineering-team/playwright-pro-pw-init.md'
+        'skills/engineering-team/playwright-pro-review.md': 'skills/engineering-team/playwright-pro-pw-review.md'
+        'skills/engineering-team/playwright-pro.md': 'skills/engineering-team/playwright-pro-pw.md'
+        'skills/engineering-team/self-improving-agent-review.md': 'skills/engineering-team/self-improving-agent-memory-review.md'
+        'skills/engineering-team/self-improving-agent-status.md': 'skills/engineering-team/self-improving-agent-memory-status.md'
+        'skills/engineering/agenthub-init.md': 'skills/engineering/agenthub-hub-init.md'
+        'skills/engineering/agenthub-run.md': 'skills/engineering/agenthub-hub-run.md'
+        'skills/engineering/agenthub-status.md': 'skills/engineering/agenthub-hub-status.md'
+        'skills/engineering/autoresearch-agent-resume.md': 'skills/engineering/autoresearch-agent-ar-resume.md'
+        'skills/engineering/autoresearch-agent-run.md': 'skills/engineering/autoresearch-agent-ar-run.md'
+        'skills/engineering/autoresearch-agent-status.md': 'skills/engineering/autoresearch-agent-ar-status.md'
+        'skills/engineering/engineering.md': 'skills/engineering/index.md'
+        'skills/finance/finance.md': 'skills/finance/index.md'
+        'skills/marketing-skill/marketing-skill.md': 'skills/marketing-skill/index.md'
+        'skills/product-team/product-team.md': 'skills/product-team/index.md'
+        'skills/project-management/project-management.md': 'skills/project-management/index.md'
+        'skills/ra-qm-team/ra-qm-team.md': 'skills/ra-qm-team/index.md'
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alirezarezvani/claude-skills
+      name: GitHub
+    - icon: fontawesome/brands/x-twitter
+      link: https://twitter.com/nginitycloud
+      name: Twitter
+    - icon: fontawesome/brands/medium
+      link: https://alirezarezvani.medium.com
+      name: Medium
+  generator: false
+
+hooks:
+  - scripts/docs_hooks.py
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link to this section
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home:
+    - Overview: index.md
+    - Getting Started: getting-started.md
+    - "What's New": whats-new.md
+  - Skills:
+    - Overview: skills/index.md
+  - Plugins:
+    - Overview: plugins/index.md
+  - Agents:
+    - Overview: agents/index.md
+    - Personas:
+      - Overview: personas/index.md
+      - "Startup CTO": personas/startup-cto.md
+      - "Growth Marketer": personas/growth-marketer.md
+      - "Solo Founder": personas/solo-founder.md
+    - Orchestration: orchestration.md
+  - Commands:
+    - Overview: commands/index.md
+  - Other Tools:
+    - Multi-Tool Integrations: integrations.md
+    - "Best Claude Code Plugins": guides/best-claude-code-plugins.md
+    - "Agent Skills for Codex": guides/agent-skills-for-codex.md
+    - "Gemini CLI Skills Guide": guides/gemini-cli-skills-guide.md
+    - "Cursor Skills Guide": guides/cursor-skills-guide.md
+    - "OpenClaw Skills Guide": guides/openclaw-skills-guide.md
+    - "Hermes Agent Skills Guide": guides/hermes-agent-skills-guide.md
+    - "Mistral Vibe Skills Guide": guides/mistral-vibe-skills-guide.md
+    - Custom GPTs: custom-gpts.md

@@ -1,0 +1,2699 @@
+{
+  "version": "1.0.0",
+  "name": "claude-code-skills",
+  "description": "Production-ready skill packages for AI agents - Marketing, Engineering, Product, C-Level, PM, and RA/QM",
+  "repository": "https://github.com/alirezarezvani/claude-skills",
+  "total_skills": 433,
+  "skills": [
+    {
+      "name": "agent-launcher-orchestrator",
+      "source": "../../agent-launcher/skills/agent-launcher-orchestrator",
+      "category": "agent-development",
+      "description": "Use when someone wants to build, launch, grade or schedule a Claude Managed Agent in their own Anthropic account ('build me an agent', 'run this nightly'). Reads the session goal, routes with goal_router.py and compiles the loop with loop_compiler.py."
+    },
+    {
+      "name": "grade-iterate",
+      "source": "../../agent-launcher/skills/grade-iterate",
+      "category": "agent-development",
+      "description": "Use when a launched managed agent needs grading against a rubric and improving ('grade my agent', 'is it good enough'). Builds the outcome with outcome_builder.py, reads verdicts with verdict_reader.py and runs held-back evals from eval_scaffold.py."
+    },
+    {
+      "name": "interview",
+      "source": "../../agent-launcher/skills/interview",
+      "category": "agent-development",
+      "description": "Use when someone has an agent idea to scope before launch ('help me scope an agent'). Interviews them about the one job and writes a build sheet with build_sheet_builder.py, checked by primitives_validator.py; no API key needed."
+    },
+    {
+      "name": "run-without-you",
+      "source": "../../agent-launcher/skills/run-without-you",
+      "category": "agent-development",
+      "description": "Use when a graded managed agent should run on a schedule, on an event trigger or on demand ('run it every morning'). Validates cron with cron_validator.py and builds the deployment with deployment_builder.py."
+    },
+    {
+      "name": "stage-launch",
+      "source": "../../agent-launcher/skills/stage-launch",
+      "category": "agent-development",
+      "description": "Use when a managed-agent build sheet is ready to launch ('launch it', 'deploy the agent'). Generates and validates API payloads with payload_generator.py and payload_validator.py and writes a resumable curl script with launch_script_writer.py that uses the user's own key."
+    },
+    {
+      "name": "wrap-up",
+      "source": "../../agent-launcher/skills/wrap-up",
+      "category": "agent-development",
+      "description": "Use when closing out a launched managed agent ('wrap up', 'what do I own now'). Inventories primitives with primitives_inventory.py, regenerates the overview with overview_page.py and suggests next upgrades with upgrade_suggester.py."
+    },
+    {
+      "name": "business-growth-skills",
+      "source": "../../business-growth/skills/business-growth-skills",
+      "category": "business-growth",
+      "description": "Use when a growth request needs routing between customer-success-manager, sales-engineer, revenue-operations, contract-and-proposal-writer and support-ops."
+    },
+    {
+      "name": "contract-and-proposal-writer",
+      "source": "../../business-growth/skills/contract-and-proposal-writer",
+      "category": "business-growth",
+      "description": "Use when drafting a freelance contract, proposal, SOW, NDA or MSA for US, EU, UK or DACH jurisdictions. Writes structured Markdown with docx conversion steps; not legal advice."
+    },
+    {
+      "name": "customer-success-manager",
+      "source": "../../business-growth/skills/customer-success-manager",
+      "category": "business-growth",
+      "description": "Use when reviewing customer accounts for health, churn risk or expansion. Scores health with health_score_calculator.py, churn with churn_risk_analyzer.py and upsell with expansion_opportunity_scorer.py."
+    },
+    {
+      "name": "revenue-operations",
+      "source": "../../business-growth/skills/revenue-operations",
+      "category": "business-growth",
+      "description": "Check sales pipeline and forecasts: pipeline coverage, forecast accuracy, magic number, CAC payback. Use whenever the user asks if pipeline is enough or how good forecasts are."
+    },
+    {
+      "name": "sales-engineer",
+      "source": "../../business-growth/skills/sales-engineer",
+      "category": "business-growth",
+      "description": "Use for pre-sales work: RFP coverage gaps, competitive feature matrices or planning and scoring a proof of concept. Runs rfp_response_analyzer.py, competitive_matrix_builder.py and poc_planner.py."
+    },
+    {
+      "name": "support-ops",
+      "source": "../../business-growth/skills/support-ops",
+      "category": "business-growth",
+      "description": "Use for any customer support operations question - SLA attainment and breaches (first response, resolution, business hours, weekends, tickets about to breach), how many agents to schedule per hour for a phone, chat or email queue and where the roster is short (Erlang C, service level, handle time, shrinkage, occupancy, backlog), or which ticket topics to deflect with help-center articles, automate with macros or fix as product bugs. Works from a helpdesk ticket export with stdlib scripts."
+    },
+    {
+      "name": "support-ops",
+      "source": "../../business-growth/support-ops/skills/support-ops",
+      "category": "business-growth",
+      "description": "Use for any customer support operations question - SLA attainment and breaches (first response, resolution, business hours, weekends, tickets about to breach), how many agents to schedule per hour for a phone, chat or email queue and where the roster is short (Erlang C, service level, handle time, shrinkage, occupancy, backlog), or which ticket topics to deflect with help-center articles, automate with macros or fix as product bugs. Works from a helpdesk ticket export with stdlib scripts."
+    },
+    {
+      "name": "business-operations-skills",
+      "source": "../../business-operations/skills/business-operations-skills",
+      "category": "business-operations",
+      "description": "Route internal operations requests to the right BizOps skill: process, vendors, capacity, internal comms, SOPs, procurement. Use whenever the user asks where the bottleneck is or about vendor health."
+    },
+    {
+      "name": "capacity-planner",
+      "source": "../../business-operations/skills/capacity-planner",
+      "category": "business-operations",
+      "description": "Size an ops or support team and plan headcount: Erlang C queue models, utilization risk, hiring order. Use whenever the user asks how many agents or staff they need, if the team is overloaded, or who to hire first."
+    },
+    {
+      "name": "internal-comms",
+      "source": "../../business-operations/skills/internal-comms",
+      "category": "business-operations",
+      "description": "Use when announcing a reorg, tool rollout, policy change, leadership change, layoff or acquisition internally. Builds the announcement with change_announcement_builder.py and sequences it with comms_calendar_builder.py."
+    },
+    {
+      "name": "knowledge-ops",
+      "source": "../../business-operations/skills/knowledge-ops",
+      "category": "business-operations",
+      "description": "Use when writing, checking or cleaning up SOPs and runbooks. Generates them with sop_generator.py, checks 5W2H completeness and links with runbook_validator.py and ingests an existing knowledge base with kb_ingester.py."
+    },
+    {
+      "name": "process-mapper",
+      "source": "../../business-operations/skills/process-mapper",
+      "category": "business-operations",
+      "description": "Use when documenting an end-to-end business process (procurement, onboarding, handoffs) and finding where work waits. Maps it with process_documenter.py, measures stages with cycle_time_analyzer.py and finds bottlenecks with bottleneck_detector.py."
+    },
+    {
+      "name": "procurement-optimizer",
+      "source": "../../business-operations/skills/procurement-optimizer",
+      "category": "business-operations",
+      "description": "Cut spend on software and suppliers: SaaS audit, category spend review, slow purchasing cycles, supplier consolidation. Use whenever the user asks which tools or vendors to cut, where money goes, or why buying takes so long."
+    },
+    {
+      "name": "vendor-management",
+      "source": "../../business-operations/skills/vendor-management",
+      "category": "business-operations",
+      "description": "Use when scoring or auditing vendors: scorecards, SLA compliance and service credits, third-party risk tier or a tier-1 vendor review. Runs vendor_scorer.py, sla_compliance_tracker.py and vendor_risk_classifier.py."
+    },
+    {
+      "name": "agent-protocol",
+      "source": "../../c-level-advisor/skills/agent-protocol",
+      "category": "c-level",
+      "description": "Use when C-suite advisor agents need to call each other or run a multi-role meeting. Defines invocation syntax, loop prevention, isolation and response formats."
+    },
+    {
+      "name": "arquiteto-de-empresa",
+      "source": "../../c-level-advisor/skills/arquiteto-de-empresa",
+      "category": "c-level",
+      "description": "Use when a founder wants to document or design a whole company as version-controlled markdown (company as code, a company wiki agents can read, an OKF bundle). Runs a 12-phase interview, scaffolds with scaffold_bundle.py and checks it with okf_linter.py."
+    },
+    {
+      "name": "arquiteto-de-empresa",
+      "source": "../../c-level-advisor/arquiteto-de-empresa/skills/arquiteto-de-empresa",
+      "category": "c-level",
+      "description": "Use when a founder wants to document or design a whole company as version-controlled markdown (company as code, a company wiki agents can read, an OKF bundle). Runs a 12-phase interview, scaffolds with scaffold_bundle.py and checks it with okf_linter.py."
+    },
+    {
+      "name": "board-deck-builder",
+      "source": "../../c-level-advisor/skills/board-deck-builder",
+      "category": "c-level",
+      "description": "Use when building a board deck, investor update or QBR from all C-suite perspectives. Structures the narrative and how to deliver bad news."
+    },
+    {
+      "name": "board-meeting",
+      "source": "../../c-level-advisor/skills/board-meeting",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:boardroom or a strategic question that needs a structured multi-executive deliberation. Runs six phases: context, isolated C-suite views, critic, synthesis, founder review and decision."
+    },
+    {
+      "name": "board-prep",
+      "source": "../../c-level-advisor/executive-mentor/skills/board-prep",
+      "category": "c-level",
+      "description": "Use before a board meeting, investor update or fundraising pitch where the numbers will be challenged. Drills numbers cold, anticipates the hard questions and builds a narrative that admits weakness without losing the room."
+    },
+    {
+      "name": "boardroom",
+      "source": "../../c-level-agents/skills/boardroom",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:boardroom, or a decision spanning several executive domains (a pricing change, raise vs cut). Runs a 6-phase C-suite deliberation and writes a board memo."
+    },
+    {
+      "name": "brief",
+      "source": "../../c-level-agents/skills/brief",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:brief, or to frame a strategic question (options, assumptions, success criteria) as a one-page brief before deliberation."
+    },
+    {
+      "name": "c-level-agents",
+      "source": "../../c-level-agents/skills/c-level-agents",
+      "category": "c-level",
+      "description": "Use when the founder wants a virtual executive team or a /c-level-agents command. Lists the 13 C-suite agents and 21 commands and routes multi-role decisions."
+    },
+    {
+      "name": "c-level-skills",
+      "source": "../../c-level-advisor/skills/c-level-skills",
+      "category": "c-level",
+      "description": "Find which C-level advisor fits a question: 14 C-suite roles, board meetings, culture, M&A. Use whenever the user asks which advisor to use."
+    },
+    {
+      "name": "caio-review",
+      "source": "../../c-level-agents/skills/caio-review",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:caio-review, or to challenge a plan involving AI (no eval set, API vs fine-tune vs self-host, EU AI Act class)."
+    },
+    {
+      "name": "cco-review",
+      "source": "../../c-level-agents/skills/cco-review",
+      "category": "c-level",
+      "description": "Challenge a churn, retention, segment or CS hiring plan. Use whenever asked or /c-level-agents:cco-review."
+    },
+    {
+      "name": "cdo-review",
+      "source": "../../c-level-agents/skills/cdo-review",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:cdo-review, or to challenge a plan touching training-data rights, data architecture or data monetization."
+    },
+    {
+      "name": "ceo-advisor",
+      "source": "../../c-level-advisor/skills/ceo-advisor",
+      "category": "c-level",
+      "description": "Advice for a CEO or founder on running the company: board and investor trouble, raise or cut, strategy bets, org and culture. Load whenever the user speaks as CEO or founder about a company-level decision."
+    },
+    {
+      "name": "cfo-advisor",
+      "source": "../../c-level-advisor/skills/cfo-advisor",
+      "category": "c-level",
+      "description": "Startup finance: runway and burn, unit economics (LTV, CAC, payback), fundraising and dilution. Load whenever the user asks how long the cash lasts, if burn is too high, or shares cash, ARR or CAC numbers."
+    },
+    {
+      "name": "cfo-review",
+      "source": "../../c-level-agents/skills/cfo-review",
+      "category": "c-level",
+      "description": "Challenge a plan that spends real money: hiring wave, raise, channel budget. Use whenever asked or /c-level-agents:cfo-review."
+    },
+    {
+      "name": "challenge",
+      "source": "../../c-level-advisor/executive-mentor/skills/challenge",
+      "category": "c-level",
+      "description": "Pre-mortem a plan: assume it failed in 12 months and work back to the assumptions, dependencies and execution risks. Use whenever the user will commit serious resources or feedback seems too positive."
+    },
+    {
+      "name": "change-management",
+      "source": "../../c-level-advisor/skills/change-management",
+      "category": "c-level",
+      "description": "Use when rolling out a reorg, pivot, tool switch, leadership change or product kill. Plans it with ADKAR, communication templates and resistance patterns."
+    },
+    {
+      "name": "chief-ai-officer-advisor",
+      "source": "../../c-level-advisor/skills/chief-ai-officer-advisor",
+      "category": "c-level",
+      "description": "Use for AI strategy decisions: API vs fine-tune vs build, EU AI Act or US state risk classification, when self-hosting pays off, or AI hiring order. Runs model_buildvsbuy_calculator.py, ai_risk_classifier.py and ai_cost_economics.py."
+    },
+    {
+      "name": "chief-ai-officer-advisor",
+      "source": "../../c-level-advisor/chief-ai-officer-advisor/skills/chief-ai-officer-advisor",
+      "category": "c-level",
+      "description": "Use for AI strategy decisions: API vs fine-tune vs build, EU AI Act or US state risk classification, when self-hosting pays off, or AI hiring order. Runs model_buildvsbuy_calculator.py, ai_risk_classifier.py and ai_cost_economics.py."
+    },
+    {
+      "name": "chief-customer-officer-advisor",
+      "source": "../../c-level-advisor/skills/chief-customer-officer-advisor",
+      "category": "c-level",
+      "description": "Use for retention strategy, customer segmentation or CS team sizing decisions (GRR vs NRR, churn causes, pooled vs named CSMs). Runs retention_decomposition_analyzer.py, customer_segmentation_designer.py and cs_coverage_calculator.py."
+    },
+    {
+      "name": "chief-customer-officer-advisor",
+      "source": "../../c-level-advisor/chief-customer-officer-advisor/skills/chief-customer-officer-advisor",
+      "category": "c-level",
+      "description": "Use for retention strategy, customer segmentation or CS team sizing decisions (GRR vs NRR, churn causes, pooled vs named CSMs). Runs retention_decomposition_analyzer.py, customer_segmentation_designer.py and cs_coverage_calculator.py."
+    },
+    {
+      "name": "chief-data-officer-advisor",
+      "source": "../../c-level-advisor/skills/chief-data-officer-advisor",
+      "category": "c-level",
+      "description": "Use for data strategy decisions: training models on customer data, warehouse vs lakehouse vs mesh, valuing data for a raise or M&A, or data hiring order. Runs ai_training_data_audit.py, data_product_strategy_picker.py and data_asset_valuator.py."
+    },
+    {
+      "name": "chief-data-officer-advisor",
+      "source": "../../c-level-advisor/chief-data-officer-advisor/skills/chief-data-officer-advisor",
+      "category": "c-level",
+      "description": "Use for data strategy decisions: training models on customer data, warehouse vs lakehouse vs mesh, valuing data for a raise or M&A, or data hiring order. Runs ai_training_data_audit.py, data_product_strategy_picker.py and data_asset_valuator.py."
+    },
+    {
+      "name": "chief-of-staff",
+      "source": "../../c-level-advisor/skills/chief-of-staff",
+      "category": "c-level",
+      "description": "Use when a founder question needs routing to the right C-suite advisor, or a cross-functional decision needs a board meeting convened. Loads company context, synthesizes the answers and tracks decisions."
+    },
+    {
+      "name": "chro-advisor",
+      "source": "../../c-level-advisor/skills/chro-advisor",
+      "category": "c-level",
+      "description": "People strategy: hiring plans, comp bands, org structure, performance, retention. Use whenever the user asks who to hire, what to pay, how to structure teams or why staff leave."
+    },
+    {
+      "name": "ciso-advisor",
+      "source": "../../c-level-advisor/skills/ciso-advisor",
+      "category": "c-level",
+      "description": "Use for security leadership decisions: a security program, budget justification in dollars, SOC 2 vs ISO 27001 vs HIPAA roadmap, or board security reporting. Quantifies risk with risk_quantifier.py and tracks compliance with compliance_tracker.py."
+    },
+    {
+      "name": "ciso-review",
+      "source": "../../c-level-agents/skills/ciso-review",
+      "category": "c-level",
+      "description": "Challenge a plan touching customer data, compliance or prod access. Use when asked or /c-level-agents:ciso-review."
+    },
+    {
+      "name": "cmo-advisor",
+      "source": "../../c-level-advisor/skills/cmo-advisor",
+      "category": "c-level",
+      "description": "Marketing leadership: positioning, product-led vs sales-led vs community-led growth, budget split across channels, marketing team design. Use whenever the user asks how to grow, which go-to-market fits or where to spend."
+    },
+    {
+      "name": "cmo-review",
+      "source": "../../c-level-agents/skills/cmo-review",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:cmo-review, or to challenge positioning, ICP, messaging or channel mix before a launch."
+    },
+    {
+      "name": "company-os",
+      "source": "../../c-level-advisor/skills/company-os",
+      "category": "c-level",
+      "description": "Use when choosing or setting up how the company runs: EOS, Scaling Up or OKRs, accountability chart, scorecard, meeting rhythm, quarterly rocks."
+    },
+    {
+      "name": "competitive-intel",
+      "source": "../../c-level-advisor/skills/competitive-intel",
+      "category": "c-level",
+      "description": "Use for competitor analysis, battlecards, win/loss review or positioning against alternatives. Builds a tracking system that feeds positioning, sales and roadmap."
+    },
+    {
+      "name": "context-engine",
+      "source": "../../c-level-advisor/skills/context-engine",
+      "category": "c-level",
+      "description": "Use when starting a C-suite advisor session, when company context is missing or older than 90 days, or before company data goes to an external service. Loads and enriches ~/.claude/company-context.md and applies anonymization rules."
+    },
+    {
+      "name": "coo-advisor",
+      "source": "../../c-level-advisor/skills/coo-advisor",
+      "category": "c-level",
+      "description": "Use for operations leadership: process design, OKR execution, operating cadence, bottlenecks or scaling playbooks. Tracks OKRs with okr_tracker.py and analyzes efficiency with ops_efficiency_analyzer.py."
+    },
+    {
+      "name": "cpo-advisor",
+      "source": "../../c-level-advisor/skills/cpo-advisor",
+      "category": "c-level",
+      "description": "Product leadership: PMF measurement, product vision, portfolio investment, product org design, board product reporting. Use whenever the user asks if they have PMF or how to split investment across products."
+    },
+    {
+      "name": "cpo-review",
+      "source": "../../c-level-agents/skills/cpo-review",
+      "category": "c-level",
+      "description": "Challenge a roadmap, PMF claim or feature kill. Use whenever asked or /c-level-agents:cpo-review."
+    },
+    {
+      "name": "cro-advisor",
+      "source": "../../c-level-advisor/skills/cro-advisor",
+      "category": "c-level",
+      "description": "Use for B2B revenue leadership: forecasting, quotas, sales model, NRR and churn, pricing or sales capacity. Forecasts with revenue_forecast_model.py and analyzes churn with churn_analyzer.py."
+    },
+    {
+      "name": "cro-review",
+      "source": "../../c-level-agents/skills/cro-review",
+      "category": "c-level",
+      "description": "Challenge a forecast, win-rate drop or sales hires. Use whenever asked or /c-level-agents:cro-review."
+    },
+    {
+      "name": "cross-eval",
+      "source": "../../c-level-agents/skills/cross-eval",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:cross-eval, or when a high-stakes memo needs independent review by several models before the boardroom."
+    },
+    {
+      "name": "cs-onboard",
+      "source": "../../c-level-advisor/skills/cs-onboard",
+      "category": "c-level",
+      "description": "Use when setting up the C-suite advisors for the first time, or when company context is missing or stale after a raise or pivot. Interviews the founder across 7 dimensions and writes ~/.claude/company-context.md."
+    },
+    {
+      "name": "cto-advisor",
+      "source": "../../c-level-advisor/skills/cto-advisor",
+      "category": "c-level",
+      "description": "CTO decisions: tech debt, architecture direction, scaling the engineering team, technology evaluation, DORA metrics. Use whenever the user asks whether to rewrite, how to grow the eng team or which tech to bet on."
+    },
+    {
+      "name": "cto-review",
+      "source": "../../c-level-agents/skills/cto-review",
+      "category": "c-level",
+      "description": "Challenge an architecture bet, 10x scaling plan or rebuild vs buy. Use whenever asked or /c-level-agents:cto-review."
+    },
+    {
+      "name": "culture-architect",
+      "source": "../../c-level-advisor/skills/culture-architect",
+      "category": "c-level",
+      "description": "Use when defining company values, turning them into behaviors, assessing culture health or designing rituals. Treats culture as operating behavior, not posters."
+    },
+    {
+      "name": "decide",
+      "source": "../../c-level-agents/skills/decide",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:decide, or right after the founder approves a boardroom memo, to log it as a durable decision."
+    },
+    {
+      "name": "decision-logger",
+      "source": "../../c-level-advisor/skills/decision-logger",
+      "category": "c-level",
+      "description": "Use when logging a decision after a board meeting, reviewing past decisions or checking overdue actions. Keeps raw transcripts and approved decisions separately with decision_tracker.py."
+    },
+    {
+      "name": "execute",
+      "source": "../../c-level-agents/skills/execute",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:execute, or to turn an approved decision into a 90-day plan with weekly milestones and owners."
+    },
+    {
+      "name": "executive-mentor",
+      "source": "../../c-level-advisor/executive-mentor/skills/executive-mentor",
+      "category": "c-level",
+      "description": "Use when a founder or executive needs a plan stress-tested, a dreaded decision made, a hard board meeting prepared or an honest post-mortem. Adversarial thinking partner; scores options with decision_matrix_scorer.py and maps stakeholders with stakeholder_mapper.py."
+    },
+    {
+      "name": "founder-coach",
+      "source": "../../c-level-advisor/skills/founder-coach",
+      "category": "c-level",
+      "description": "Use when a founder is the bottleneck, can't delegate, is burning out or is moving from IC to CEO. Covers delegation, energy and calendar audits, blind spots and succession."
+    },
+    {
+      "name": "founder-mode",
+      "source": "../../c-level-agents/skills/founder-mode",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:founder-mode, or any founder strategy question that hasn't been routed yet. Sends it to the right C-suite advisor or the boardroom."
+    },
+    {
+      "name": "freeze",
+      "source": "../../c-level-agents/skills/freeze",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:freeze, or to put a cooling-off lock on an irreversible decision made under pressure."
+    },
+    {
+      "name": "gc-review",
+      "source": "../../c-level-agents/skills/gc-review",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:gc-review, or to challenge a term sheet, customer MSA, IP assignment or regulatory exposure before signing."
+    },
+    {
+      "name": "general-counsel-advisor",
+      "source": "../../c-level-advisor/skills/general-counsel-advisor",
+      "category": "c-level",
+      "description": "Legal review of contracts and term sheets (MSA, SaaS, NDA, DPA, employment), IP strategy and regulatory exposure (HIPAA, GDPR, FDA, fintech). Use whenever the user asks if a contract is risky or what to watch in a deal; not a substitute for licensed counsel."
+    },
+    {
+      "name": "general-counsel-advisor",
+      "source": "../../c-level-advisor/general-counsel-advisor/skills/general-counsel-advisor",
+      "category": "c-level",
+      "description": "Legal review of contracts and term sheets (MSA, SaaS, NDA, DPA, employment), IP strategy and regulatory exposure (HIPAA, GDPR, FDA, fintech). Use whenever the user asks if a contract is risky or what to watch in a deal; not a substitute for licensed counsel."
+    },
+    {
+      "name": "hard-call",
+      "source": "../../c-level-advisor/executive-mentor/skills/hard-call",
+      "category": "c-level",
+      "description": "Use for a decision where every option hurts (layoff vs down round, killing a loved product). Runs 10/10/10 and regret minimization."
+    },
+    {
+      "name": "internal-narrative",
+      "source": "../../c-level-advisor/skills/internal-narrative",
+      "category": "c-level",
+      "description": "Use when preparing an all-hands, investor update, recruiting pitch or crisis message, or when stories told to different audiences drift apart. Keeps one company story and flags contradictions."
+    },
+    {
+      "name": "intl-expansion",
+      "source": "../../c-level-advisor/skills/intl-expansion",
+      "category": "c-level",
+      "description": "Use when expanding to a new country: market selection, entry mode, localization, regulation and regional go-to-market."
+    },
+    {
+      "name": "ma-playbook",
+      "source": "../../c-level-advisor/skills/ma-playbook",
+      "category": "c-level",
+      "description": "Buy a company or sell yours: diligence, valuation, terms, integration. Use whenever M&A or an exit comes up."
+    },
+    {
+      "name": "office-hours",
+      "source": "../../c-level-agents/skills/office-hours",
+      "category": "c-level",
+      "description": "Founder advice after six YC-style questions. Use whenever a founder is stuck or unsure what to ask, or /c-level-agents:office-hours."
+    },
+    {
+      "name": "onboard",
+      "source": "../../c-level-agents/skills/onboard",
+      "category": "c-level",
+      "description": "Use for /cs-onboard, or when the virtual C-suite lacks company context. Interviews the founder and writes ~/.claude/company-context.md."
+    },
+    {
+      "name": "org-health-diagnostic",
+      "source": "../../c-level-advisor/skills/org-health-diagnostic",
+      "category": "c-level",
+      "description": "Use for a whole-company health check before a board review or when functions seem at risk. Scores 8 dimensions on a traffic light with health_scorer.py."
+    },
+    {
+      "name": "post-mortem",
+      "source": "../../c-level-agents/skills/post-mortem",
+      "category": "c-level",
+      "description": "Use for /c-level-agents:post-mortem, or when a decision hits its 90-day review or kill criteria. Scores it against the original assumptions and dissent."
+    },
+    {
+      "name": "postmortem",
+      "source": "../../c-level-advisor/executive-mentor/skills/postmortem",
+      "category": "c-level",
+      "description": "Use after a failed launch, missed quarter or bad hire. Runs a blameless 5-Whys with a change register."
+    },
+    {
+      "name": "scenario-war-room",
+      "source": "../../c-level-advisor/skills/scenario-war-room",
+      "category": "c-level",
+      "description": "Use for compound what-if questions ('what if X and Y both happen?') with major downside across functions. Models cascading scenarios with scenario_modeler.py."
+    },
+    {
+      "name": "strategic-alignment",
+      "source": "../../c-level-advisor/skills/strategic-alignment",
+      "category": "c-level",
+      "description": "Use when teams pull in different directions, OKRs don't connect or departments optimize locally. Maps the strategy cascade and finds orphan goals and silos with alignment_checker.py."
+    },
+    {
+      "name": "stress-test",
+      "source": "../../c-level-advisor/executive-mentor/skills/stress-test",
+      "category": "c-level",
+      "description": "Stress-test a plan built on untested assumptions. Use whenever the user bets on a hockey-stick model or long pilot."
+    },
+    {
+      "name": "vpe-advisor",
+      "source": "../../c-level-advisor/skills/vpe-advisor",
+      "category": "c-level",
+      "description": "Use when delivery is slowing, eng hiring is broken, team structure is unclear or you need to decide when to add an eng manager. Runs delivery_throughput_analyzer.py (DORA), eng_hiring_funnel_calculator.py and eng_team_structure_designer.py."
+    },
+    {
+      "name": "vpe-advisor",
+      "source": "../../c-level-advisor/vpe-advisor/skills/vpe-advisor",
+      "category": "c-level",
+      "description": "Use when delivery is slowing, eng hiring is broken, team structure is unclear or you need to decide when to add an eng manager. Runs delivery_throughput_analyzer.py (DORA), eng_hiring_funnel_calculator.py and eng_team_structure_designer.py."
+    },
+    {
+      "name": "vpe-review",
+      "source": "../../c-level-agents/skills/vpe-review",
+      "category": "c-level",
+      "description": "Challenge a plan on delivery speed, eng hiring, team structure or on-call. Use when asked or /c-level-agents:vpe-review."
+    },
+    {
+      "name": "channel-economics",
+      "source": "../../commercial/skills/channel-economics",
+      "category": "commercial",
+      "description": "Use for a direct vs partner channel review: fully loaded cost to serve, channel ROI and the best channel mix under constraints. Runs cost_to_serve_calculator.py, channel_roi_analyzer.py and channel_mix_optimizer.py."
+    },
+    {
+      "name": "commercial-forecaster",
+      "source": "../../commercial/skills/commercial-forecaster",
+      "category": "commercial",
+      "description": "Use when building a bookings, ARR, pipeline or NRR forecast, or a commit, best-case and pipeline board number. Forecasts with bookings_forecaster.py, projects cohorts with cohort_arr_projector.py and scores stage confidence with funnel_confidence_scorer.py, showing every conversion assumption."
+    },
+    {
+      "name": "commercial-policy",
+      "source": "../../commercial/skills/commercial-policy",
+      "category": "commercial",
+      "description": "Use when writing or revising discount rules: discount matrix, approver thresholds, exception flows and the deal framework sales works under. Builds the matrix with discount_matrix_builder.py, routes exceptions with exception_router.py and checks the policy with policy_linter.py."
+    },
+    {
+      "name": "commercial-skills",
+      "source": "../../commercial/skills/commercial-skills",
+      "category": "commercial",
+      "description": "Use when a commercial request needs routing (pricing, deal review, discounts, partners, channels, policy, RFPs, forecasts): 'review this deal', 'should we discount'. Lists the commercial skills and routes to one."
+    },
+    {
+      "name": "deal-desk",
+      "source": "../../commercial/skills/deal-desk",
+      "category": "commercial",
+      "description": "Use before closing a deal that needs a discount beyond AE authority, has a redlined MSA or unclear per-deal economics. Scores it with deal_scorer.py, names approvers with discount_approval_router.py and flags risky terms with terms_redliner.py. Never auto-approves."
+    },
+    {
+      "name": "partnerships-architect",
+      "source": "../../commercial/skills/partnerships-architect",
+      "category": "commercial",
+      "description": "Use when deciding whether to sign a partner, at which tier (referral, reseller, OEM, SI, alliance), with what joint GTM and revshare. Runs partner_tier_classifier.py, revshare_modeler.py and joint_gtm_planner.py."
+    },
+    {
+      "name": "pricing-strategist",
+      "source": "../../commercial/skills/pricing-strategist",
+      "category": "commercial",
+      "description": "Use when choosing or revisiting pricing: seat, usage, value-based, freemium or hybrid, Van Westendorp willingness-to-pay analysis, or Good/Better/Best tiers. Runs pricing_model_picker.py, wtp_analyzer.py and packaging_designer.py and returns a range, not one number."
+    },
+    {
+      "name": "rfp-responder",
+      "source": "../../commercial/skills/rfp-responder",
+      "category": "commercial",
+      "description": "Use when an RFP, RFI, RFQ or security or vendor questionnaire arrives. Parses mandatory vs weighted requirements with rfp_parser.py, drafts proof-point answers with response_drafter.py and estimates win chance with winrate_predictor.py."
+    },
+    {
+      "name": "ai-act-readiness",
+      "source": "../../compliance-os/skills/ai-act-readiness",
+      "category": "compliance",
+      "description": "EU AI Act readiness: risk tier, duties, deadlines. Load whenever AI ships in the EU or the user asks if the Act applies."
+    },
+    {
+      "name": "aims-audit",
+      "source": "../../compliance-os/skills/aims-audit",
+      "category": "compliance",
+      "description": "ISO 42001 AI readiness check. Use before a stage 1 or internal audit, or /compliance-os:aims-audit."
+    },
+    {
+      "name": "compliance-os",
+      "source": "../../compliance-os/skills/compliance-os",
+      "category": "compliance",
+      "description": "Use when running several compliance frameworks at once: which apply, where controls overlap, a mock audit or one evidence checklist. Runs framework_selector.py, cross_framework_mapper.py, audit_simulator.py and evidence_pool_generator.py."
+    },
+    {
+      "name": "compliance-readiness",
+      "source": "../../compliance-os/skills/compliance-readiness",
+      "category": "compliance",
+      "description": "Use for /compliance-os:compliance-readiness, or before adding a framework or planning the annual audit calendar."
+    },
+    {
+      "name": "fda-qsr-audit-prep",
+      "source": "../../compliance-os/skills/fda-qsr-audit-prep",
+      "category": "compliance",
+      "description": "Use for /compliance-os:fda-qsr-audit-prep, or before an FDA inspection, QMSR internal audit or Form 483 response."
+    },
+    {
+      "name": "gdpr-audit-prep",
+      "source": "../../compliance-os/skills/gdpr-audit-prep",
+      "category": "compliance",
+      "description": "Use for /compliance-os:gdpr-audit-prep, or before a GDPR review, post-breach audit or DPA investigation."
+    },
+    {
+      "name": "iso13485-audit-prep",
+      "source": "../../compliance-os/skills/iso13485-audit-prep",
+      "category": "compliance",
+      "description": "Use for /compliance-os:iso13485-audit-prep, or before an ISO 13485 internal audit or DHF closure."
+    },
+    {
+      "name": "iso27001-audit-prep",
+      "source": "../../compliance-os/skills/iso27001-audit-prep",
+      "category": "compliance",
+      "description": "Use for /compliance-os:iso27001-audit-prep, or before an ISO 27001 internal, surveillance or stage 1 audit."
+    },
+    {
+      "name": "soc2-audit-prep",
+      "source": "../../compliance-os/skills/soc2-audit-prep",
+      "category": "compliance",
+      "description": "Use for /compliance-os:soc2-audit-prep, or before or during a SOC 2 Type II observation period."
+    },
+    {
+      "name": "design-system",
+      "source": "../../markdown-html/skills/design-system",
+      "category": "documentation",
+      "description": "Use when setting up brand settings before the first markdown-to-HTML conversion, or changing them. Runs a 10-question onboarding with onboard.py (colors, fonts, style, TOC) and refuses palettes that fail WCAG AA via brand_palette_validator.py."
+    },
+    {
+      "name": "markdown-html-orchestrator",
+      "source": "../../markdown-html/skills/markdown-html-orchestrator",
+      "category": "documentation",
+      "description": "Use when the user wants a markdown file turned into a single-file interactive HTML page (document, code review or slide deck). Classifies it with doctype_classifier.py and routes to md-document, md-review or md-slides."
+    },
+    {
+      "name": "md-document",
+      "source": "../../markdown-html/skills/md-document",
+      "category": "documentation",
+      "description": "Use when converting long-form markdown (spec, RFC, report, plan) into a single-file HTML page with sticky TOC, search and code-copy. Parses with markdown_parser.py and renders with html_renderer.py using the design-system brand."
+    },
+    {
+      "name": "md-review",
+      "source": "../../markdown-html/skills/md-review",
+      "category": "documentation",
+      "description": "Use when converting a markdown code review with diff blocks and severity callouts into a two-column HTML review. Parses diffs with diff_parser.py and annotations with annotation_extractor.py; requires a named reviewer."
+    },
+    {
+      "name": "md-slides",
+      "source": "../../markdown-html/skills/md-slides",
+      "category": "documentation",
+      "description": "Turn a markdown file into a single-file HTML slide deck with keyboard navigation, presenter notes and print-to-PDF. Use whenever the user wants slides or a presentation from markdown or notes."
+    },
+    {
+      "name": "a11y-audit",
+      "source": "../../engineering-team/a11y-audit/skills/a11y-audit",
+      "category": "engineering",
+      "description": "Use for any accessibility audit or a11y fix (WCAG 2.2 A/AA, color contrast, compliance report, CI check) in React, Next.js, Vue, Angular, Svelte or HTML. Scans with a11y_scanner.py and checks contrast with contrast_checker.py, then fixes and re-verifies."
+    },
+    {
+      "name": "adversarial-reviewer",
+      "source": "../../engineering-team/skills/adversarial-reviewer",
+      "category": "engineering",
+      "description": "Tough, critical review of a diff or PR before merge, through hostile reviewer personas that catch shared blind spots. Use whenever the user wants a change torn apart, a harsh second opinion, or a self-review felt too agreeable."
+    },
+    {
+      "name": "ai-security",
+      "source": "../../engineering-team/skills/ai-security",
+      "category": "engineering",
+      "description": "Use when assessing an AI/ML system or LLM agent for prompt injection, jailbreaks, model inversion, data poisoning or tool abuse. Maps findings to MITRE ATLAS and scores robustness with ai_threat_scanner.py."
+    },
+    {
+      "name": "aws-solution-architect",
+      "source": "../../engineering-team/skills/aws-solution-architect",
+      "category": "engineering",
+      "description": "Use when designing or costing an AWS architecture (serverless, Lambda, API Gateway, DynamoDB, ECS, Aurora, CloudFormation, migration to AWS). Designs it with architecture_designer.py, generates stacks with serverless_stack.py and finds savings with cost_optimizer.py."
+    },
+    {
+      "name": "azure-cloud-architect",
+      "source": "../../engineering-team/skills/azure-cloud-architect",
+      "category": "engineering",
+      "description": "Use when designing or costing an Azure architecture (AKS, App Service, Functions, Cosmos DB, Bicep or ARM, Azure DevOps, migration to Azure). Designs it with architecture_designer.py, generates Bicep with bicep_generator.py and finds savings with cost_optimizer.py."
+    },
+    {
+      "name": "browserstack",
+      "source": "../../engineering-team/playwright-pro/skills/browserstack",
+      "category": "engineering",
+      "description": "Use when running Playwright tests on BrowserStack or across a browser matrix ('browserstack', 'cross-browser', 'test on safari or firefox', 'browser compatibility')."
+    },
+    {
+      "name": "cloud-security",
+      "source": "../../engineering-team/skills/cloud-security",
+      "category": "engineering",
+      "description": "Use when checking AWS, Azure or GCP for security misconfigurations: IAM privilege escalation, public buckets, open security groups, IaC gaps. Runs cloud_posture_check.py and maps findings to MITRE ATT&CK."
+    },
+    {
+      "name": "code-reviewer",
+      "source": "../../engineering-team/skills/code-reviewer",
+      "category": "engineering",
+      "description": "Use for any code review: a pull request, a diff, a commit, or a pasted function, handler or file in TypeScript, JavaScript, Python, Go, Swift, Kotlin, C#/.NET, Java, C, C++, Rust, Ruby, PHP or Dart/Flutter. Applies per-language rule packs (security such as SQL injection and missing auth, async and resource handling, error handling, performance) and scripts that score a PR's risk and complexity, then gives a merge verdict with blocking and non-blocking findings. Use whenever the user asks to review, check or look over code, says 'code review', 'review this PR', 'review this diff' or 'is this safe to merge', or asks what is wrong with a snippet, even a single function."
+    },
+    {
+      "name": "coverage",
+      "source": "../../engineering-team/playwright-pro/skills/coverage",
+      "category": "engineering",
+      "description": "Find what is not tested: map untested pages and flows and coverage gaps. Use whenever the user asks what needs tests, about missing tests or test coverage."
+    },
+    {
+      "name": "email-template-builder",
+      "source": "../../engineering-team/skills/email-template-builder",
+      "category": "engineering",
+      "description": "Use when adding or reworking transactional email (React Email templates, Resend, Postmark, SendGrid or SES, preview, i18n, dark mode, deliverability). Builds the template system and provider integration end to end."
+    },
+    {
+      "name": "embedded-iot-mentor",
+      "source": "../../engineering-team/skills/embedded-iot-mentor",
+      "category": "engineering",
+      "description": "Use for any embedded or IoT hardware project (ESP32, STM32, Arduino, Pico, firmware, PCB, MQTT, Home Assistant, sensor dashboards), before buying parts. Picks the MCU, board and toolchain, decides where readings go and gives a phased build plan with time and cost."
+    },
+    {
+      "name": "engineering-skills",
+      "source": "../../engineering-team/skills/engineering-skills",
+      "category": "engineering",
+      "description": "Find which engineering skill fits a task: architecture, frontend, backend, QA, DevOps, security, AI/ML, data, cloud. Use whenever the user is unsure which skill to use; load only that one."
+    },
+    {
+      "name": "epic-design",
+      "source": "../../engineering-team/skills/epic-design",
+      "category": "engineering",
+      "description": "Use for any landing page, hero section or scroll-driven web design that should feel cinematic (parallax, scrollytelling, overlapping sections, text reveals, Apple-style animation), before coding. Inspects assets with inspect-assets.py, then builds with 45+ 2.5D techniques, no WebGL."
+    },
+    {
+      "name": "extract",
+      "source": "../../engineering-team/self-improving-agent/skills/extract",
+      "category": "engineering",
+      "description": "Turn a fix or pattern that keeps coming up into a reusable skill with SKILL.md, reference docs and examples. Use whenever the user runs /si:extract or wants to package a recurring solution or lesson as a skill."
+    },
+    {
+      "name": "fix",
+      "source": "../../engineering-team/playwright-pro/skills/fix",
+      "category": "engineering",
+      "description": "Diagnose and fix a failing or flaky Playwright test. Use whenever a test fails, passes only sometimes, breaks intermittently or needs fixing."
+    },
+    {
+      "name": "gcp-cloud-architect",
+      "source": "../../engineering-team/skills/gcp-cloud-architect",
+      "category": "engineering",
+      "description": "Design, deploy and cut the cost of Google Cloud setups: Cloud Run, GKE, Functions, Cloud SQL, BigQuery, moving to GCP. Use whenever the user asks how to host or run something on GCP, why their GCP bill is high, or plans a GCP migration."
+    },
+    {
+      "name": "generate",
+      "source": "../../engineering-team/playwright-pro/skills/generate",
+      "category": "engineering",
+      "description": "Use when asked to write Playwright or e2e tests for a page, component or feature ('write tests', 'add tests for', 'e2e test')."
+    },
+    {
+      "name": "google-workspace-cli",
+      "source": "../../engineering-team/google-workspace-cli/skills/google-workspace-cli",
+      "category": "engineering",
+      "description": "Use for Google Workspace admin or automation from the gws CLI (Gmail, Drive, Sheets, Calendar, Docs, Chat, Tasks). Sets up auth with auth_setup_guide.py, diagnoses with gws_doctor.py, runs recipes with gws_recipe_runner.py and audits security with workspace_audit.py."
+    },
+    {
+      "name": "incident-commander",
+      "source": "../../engineering-team/skills/incident-commander",
+      "category": "engineering",
+      "description": "Use when declaring or running a production incident or outage, or writing its post-incident review. Classifies severity with incident_classifier.py, rebuilds the timeline with timeline_reconstructor.py and drafts the PIR with pir_generator.py. Security incidents: incident-response."
+    },
+    {
+      "name": "incident-response",
+      "source": "../../engineering-team/skills/incident-response",
+      "category": "engineering",
+      "description": "Handle a suspected security breach: triage, SEV1-SEV4 severity, escalation and forensic evidence, per NIST SP 800-61. Use whenever the user thinks they were hacked, sees suspicious activity or a leaked key. Outages: incident-commander."
+    },
+    {
+      "name": "memory-review",
+      "source": "../../engineering-team/self-improving-agent/skills/memory-review",
+      "category": "engineering",
+      "description": "Review what the agent has learned in auto-memory: what to promote to permanent rules, stale entries to prune, duplicates to merge. Use whenever the user runs /si:memory-review or asks what you learned or what to keep."
+    },
+    {
+      "name": "memory-status",
+      "source": "../../engineering-team/self-improving-agent/skills/memory-status",
+      "category": "engineering",
+      "description": "Health check of agent auto-memory: line counts, topic files, capacity, stale entries and what to prune. Use whenever the user asks how full or healthy memory is, or runs /si:memory-status."
+    },
+    {
+      "name": "migrate",
+      "source": "../../engineering-team/playwright-pro/skills/migrate",
+      "category": "engineering",
+      "description": "Use when moving tests from Cypress or Selenium to Playwright ('migrate tests', 'convert tests', 'replace selenium')."
+    },
+    {
+      "name": "ms365-tenant-manager",
+      "source": "../../engineering-team/skills/ms365-tenant-manager",
+      "category": "engineering",
+      "description": "Use for Microsoft 365 tenant administration (Entra ID users, Exchange Online, Teams, licenses, Conditional Access, compliance reports). Plans setup with tenant_setup.py, bulk-manages users with user_management.py and generates PowerShell with powershell_generator.py."
+    },
+    {
+      "name": "named-persona-adversarial-review",
+      "source": "../../engineering-team/skills/named-persona-adversarial-review",
+      "category": "engineering",
+      "description": "Use when a PR has architectural or UX impact, or automated review feels generic, and you want it reviewed through named engineers' documented views (Torvalds, Thompson, Carmack, Beck, Jobs, Cagan). Cites the source for each persona's critique."
+    },
+    {
+      "name": "promote",
+      "source": "../../engineering-team/self-improving-agent/skills/promote",
+      "category": "engineering",
+      "description": "Graduate a proven pattern from auto-memory (MEMORY.md) to CLAUDE.md or .claude/rules/ for permanent enforcement. Use when the user runs /si:promote or asks to make a learned behavior permanent."
+    },
+    {
+      "name": "pw",
+      "source": "../../engineering-team/playwright-pro/skills/pw",
+      "category": "engineering",
+      "description": "Use for any Playwright or end-to-end browser testing work: writing tests, fixing flaky ones, migrating from Cypress or Selenium, CI setup, TestRail or BrowserStack. Routes to the matching /pw sub-skill and its 55 templates."
+    },
+    {
+      "name": "pw-init",
+      "source": "../../engineering-team/playwright-pro/skills/pw-init",
+      "category": "engineering",
+      "description": "Use when setting up Playwright in a project ('set up playwright', 'add e2e tests', 'configure playwright', 'init playwright')."
+    },
+    {
+      "name": "pw-review",
+      "source": "../../engineering-team/playwright-pro/skills/pw-review",
+      "category": "engineering",
+      "description": "Use when reviewing Playwright tests for quality ('review tests', 'audit tests', 'playwright best practices check')."
+    },
+    {
+      "name": "red-green-proof",
+      "source": "../../engineering-team/skills/red-green-proof",
+      "category": "engineering",
+      "description": "Turns a suspected bug into a proven one. Verify the cause against reality before claiming it, write a test that FAILS on the current code, apply the fix, watch it pass \u2014 then revert the fix and confirm the test goes red again, because a test that passes both ways proves nothing. Invoked bare after a debugging conversation, it takes the target from context rather than asking. Use when fixing a bug, investigating an incident, hardening a flaky area, or when asked to \"add tests that reveal the bug\". Triggers on \"/red-green-proof\", \"prove the bug\", \"red-green\", \"make the test fail first\", \"is that test load-bearing\", \"reveal the bug with a test\"."
+    },
+    {
+      "name": "red-team",
+      "source": "../../engineering-team/skills/red-team",
+      "category": "engineering",
+      "description": "Use when planning or running an authorized red team engagement or attack path analysis. Plans the kill chain with engagement_planner.py: MITRE ATT&CK techniques, choke points, OPSEC risk and crown jewels."
+    },
+    {
+      "name": "remember",
+      "source": "../../engineering-team/self-improving-agent/skills/remember",
+      "category": "engineering",
+      "description": "Save something important to auto-memory with a timestamp and context. Use whenever the user says remember this, note it for next time or don't forget, wants you to stop repeating a mistake across sessions, or a discovery is too important for auto-capture."
+    },
+    {
+      "name": "report",
+      "source": "../../engineering-team/playwright-pro/skills/report",
+      "category": "engineering",
+      "description": "Summarize Playwright results. Use whenever the user asks how tests went, for a test report or status."
+    },
+    {
+      "name": "security-pen-testing",
+      "source": "../../engineering-team/skills/security-pen-testing",
+      "category": "engineering",
+      "description": "Authorized penetration testing of an app or API: vulnerability scans, OWASP Top 10 checks, dependency audits and a pentest report. Use whenever the user asks if their app is secure or hackable, wants a security scan or a pentest report."
+    },
+    {
+      "name": "self-improving-agent",
+      "source": "../../engineering-team/self-improving-agent/skills/self-improving-agent",
+      "category": "engineering",
+      "description": "Curate what the agent has learned into durable project knowledge. Reviews Claude Code auto-memory (MEMORY.md and its topic files) for learnings worth keeping, promotes proven ones into CLAUDE.md or .claude/rules/, records a correction as a lesson that persists across sessions, prunes stale or duplicate entries, and turns a recurring fix into a reusable skill. Use whenever the user asks what you have learned or saved about the project, which memories should become permanent rules, to remember a lesson or stop repeating a mistake, or to clean up, audit or check memory health."
+    },
+    {
+      "name": "senior-architect",
+      "source": "../../engineering-team/skills/senior-architect",
+      "category": "engineering",
+      "description": "System architecture decisions with a written rationale: monolith vs microservices, database choice, scaling limits, ADRs, Mermaid diagrams. Load whenever the user asks should we split, which database, will it scale, or wants an ADR."
+    },
+    {
+      "name": "senior-backend",
+      "source": "../../engineering-team/skills/senior-backend",
+      "category": "engineering",
+      "description": "Build and fix backend services: REST or GraphQL APIs, auth, microservices, PostgreSQL queries, migrations and load tests. Use whenever the user's API is slow or broken, needs login or auth added, a schema change, or a new endpoint or service scaffolded."
+    },
+    {
+      "name": "senior-computer-vision",
+      "source": "../../engineering-team/skills/senior-computer-vision",
+      "category": "engineering",
+      "description": "Computer vision models: object detection, segmentation, training a custom model, and optimizing or deploying inference (YOLO, DETR, SAM, ONNX, TensorRT). Use whenever the user wants to detect objects in images or video, train on their own labeled images, or speed up a slow vision model."
+    },
+    {
+      "name": "senior-data-engineer",
+      "source": "../../engineering-team/skills/senior-data-engineer",
+      "category": "engineering",
+      "description": "Data pipelines: Airflow DAGs, Spark, dbt, Kafka, ETL/ELT, data quality checks. Load whenever a DAG or batch job times out or fails, data arrives wrong, or the user designs an ingestion pipeline."
+    },
+    {
+      "name": "senior-data-scientist",
+      "source": "../../engineering-team/skills/senior-data-scientist",
+      "category": "engineering",
+      "description": "Design experiments and analyze tabular data: A/B tests, causal inference, feature engineering, model evaluation. Use whenever the user asks how to set up or read an A/B test, whether a change caused a lift, which features to build, or how good a model is."
+    },
+    {
+      "name": "senior-devops",
+      "source": "../../engineering-team/skills/senior-devops",
+      "category": "engineering",
+      "description": "Set up CI/CD pipelines, infrastructure as code, containers and deployments on AWS, GCP or Azure. Use whenever the user needs a build or deploy pipeline, Terraform, a Dockerfile, or wants to manage a release to the cloud."
+    },
+    {
+      "name": "senior-frontend",
+      "source": "../../engineering-team/skills/senior-frontend",
+      "category": "engineering",
+      "description": "Build and review React, Next.js, TypeScript or Tailwind frontends: components, scaffolding, performance and bundle size. Use whenever the user wants a new component or app, a page feels slow, the bundle is too big, or asks for a frontend code review."
+    },
+    {
+      "name": "senior-fullstack",
+      "source": "../../engineering-team/skills/senior-fullstack",
+      "category": "engineering",
+      "description": "Start a fullstack project or audit a codebase: pick a stack (Next.js, FastAPI, MERN, Django), scaffold it and score code quality. Use whenever the user asks which stack to use, wants a new web app set up, or asks how good or messy their codebase is."
+    },
+    {
+      "name": "senior-ml-engineer",
+      "source": "../../engineering-team/skills/senior-ml-engineer",
+      "category": "engineering",
+      "description": "Use for putting ML models or LLM features into production: deployment, MLOps, drift monitoring, RAG pipelines, LLM API cost and retries. Deploys with model_deployment_pipeline.py, monitors with ml_monitoring_suite.py and builds RAG with rag_system_builder.py."
+    },
+    {
+      "name": "senior-prompt-engineer",
+      "source": "../../engineering-team/skills/senior-prompt-engineer",
+      "category": "engineering",
+      "description": "Improve prompts and measure LLM quality: fix inconsistent prompts, build eval sets, score RAG retrieval, check agent tool configs. Use whenever the user's prompt, chatbot or RAG answers are unreliable or they ask how to test them."
+    },
+    {
+      "name": "senior-qa",
+      "source": "../../engineering-team/skills/senior-qa",
+      "category": "engineering",
+      "description": "Write and improve tests for React or Next.js apps: Jest, React Testing Library, MSW mocks, Playwright E2E, coverage gaps. Use whenever the user asks to add tests to a component or page, mock an API, set up end-to-end tests or raise coverage."
+    },
+    {
+      "name": "senior-secops",
+      "source": "../../engineering-team/skills/senior-secops",
+      "category": "engineering",
+      "description": "Find and fix application security problems: security reviews, CVE remediation, hardening, secrets and auth, SOC 2, PCI-DSS, HIPAA and GDPR checks. Use whenever the user asks if their app is secure, needs to patch a vulnerable dependency or prepares for an audit."
+    },
+    {
+      "name": "senior-security",
+      "source": "../../engineering-team/skills/senior-security",
+      "category": "engineering",
+      "description": "Check if a design or code is secure: STRIDE threat model, DREAD risk scores, leaked secret scan. Use whenever the user asks what could be attacked, how risky a feature is, or to find exposed keys."
+    },
+    {
+      "name": "snowflake-development",
+      "source": "../../engineering-team/snowflake-development/skills/snowflake-development",
+      "category": "engineering",
+      "description": "Use for Snowflake work: SQL, Dynamic Tables, Streams and Tasks, Cortex AI functions and agents, Snowpark Python, dbt on Snowflake, or Snowflake errors. Helps with queries via snowflake_query_helper.py."
+    },
+    {
+      "name": "stripe-integration-expert",
+      "source": "../../engineering-team/skills/stripe-integration-expert",
+      "category": "engineering",
+      "description": "Use for any Stripe integration: subscriptions, trials, proration, checkout, usage billing, webhooks, customer portal or invoicing in Next.js, Express or Django. Writes idempotent webhook handlers and debugs delivery failures."
+    },
+    {
+      "name": "tdd-guide",
+      "source": "../../engineering-team/skills/tdd-guide",
+      "category": "engineering",
+      "description": "Test-first development and test generation for Jest, Pytest, JUnit, Vitest or Mocha: red-green-refactor, fixtures and mocks, coverage gaps. Use whenever the user asks to write tests (before or after the code), mock a dependency or raise coverage."
+    },
+    {
+      "name": "tech-stack-evaluator",
+      "source": "../../engineering-team/skills/tech-stack-evaluator",
+      "category": "engineering",
+      "description": "Compare frameworks or tech stacks before committing: side-by-side scoring, total cost of ownership, ecosystem health and migration risk. Use whenever the user asks which framework to pick, X vs Y, whether to switch stacks, or if a migration is worth it."
+    },
+    {
+      "name": "testrail",
+      "source": "../../engineering-team/playwright-pro/skills/testrail",
+      "category": "engineering",
+      "description": "Use when syncing Playwright tests with TestRail ('testrail', 'sync test cases', 'push results to testrail', 'import from testrail')."
+    },
+    {
+      "name": "threat-detection",
+      "source": "../../engineering-team/skills/threat-detection",
+      "category": "engineering",
+      "description": "Use when hunting threats, sweeping IOCs or looking for anomalies in logs and telemetry. Ranks ATT&CK-mapped signals and z-score anomalies with threat_signal_analyzer.py."
+    },
+    {
+      "name": "agent-designer",
+      "source": "../../engineering/skills/agent-designer",
+      "category": "engineering-advanced",
+      "description": "Design multi-agent systems (supervisor, swarm, pipeline) and tool schemas; find bottlenecks in run logs. Use whenever agents split work or a run is slow or costly. Not for Claude Code workflow files (workflow-builder)."
+    },
+    {
+      "name": "agent-harness",
+      "source": "../../engineering/agent-harness/skills/agent-harness",
+      "category": "engineering-advanced",
+      "description": "Use when an agent should drive a goal in one of this repo's domains to a verified close, before starting the work. Compiles the goal into a task plan with goal_compiler.py and runs it through loop_controller.py, which verifies each task, caps retries and escalates."
+    },
+    {
+      "name": "agent-memory",
+      "source": "../../engineering/agent-memory/skills/agent-memory",
+      "category": "engineering-advanced",
+      "description": "Use when an agent keeps relearning the same correction, CLAUDE.md has grown unreadable, or you need to trace where a remembered rule came from. Promotes facts through four tiers only on recurrence across sessions and days, with memory_promote.py and a human adopt step."
+    },
+    {
+      "name": "agent-regression-evals",
+      "source": "../../engineering/skills/agent-regression-evals",
+      "category": "engineering-advanced",
+      "description": "Use before shipping any agent, prompt, model or tool change, or when a pass-rate drop needs a verdict. Runs repeated trials, gates candidate vs baseline with paired statistics in regression_gate.py, checks tool-call trajectories and finds flaky cases."
+    },
+    {
+      "name": "agent-regression-evals",
+      "source": "../../engineering/agent-regression-evals/skills/agent-regression-evals",
+      "category": "engineering-advanced",
+      "description": "Use before shipping any agent, prompt, model or tool change, or when a pass-rate drop needs a verdict. Runs repeated trials, gates candidate vs baseline with paired statistics in regression_gate.py, checks tool-call trajectories and finds flaky cases."
+    },
+    {
+      "name": "agent-run-forensics",
+      "source": "../../engineering/skills/agent-run-forensics",
+      "category": "engineering-advanced",
+      "description": "Use when asked why an agent did something, what a past session or run changed, whether tests really passed, or to verify a session summary. Answers from the recorded transcript, not memory, with trace_finder.py, trace_timeline.py and claim_checker.py."
+    },
+    {
+      "name": "agent-run-forensics",
+      "source": "../../engineering/agent-run-forensics/skills/agent-run-forensics",
+      "category": "engineering-advanced",
+      "description": "Use when asked why an agent did something, what a past session or run changed, whether tests really passed, or to verify a session summary. Answers from the recorded transcript, not memory, with trace_finder.py, trace_timeline.py and claim_checker.py."
+    },
+    {
+      "name": "agent-workflow-designer",
+      "source": "../../engineering/skills/agent-workflow-designer",
+      "category": "engineering-advanced",
+      "description": "Use when architecting a multi-step LLM or agent pipeline, choosing single vs multi-agent, or fixing context bloat and broken handoffs. Scaffolds the pattern, handoff contracts and failure handling with workflow_scaffolder.py."
+    },
+    {
+      "name": "agenthub",
+      "source": "../../engineering/agenthub/skills/agenthub",
+      "category": "engineering-advanced",
+      "description": "Run several agents on one task in parallel and keep the best result: faster code, copy variants, research angles. Use whenever the user wants multiple attempts compared or best of N; spawns agents in git worktrees, ranks and merges the winner."
+    },
+    {
+      "name": "api-design-reviewer",
+      "source": "../../engineering/skills/api-design-reviewer",
+      "category": "engineering-advanced",
+      "description": "Use for any PR or spec that adds or changes REST endpoints, before approving it. Lints conventions with api_linter.py, detects breaking changes with breaking_change_detector.py and scores the design with api_scorecard.py."
+    },
+    {
+      "name": "api-test-suite-builder",
+      "source": "../../engineering/skills/api-test-suite-builder",
+      "category": "engineering-advanced",
+      "description": "Use when asked to write API, integration or contract tests for REST endpoints. Builds the suite from the routes: happy paths, auth, validation errors and edge cases per endpoint."
+    },
+    {
+      "name": "ar-loop",
+      "source": "../../engineering/autoresearch-agent/skills/ar-loop",
+      "category": "engineering-advanced",
+      "description": "Use for /ar-loop, or to run an autoresearch experiment on a schedule (10 min to monthly) with CronCreate."
+    },
+    {
+      "name": "ar-resume",
+      "source": "../../engineering/autoresearch-agent/skills/ar-resume",
+      "category": "engineering-advanced",
+      "description": "Use for /ar-resume, or to continue a paused autoresearch experiment from its branch and results history."
+    },
+    {
+      "name": "ar-run",
+      "source": "../../engineering/autoresearch-agent/skills/ar-run",
+      "category": "engineering-advanced",
+      "description": "Use for /ar-run, or to run one manual autoresearch iteration: edit, evaluate, keep or discard."
+    },
+    {
+      "name": "ar-status",
+      "source": "../../engineering/autoresearch-agent/skills/ar-status",
+      "category": "engineering-advanced",
+      "description": "Show autoresearch results and progress. Use when asked how an experiment runs, or /ar-status."
+    },
+    {
+      "name": "autoresearch-agent",
+      "source": "../../engineering/autoresearch-agent/skills/autoresearch-agent",
+      "category": "engineering-advanced",
+      "description": "Make a file measurably better by trial: faster code, smaller bundle, higher pass rate or prompt score. Use whenever the user wants something optimized against a metric, before hand-tuning; loops edits, keeps wins, resets losses. Needs an eval command."
+    },
+    {
+      "name": "behuman",
+      "source": "../../engineering/behuman/skills/behuman",
+      "category": "engineering-advanced",
+      "description": "Reply like a real person, direct and warm, without lists or hedging. Use whenever the user says you sound robotic, asks you to be real or talk like a person, wants mirror mode, or is going through grief, job loss or fear. Not for code or factual lookups."
+    },
+    {
+      "name": "board",
+      "source": "../../engineering/agenthub/skills/board",
+      "category": "engineering-advanced",
+      "description": "Use to post or read messages on the AgentHub coordination board between competing agents."
+    },
+    {
+      "name": "book-to-skill",
+      "source": "../../engineering/book-to-skill/skills/book-to-skill",
+      "category": "engineering-advanced",
+      "description": "Use when turning a book, docs folder or spec collection (PDF, EPUB, DOCX, HTML, Markdown) into an agent skill, before summarizing it by hand. Extracts with extract_document.py, compiles chapters, glossary and cheatsheet, validates with book_skill_validator.py and enforces a rights gate."
+    },
+    {
+      "name": "boost-asio-pro",
+      "source": "../../engineering/boost-asio-pro",
+      "category": "engineering-advanced",
+      "description": "Use for any C++ networking code with Boost.Asio or standalone Asio (TCP/UDP, SSL, timers, strands, io_context, co_spawn, awaitable, completion handlers), before writing or reviewing it. Applies lifetime, strand and cancellation rules that avoid the classic async bugs."
+    },
+    {
+      "name": "browser-automation",
+      "source": "../../engineering/skills/browser-automation",
+      "category": "engineering-advanced",
+      "description": "Automate a browser: scrape websites, fill forms, pull structured data from web pages. Use whenever the user wants to grab data from a site, fill a web form or extract a table. Browser testing: playwright-pro."
+    },
+    {
+      "name": "caveman",
+      "source": "../../engineering/caveman/skills/caveman",
+      "category": "engineering-advanced",
+      "description": "Terse mode: drop filler, articles and pleasantries, keep technical accuracy, about 75% fewer tokens, and stay in it. Load whenever the user asks for fewer words, shorter answers, less tokens, caveman mode or /caveman."
+    },
+    {
+      "name": "changelog-generator",
+      "source": "../../engineering/skills/changelog-generator",
+      "category": "engineering-advanced",
+      "description": "Write release notes and CHANGELOG.md from commits and pick the next semver version. Use whenever the user is cutting a release, asks what changed since the last one or what version comes next, or wants commits linted first."
+    },
+    {
+      "name": "chaos-engineering",
+      "source": "../../engineering/skills/chaos-engineering",
+      "category": "engineering-advanced",
+      "description": "Use before running a chaos experiment, gameday or fault injection, or after one to write it up. Designs it with steady state and abort criteria in experiment_designer.py, sizes the blast radius with blast_radius_calculator.py and drafts the postmortem."
+    },
+    {
+      "name": "chaos-engineering",
+      "source": "../../engineering/chaos-engineering/skills/chaos-engineering",
+      "category": "engineering-advanced",
+      "description": "Use before running a chaos experiment, gameday or fault injection, or after one to write it up. Designs it with steady state and abort criteria in experiment_designer.py, sizes the blast radius with blast_radius_calculator.py and drafts the postmortem."
+    },
+    {
+      "name": "ci-cd-pipeline-builder",
+      "source": "../../engineering/skills/ci-cd-pipeline-builder",
+      "category": "engineering-advanced",
+      "description": "Generate a CI/CD workflow for a repo from its detected stack: lint, test, build, deploy. Load whenever the user says the repo has no CI, wants tests run on push, or needs a pipeline YAML."
+    },
+    {
+      "name": "claude-coach",
+      "source": "../../engineering/claude-coach/skills/claude-coach",
+      "category": "engineering-advanced",
+      "description": "Use when the user wants to get better at using Claude ('coach me', 'teach me Claude tricks', 'make me a power user'). Rates their prompts with prompt_rater.py and surfaces one relevant power-user tip per turn after activation."
+    },
+    {
+      "name": "cloud-finops",
+      "source": "../../engineering/skills/cloud-finops",
+      "category": "engineering-advanced",
+      "description": "Use for any cloud cost question on AWS, Azure or Google Cloud - a bill that jumped or one service that spiked (NAT gateway, egress, storage), cost anomaly alert thresholds, untagged or unallocated spend and tag cleanup for showback or chargeback, Savings Plans, Reserved Instances or committed use discounts (utilization, coverage, unused commitment, effective savings rate, whether to buy more), or whether cost per order or per customer got worse. Reads a FOCUS billing export with stdlib scripts."
+    },
+    {
+      "name": "cloud-finops",
+      "source": "../../engineering/cloud-finops/skills/cloud-finops",
+      "category": "engineering-advanced",
+      "description": "Use for any cloud cost question on AWS, Azure or Google Cloud - a bill that jumped or one service that spiked (NAT gateway, egress, storage), cost anomaly alert thresholds, untagged or unallocated spend and tag cleanup for showback or chargeback, Savings Plans, Reserved Instances or committed use discounts (utilization, coverage, unused commitment, effective savings rate, whether to buy more), or whether cost per order or per customer got worse. Reads a FOCUS billing export with stdlib scripts."
+    },
+    {
+      "name": "code-tour",
+      "source": "../../engineering/code-tour/skills/code-tour",
+      "category": "engineering-advanced",
+      "description": "Use when asked for a CodeTour .tour file or a step-by-step code walkthrough (onboarding, architecture, PR review, how X works). Writes persona-targeted steps that link to real files and line numbers, checked to exist."
+    },
+    {
+      "name": "codebase-onboarding",
+      "source": "../../engineering/skills/codebase-onboarding",
+      "category": "engineering-advanced",
+      "description": "Explain an unfamiliar repo: architecture brief and onboarding docs. Use whenever someone is new to a codebase, asks how a project is structured or where to start reading."
+    },
+    {
+      "name": "coding-agent-rollout",
+      "source": "../../engineering/skills/coding-agent-rollout",
+      "category": "engineering-advanced",
+      "description": "Roll out Claude Code to a team: shared or managed settings, MCP and plugin approval, layered CLAUDE.md, adoption. Use whenever the user sets up Claude Code for their team or org, or asks if a rollout or settings file is right."
+    },
+    {
+      "name": "coding-agent-rollout",
+      "source": "../../engineering/coding-agent-rollout/skills/coding-agent-rollout",
+      "category": "engineering-advanced",
+      "description": "Roll out Claude Code to a team: shared or managed settings, MCP and plugin approval, layered CLAUDE.md, adoption. Use whenever the user sets up Claude Code for their team or org, or asks if a rollout or settings file is right."
+    },
+    {
+      "name": "collab-proof",
+      "source": "../../engineering/collab-proof/skills/collab-proof",
+      "category": "engineering-advanced",
+      "description": "Use for /collab-proof or a session retrospective on what Claude contributed versus what the user drove. Builds an evidence-backed split of the session's decisions and work."
+    },
+    {
+      "name": "commit-craft",
+      "source": "../../engineering/skills/commit-craft",
+      "category": "engineering-advanced",
+      "description": "Turn a mix of changes into clean, reviewable commits with good messages, blocking staged secrets and .env files. Use whenever the user says commit this, wants to split work into commits, write a commit message, or is about to push."
+    },
+    {
+      "name": "commit-craft",
+      "source": "../../engineering/commit-craft/skills/commit-craft",
+      "category": "engineering-advanced",
+      "description": "Turn a mix of changes into clean, reviewable commits with good messages, blocking staged secrets and .env files. Use whenever the user says commit this, wants to split work into commits, write a commit message, or is about to push."
+    },
+    {
+      "name": "data-quality-auditor",
+      "source": "../../engineering/data-quality-auditor/skills/data-quality-auditor",
+      "category": "engineering-advanced",
+      "description": "Use before analysis or model training on any dataset, or when asked to profile data or hunt missing values and outliers. Profiles it with data_profiler.py, missing_value_analyzer.py and outlier_detector.py and writes a remediation plan."
+    },
+    {
+      "name": "database-designer",
+      "source": "../../engineering/skills/database-designer",
+      "category": "engineering-advanced",
+      "description": "Design a database schema: tables, relationships, indexes, normalization, SQL vs NoSQL, migration plans. Use whenever the user asks how to structure their data, which database to pick, or before writing DDL."
+    },
+    {
+      "name": "database-schema-designer",
+      "source": "../../engineering/skills/database-schema-designer",
+      "category": "engineering-advanced",
+      "description": "Use when asked for an ERD, table relationships, normalization or a schema migration plan. Produces the ERD and normalized DDL with migration steps."
+    },
+    {
+      "name": "deep-learning-book",
+      "source": "../../engineering/deep-learning-book/skills/deep-learning-book",
+      "category": "engineering-advanced",
+      "description": "Use when studying or applying Goodfellow, Bengio and Courville's Deep Learning, or asking if its advice still holds. Indexes all 20 chapters with a 2016-to-2026 delta, plans reading paths with reading_path_planner.py and diagnoses training failures with training_diagnostics.py."
+    },
+    {
+      "name": "demo-video",
+      "source": "../../engineering/demo-video/skills/demo-video",
+      "category": "engineering-advanced",
+      "description": "Use when asked for a demo video, product walkthrough, feature showcase or GIF from screenshots or scene descriptions. Orchestrates playwright, ffmpeg and edge-tts to render it."
+    },
+    {
+      "name": "dependency-auditor",
+      "source": "../../engineering/skills/dependency-auditor",
+      "category": "engineering-advanced",
+      "description": "Audit project dependencies for CVEs and licenses and plan safe upgrades. Use whenever the user asks if their packages are safe, before a release or major version bump, while chasing a CVE, or for a license review."
+    },
+    {
+      "name": "docker-development",
+      "source": "../../engineering/docker-development/skills/docker-development",
+      "category": "engineering-advanced",
+      "description": "Use for any Dockerfile or docker-compose file to write, optimize or review, before editing it. Checks layers, caching, size and security with dockerfile_analyzer.py and validates compose files with compose_validator.py."
+    },
+    {
+      "name": "engineering-advanced-skills",
+      "source": "../../engineering/skills/engineering-advanced-skills",
+      "category": "engineering-advanced",
+      "description": "Pick the right advanced engineering skill: agents, RAG, MCP, CI/CD, databases, observability, release. Use whenever the user asks which skill fits a task."
+    },
+    {
+      "name": "env-secrets-manager",
+      "source": "../../engineering/skills/env-secrets-manager",
+      "category": "engineering-advanced",
+      "description": "Use when auditing .env files, planning credential rotation, chasing a missing env var in production or hardening a repo against leaked secrets. Scans for committed secrets and drift with env_auditor.py."
+    },
+    {
+      "name": "eval",
+      "source": "../../engineering/agenthub/skills/eval",
+      "category": "engineering-advanced",
+      "description": "Rank finished AgentHub agents by metric or judge. Use when asked which agent won."
+    },
+    {
+      "name": "feature-flags-architect",
+      "source": "../../engineering/skills/feature-flags-architect",
+      "category": "engineering-advanced",
+      "description": "Use before adding, rolling out or retiring a feature flag or kill switch, or when flag debt piles up. Plans the rollout with rollout_planner.py, finds stale flags with flag_debt_scanner.py and audits kill switches with kill_switch_audit.py."
+    },
+    {
+      "name": "feature-flags-architect",
+      "source": "../../engineering/feature-flags-architect/skills/feature-flags-architect",
+      "category": "engineering-advanced",
+      "description": "Use before adding, rolling out or retiring a feature flag or kill switch, or when flag debt piles up. Plans the rollout with rollout_planner.py, finds stale flags with flag_debt_scanner.py and audits kill switches with kill_switch_audit.py."
+    },
+    {
+      "name": "focused-fix",
+      "source": "../../engineering/skills/focused-fix",
+      "category": "engineering-advanced",
+      "description": "Use when a whole feature or module is broken and needs fixing end to end ('make X work', 'the Y module is broken'). Maps every file and dependency of the area before changing anything. Single quick bug fixes do not need it."
+    },
+    {
+      "name": "full-page-screenshot",
+      "source": "../../engineering/skills/full-page-screenshot",
+      "category": "engineering-advanced",
+      "description": "Use when asked for a full-page or long screenshot of a web page. Captures SPA scroll containers, lazy images and very tall pages through Chrome DevTools Protocol with no extra dependencies."
+    },
+    {
+      "name": "game-universe-studio",
+      "source": "../../engineering/skills/game-universe-studio",
+      "category": "engineering-advanced",
+      "description": "Use when building a browser game prototype (Canvas, WebGL, Three.js, PixiJS, Babylon) and its character turnaround sheet, sprite set, procedural Web Audio sound effects or showcase card. Checks the game's asset manifest with game_manifest_validator.py before you ship it."
+    },
+    {
+      "name": "git-worktree-manager",
+      "source": "../../engineering/skills/git-worktree-manager",
+      "category": "engineering-advanced",
+      "description": "Use when running several branches or agents in parallel on one repo. Creates worktrees with isolated ports and env via worktree_manager.py and removes stale ones with worktree_cleanup.py."
+    },
+    {
+      "name": "grill-me",
+      "source": "../../engineering/grill-me/skills/grill-me",
+      "category": "engineering-advanced",
+      "description": "Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions \"grill me\"."
+    },
+    {
+      "name": "grill-with-docs",
+      "source": "../../engineering/grill-with-docs/skills/grill-with-docs",
+      "category": "engineering-advanced",
+      "description": "Use when a plan should be stress-tested against the project's own docs (CONTEXT.md glossary, docs/adr decisions), or the user says 'grill with docs'. Scans ADRs with adr_scanner.py and updates the docs inline as terms and decisions settle."
+    },
+    {
+      "name": "handoff",
+      "source": "../../engineering/handoff/skills/handoff",
+      "category": "engineering-advanced",
+      "description": "Compact the current conversation into a handoff document for another agent to pick up, referencing existing artifacts (PRDs, plans, ADRs, issues, commits, diffs) by path or URL instead of duplicating them. Use whenever the user wants to hand off to a fresh agent, is ending a session mid-task, asks for a handoff doc or a summary of state, decisions and next steps for the next session, or starts a new session that picks up prior work."
+    },
+    {
+      "name": "helm-chart-builder",
+      "source": "../../engineering/helm-chart-builder/skills/helm-chart-builder",
+      "category": "engineering-advanced",
+      "description": "Use for any Helm chart to create, review or harden (values.yaml, templates, subcharts, RBAC, pod security), before editing it. Analyzes the chart with chart_analyzer.py and validates values with values_validator.py."
+    },
+    {
+      "name": "hivemind",
+      "source": "../../engineering/hivemind",
+      "category": "engineering-advanced",
+      "description": "Use when delegating grunt work to free opencode workers instead of spending Claude tokens: one worker or a scout, coder and tester swarm in worktrees. Triggers on 'spawn a worker', 'swarm', 'delegate to opencode' or /oc."
+    },
+    {
+      "name": "hub-init",
+      "source": "../../engineering/agenthub/skills/hub-init",
+      "category": "engineering-advanced",
+      "description": "Use for /hub-init, or to start an AgentHub competition: task, agent count and evaluation criteria."
+    },
+    {
+      "name": "hub-run",
+      "source": "../../engineering/agenthub/skills/hub-run",
+      "category": "engineering-advanced",
+      "description": "Use for /hub-run, or to run a whole AgentHub competition end to end: init, baseline, spawn, eval and merge."
+    },
+    {
+      "name": "hub-status",
+      "source": "../../engineering/agenthub/skills/hub-status",
+      "category": "engineering-advanced",
+      "description": "Use for /hub-status, or to check AgentHub agent progress, branches and DAG state."
+    },
+    {
+      "name": "human-gate",
+      "source": "../../engineering/human-gate/skills/human-gate",
+      "category": "engineering-advanced",
+      "description": "Use before shipping anything that needs human sign-off (a plan, spec, report, page, migration or irreversible action). Builds a review page with review_page_builder.py and runs human_gate.py, which refuses to close with an open blocker or no named reviewer."
+    },
+    {
+      "name": "i18n-localization",
+      "source": "../../engineering/skills/i18n-localization",
+      "category": "engineering-advanced",
+      "description": "Use when adding UI text, adding or shipping a language, reviewing translation files, or building i18n into an app. Checks missing keys, placeholders and CLDR plural forms with locale_sync.py, finds hardcoded strings with hardcoded_strings.py, and builds a pseudo-locale with pseudo_localize.py."
+    },
+    {
+      "name": "i18n-localization",
+      "source": "../../engineering/i18n-localization/skills/i18n-localization",
+      "category": "engineering-advanced",
+      "description": "Use when adding UI text, adding or shipping a language, reviewing translation files, or building i18n into an app. Checks missing keys, placeholders and CLDR plural forms with locale_sync.py, finds hardcoded strings with hardcoded_strings.py, and builds a pseudo-locale with pseudo_localize.py."
+    },
+    {
+      "name": "interview-system-designer",
+      "source": "../../engineering/skills/interview-system-designer",
+      "category": "engineering-advanced",
+      "description": "Use when designing a hiring loop, competency matrix, scoring rubric or question bank, or checking interviewer calibration. Plans the loop per role with interview_planner.py."
+    },
+    {
+      "name": "karpathy-coder",
+      "source": "../../engineering/karpathy-coder/skills/karpathy-coder",
+      "category": "engineering-advanced",
+      "description": "Check a diff for overbuilt code: hidden assumptions, needless abstraction, non-surgical changes, unverified goals (Karpathy's four principles). Load whenever the user thinks they overcomplicated something or wants a pre-commit check."
+    },
+    {
+      "name": "kubernetes-operator",
+      "source": "../../engineering/skills/kubernetes-operator",
+      "category": "engineering-advanced",
+      "description": "Use when building a Kubernetes operator or CRD (controller-runtime, kubebuilder, operator-sdk, KOPF), before writing the controller. Validates CRDs with crd_validator.py, lints reconcile loops with reconcile_lint.py and scores OperatorHub capability level."
+    },
+    {
+      "name": "kubernetes-operator",
+      "source": "../../engineering/kubernetes-operator/skills/kubernetes-operator",
+      "category": "engineering-advanced",
+      "description": "Use when building a Kubernetes operator or CRD (controller-runtime, kubebuilder, operator-sdk, KOPF), before writing the controller. Validates CRDs with crd_validator.py, lints reconcile loops with reconcile_lint.py and scores OperatorHub capability level."
+    },
+    {
+      "name": "llm-cost-optimizer",
+      "source": "../../engineering/llm-cost-optimizer/skills/llm-cost-optimizer",
+      "category": "engineering-advanced",
+      "description": "Use whenever an LLM feature is being built or its costs come up (model choice, prompt caching, token limits, per-feature spend). Sets routing, caching, max_tokens and cost logging before launch rather than after the bill."
+    },
+    {
+      "name": "llm-wiki",
+      "source": "../../engineering/llm-wiki/skills/llm-wiki",
+      "category": "engineering-advanced",
+      "description": "Use when building or maintaining an Obsidian second brain that an LLM keeps up to date, or when ingesting a paper, article or book into it. Ingests with ingest_source.py, maintains index and links and checks the vault with lint_wiki.py."
+    },
+    {
+      "name": "loop-library",
+      "source": "../../loop-library",
+      "category": "engineering-advanced",
+      "description": "Discover, find, compare, audit, repair, adapt, and design repeatable AI-agent loops with explicit triggers, actions, verification, stopping conditions, guardrails, and handoffs. Use when a user asks to analyze a codebase for potential loops, mine coding-thread history for work done more than once, turn repeated engineering work into a loop, find or recommend a published loop, create a recurring agent workflow or automation cadence, turn an outcome into a bounded copy-ready loop, or review an existing loop for weak checks, unsafe authority, unbounded repetition, stale state, or unclear stopping behavior."
+    },
+    {
+      "name": "mcp-oauth-triage",
+      "source": "../../engineering/skills/mcp-oauth-triage",
+      "category": "engineering-advanced",
+      "description": "Use when an MCP connector that used to authenticate now fails (tool calls 401 after a good token exchange, breaks after refresh, returns another account's data), before changing code. Classifies the fault with oauth_triage.py."
+    },
+    {
+      "name": "mcp-server-builder",
+      "source": "../../engineering/skills/mcp-server-builder",
+      "category": "engineering-advanced",
+      "description": "Use when exposing an API as an MCP server or scaffolding a new MCP server in Python or TypeScript, before hand-writing tool wrappers. Generates tools from OpenAPI with openapi_to_mcp.py and validates them with mcp_validator.py."
+    },
+    {
+      "name": "memory-engineering",
+      "source": "../../engineering/memory-engineering/skills/memory-engineering",
+      "category": "engineering-advanced",
+      "description": "Use before adding memory to an agent or when a memory store keeps growing (long context vs RAG vs graph vs agentic memory, what to expire). Prices the design with memory_cost_profiler.py and refuses one without a forgetting policy via forgetting_policy_linter.py."
+    },
+    {
+      "name": "merge",
+      "source": "../../engineering/agenthub/skills/merge",
+      "category": "engineering-advanced",
+      "description": "Use to land the winning AgentHub branch, archive the others and clean up worktrees."
+    },
+    {
+      "name": "migration-architect",
+      "source": "../../engineering/skills/migration-architect",
+      "category": "engineering-advanced",
+      "description": "Plan a migration with zero or minimal downtime: phased plan, compatibility check, rollback scripts, for schemas, databases and services. Load whenever the user must change a live table, move a database or cut over without downtime."
+    },
+    {
+      "name": "minimalist",
+      "source": "../../engineering/minimalist",
+      "category": "engineering-advanced",
+      "description": "Write the least code: no over-engineering, fewer dependencies. Use whenever the user wants it simpler; applies a ladder first: YAGNI, reuse, stdlib, native platform, existing deps."
+    },
+    {
+      "name": "mobile-release",
+      "source": "../../engineering/skills/mobile-release",
+      "category": "engineering-advanced",
+      "description": "Use when shipping an iOS or Android app update to the App Store or Google Play - Apple or Google rejected or warned about a build (ITMS-91053 privacy manifest, required reason API, missing usage description, target API level, 16 KB page size, exported activity, SMS or call log permission, Data safety), a readiness check before submitting an iOS, Android, Flutter or React Native release, or whether to pause, halt or widen a phased or staged rollout from crash rate, ANR rate or Play's bad behavior thresholds. Checks the project with stdlib scripts."
+    },
+    {
+      "name": "mobile-release",
+      "source": "../../engineering/mobile-release/skills/mobile-release",
+      "category": "engineering-advanced",
+      "description": "Use when shipping an iOS or Android app update to the App Store or Google Play - Apple or Google rejected or warned about a build (ITMS-91053 privacy manifest, required reason API, missing usage description, target API level, 16 KB page size, exported activity, SMS or call log permission, Data safety), a readiness check before submitting an iOS, Android, Flutter or React Native release, or whether to pause, halt or widen a phased or staged rollout from crash rate, ANR rate or Play's bad behavior thresholds. Checks the project with stdlib scripts."
+    },
+    {
+      "name": "monorepo-navigator",
+      "source": "../../engineering/skills/monorepo-navigator",
+      "category": "engineering-advanced",
+      "description": "Use for Turborepo, Nx, pnpm-workspace or Lerna setup, affected-only builds, remote caching or a multi-repo to monorepo move. Maps packages and the dependency graph with monorepo_analyzer.py."
+    },
+    {
+      "name": "observability-designer",
+      "source": "../../engineering/skills/observability-designer",
+      "category": "engineering-advanced",
+      "description": "Use when adding metrics, logs and traces to a service, fixing noisy alerts or designing dashboards. Designs SLIs with slo_designer.py, tunes alerts with alert_optimizer.py and generates dashboards with dashboard_generator.py."
+    },
+    {
+      "name": "performance-profiler",
+      "source": "../../engineering/skills/performance-profiler",
+      "category": "engineering-advanced",
+      "description": "Use for a slow endpoint, memory leak, CPU spike, large bundle or performance budget in Node.js, Python or Go, before optimizing. Measures before and after with performance_profiler.py, flamegraphs and k6 load tests."
+    },
+    {
+      "name": "pr-review-expert",
+      "source": "../../engineering/skills/pr-review-expert",
+      "category": "engineering-advanced",
+      "description": "File-by-file pull request review for bugs, security and quality, with a merge verdict. Load whenever the user asks to review, look over or check a PR or diff before merging."
+    },
+    {
+      "name": "prompt-governance",
+      "source": "../../engineering/prompt-governance/skills/prompt-governance",
+      "category": "engineering-advanced",
+      "description": "Use when prompts run in production and need versioning, a registry, A/B tests, regression checks or an eval pipeline. Sets up the release process for prompts; single-prompt quality: senior-prompt-engineer."
+    },
+    {
+      "name": "rag-architect",
+      "source": "../../engineering/skills/rag-architect",
+      "category": "engineering-advanced",
+      "description": "Design a RAG pipeline: chunk size, embedding model, vector database and retrieval quality metrics. Use whenever the user builds search over their docs, picks a vector store or finds answers miss the right context."
+    },
+    {
+      "name": "readme-polish",
+      "source": "../../engineering/readme-polish",
+      "category": "engineering-advanced",
+      "description": "Use when an existing README must be upgraded, audited, or made scannable: polish/\u7f8e\u5316/\u5347\u7ea7/\u4f18\u5316/\u6253\u78e8 README, add badges, mermaid, callouts, or collapsible sections, compare against top repos in the same ecosystem, or fix a plain/ugly first screen. Calibrates to the repo's own category, rewrites the hero and information hierarchy, and enforces a deterministic lint gate. Not for brand-new READMEs from scratch or hero-image design."
+    },
+    {
+      "name": "runbook-generator",
+      "source": "../../engineering/skills/runbook-generator",
+      "category": "engineering-advanced",
+      "description": "Use when a service needs runbooks for deploy, incident response, maintenance or rollback, before launch. Generates them per environment with runbook_generator.py."
+    },
+    {
+      "name": "secrets-vault-manager",
+      "source": "../../engineering/skills/secrets-vault-manager",
+      "category": "engineering-advanced",
+      "description": "Use when setting up HashiCorp Vault, AWS Secrets Manager, Azure Key Vault or GCP Secret Manager, rotating secrets or auditing secret access. Generates config with vault_config_generator.py, plans rotation with rotation_planner.py and analyzes audit logs."
+    },
+    {
+      "name": "security-guidance",
+      "source": "../../engineering/security-guidance/skills/security-guidance",
+      "category": "engineering-advanced",
+      "description": "Use when installing or tuning the PreToolUse security hook that warns before Claude writes command injection, XSS, SQL injection, unsafe deserialization, eval or GitHub Actions injection. Warns once per file and rule; ENABLE_SECURITY_REMINDER=0 turns it off."
+    },
+    {
+      "name": "self-eval",
+      "source": "../../engineering/skills/self-eval",
+      "category": "engineering-advanced",
+      "description": "Grade finished work honestly on two axes with a devil's-advocate pass against inflation. Use whenever the user asks how well a task went, to rate the work or for an honest self-review."
+    },
+    {
+      "name": "setup",
+      "source": "../../engineering/autoresearch-agent/skills/setup",
+      "category": "engineering-advanced",
+      "description": "Use for /autoresearch-agent:setup, or to start a new autoresearch experiment: target, eval command, metric, direction, evaluator."
+    },
+    {
+      "name": "ship-gate",
+      "source": "../../engineering/skills/ship-gate",
+      "category": "engineering-advanced",
+      "description": "Use before deploying or going live ('am I ready to ship', 'can I deploy', 'preflight check'). Scans the codebase with ship_gate_scanner.py across security, database, deploy, AI, dependencies and observability, and blocks on critical items."
+    },
+    {
+      "name": "skill-retro",
+      "source": "../../engineering/skill-retro/skills/skill-retro",
+      "category": "engineering-advanced",
+      "description": "Use when the user wants their skills graded from real session history, asks which installed skills actually work, or wants evidence-backed skill edits. Collects local sessions with collect_sessions.py, scores them against two rubrics and gates edits with score_aggregator.py."
+    },
+    {
+      "name": "skill-security-auditor",
+      "source": "../../engineering/skills/skill-security-auditor",
+      "category": "engineering-advanced",
+      "description": "Use before installing any skill or plugin from an untrusted source, or when asked if a skill is safe. Scans scripts, SKILL.md and dependencies for exfiltration, dangerous calls and prompt injection with skill_security_auditor.py."
+    },
+    {
+      "name": "skill-tester",
+      "source": "../../engineering/skills/skill-tester",
+      "category": "engineering-advanced",
+      "description": "Use when authoring or auditing a skill in this ecosystem, before release. Validates structure with skill_validator.py, runs its scripts with script_tester.py and grades quality and security with quality_scorer.py and security_scorer.py."
+    },
+    {
+      "name": "skillopt-sleep",
+      "source": "../../engineering/skillopt-sleep/skills/skillopt-sleep",
+      "category": "engineering-advanced",
+      "description": "Use when the user wants their Claude agent to self-improve from past usage, asks about a nightly/offline 'sleep' or 'dream' cycle, memory/skill consolidation, or says things like 'make my agent better the more I use it', 'review my past sessions', 'learn my preferences', 'consolidate what you learned', 'run the sleep cycle', or wants to schedule offline self-optimization. Drives the skillopt_sleep engine: harvest past sessions \u2192 mine recurring tasks \u2192 replay offline \u2192 consolidate validated CLAUDE.md and SKILL.md behind a held-out gate."
+    },
+    {
+      "name": "slo-architect",
+      "source": "../../engineering/skills/slo-architect",
+      "category": "engineering-advanced",
+      "description": "Use when defining or reviewing SLOs, SLIs, error budgets or burn-rate alerts. Designs SLOs with slo_designer.py, computes budgets and multi-window burn-rate thresholds with error_budget_calculator.py and catches common SLO bugs with slo_review.py."
+    },
+    {
+      "name": "slo-architect",
+      "source": "../../engineering/slo-architect/skills/slo-architect",
+      "category": "engineering-advanced",
+      "description": "Use when defining or reviewing SLOs, SLIs, error budgets or burn-rate alerts. Designs SLOs with slo_designer.py, computes budgets and multi-window burn-rate thresholds with error_budget_calculator.py and catches common SLO bugs with slo_review.py."
+    },
+    {
+      "name": "spawn",
+      "source": "../../engineering/agenthub/skills/spawn",
+      "category": "engineering-advanced",
+      "description": "Launch the competing agents in isolated worktrees. Use when an AgentHub session is set up."
+    },
+    {
+      "name": "spec-driven-workflow",
+      "source": "../../engineering/skills/spec-driven-workflow",
+      "category": "engineering-advanced",
+      "description": "Use when a feature should be specified before coding (acceptance criteria, spec-first, tests from specs). Writes the spec with spec_generator.py, checks it with spec_validator.py and extracts tests with test_extractor.py."
+    },
+    {
+      "name": "spinning-up-deep-rl",
+      "source": "../../engineering/spinning-up-deep-rl/skills/spinning-up-deep-rl",
+      "category": "engineering-advanced",
+      "description": "Learn or apply deep reinforcement learning with OpenAI Spinning Up: policy gradients, VPG, PPO, SAC, TD3, DDPG, TRPO. Use whenever an RL agent will not learn, reward stays flat, or the user asks how PPO or SAC works."
+    },
+    {
+      "name": "sql-database-assistant",
+      "source": "../../engineering/skills/sql-database-assistant",
+      "category": "engineering-advanced",
+      "description": "Write, fix and speed up SQL: slow queries, EXPLAIN plans, indexes, ORM migrations (Prisma, Drizzle, SQLAlchemy). Load whenever a query is slow or wrong, the user needs SQL written, or an ORM migration."
+    },
+    {
+      "name": "statistical-analyst",
+      "source": "../../engineering/statistical-analyst/skills/statistical-analyst",
+      "category": "engineering-advanced",
+      "description": "Is a difference real? Significance tests, confidence intervals, sample size and test duration for A/B results. Load whenever the user asks if a lift is real or noise, which variant won, or how many users a test needs."
+    },
+    {
+      "name": "strict-api",
+      "source": "../../engineering/strict-api",
+      "category": "engineering-advanced",
+      "description": "Use when the user says 'no hallucinations', 'verify APIs' or 'don't invent functions', or code depends on a library version you have not checked. Requires proof that every method, import and variable exists in the installed version before using it."
+    },
+    {
+      "name": "tc-tracker",
+      "source": "../../engineering/skills/tc-tracker",
+      "category": "engineering-advanced",
+      "description": "Use when tracking technical changes as records, or handing work between AI sessions with a change record. Creates, updates and validates change records with tc_create.py, tc_update.py and tc_validator.py."
+    },
+    {
+      "name": "tech-debt-tracker",
+      "source": "../../engineering/skills/tech-debt-tracker",
+      "category": "engineering-advanced",
+      "description": "Find, rank and track tech debt in a codebase. Use whenever the user asks what to refactor first, plans a cleanup sprint, modernizes legacy code or wants to know how messy the code is."
+    },
+    {
+      "name": "terraform-patterns",
+      "source": "../../engineering/terraform-patterns/skills/terraform-patterns",
+      "category": "engineering-advanced",
+      "description": "Use for any Terraform module, state backend, provider setup or IaC security review, before editing .tf files. Analyzes modules with tf_module_analyzer.py and scans for misconfigurations with tf_security_scanner.py."
+    },
+    {
+      "name": "universal-scraping-architect",
+      "source": "../../engineering/universal-scraping-architect/skills/universal-scraping-architect",
+      "category": "engineering-advanced",
+      "description": "Build a scraper or extractor for sites, PDFs or paginated APIs and validate the fields (Firecrawl or local Python). Load whenever the user wants data pulled from pages, files or an API, or a scraper broke."
+    },
+    {
+      "name": "workflow-builder",
+      "source": "../../engineering/workflow-builder/skills/workflow-builder",
+      "category": "engineering-advanced",
+      "description": "Use when writing or running a Claude Code Workflow-tool script (.js in .claude/workflows/) for fan-out, pipeline, loop or judge-panel sub-agents. Gathers intent with workflow_intake.py, scaffolds with scaffold_workflow.py and validates with validate_workflow.py."
+    },
+    {
+      "name": "write-a-skill",
+      "source": "../../engineering/write-a-skill/skills/write-a-skill",
+      "category": "engineering-advanced",
+      "description": "Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, build, or author a new skill."
+    },
+    {
+      "name": "zero-hallucination-coder",
+      "source": "../../engineering/zero-hallucination-coder/skills/zero-hallucination-coder",
+      "category": "engineering-advanced",
+      "description": "Use before high-stakes or multi-file coding (auth, databases, migrations), or when asked to plan carefully and avoid invented APIs. Runs discuss, map, decompose, execute and verify, checking every import and API exists. Not for trivial edits."
+    },
+    {
+      "name": "business-investment-advisor",
+      "source": "../../finance/business-investment-advisor/skills/business-investment-advisor",
+      "category": "finance",
+      "description": "Use when deciding whether a capital expense is worth it (equipment, property, an acquisition, hiring, technology), or for ROI, IRR, NPV, payback, build vs buy or lease vs buy."
+    },
+    {
+      "name": "finance-skills",
+      "source": "../../finance/skills/finance-skills",
+      "category": "finance",
+      "description": "Pick the right finance skill: ratios, DCF, forecasts (financial-analyst), ARR, churn, CAC, LTV (saas-metrics-coach), month-end-close. Use whenever a finance ask is vague."
+    },
+    {
+      "name": "financial-analyst",
+      "source": "../../finance/skills/financial-analyst",
+      "category": "finance",
+      "description": "Analyze financial statements, value a company with a DCF, explain budget variance, build rolling forecasts. Use whenever the user asks what a business is worth or why spend missed budget."
+    },
+    {
+      "name": "month-end-close",
+      "source": "../../finance/skills/month-end-close",
+      "category": "finance",
+      "description": "Use when running, planning or speeding up a month-end (or quarter-end) close \u2014 building or reviewing the close checklist and calendar, reconciling a bank statement or sub-ledger to the general ledger, writing or reviewing flux (variance) explanations, or finding why the close takes too many days. Orders close tasks by dependency and finds the critical path, proves each reconciliation and ages what is left, and refuses to sign off material fluctuations explained with boilerplate."
+    },
+    {
+      "name": "month-end-close",
+      "source": "../../finance/month-end-close/skills/month-end-close",
+      "category": "finance",
+      "description": "Use when running, planning or speeding up a month-end (or quarter-end) close \u2014 building or reviewing the close checklist and calendar, reconciling a bank statement or sub-ledger to the general ledger, writing or reviewing flux (variance) explanations, or finding why the close takes too many days. Orders close tasks by dependency and finds the critical path, proves each reconciliation and ages what is left, and refuses to sign off material fluctuations explained with boilerplate."
+    },
+    {
+      "name": "passive-deal-screener",
+      "source": "../../finance/skills/passive-deal-screener",
+      "category": "finance",
+      "description": "Use when a passive investor shares a private deal (syndication, preferred equity, bridge fund, private credit) to screen as an LP. Stress-tests it, computes fee drag with fee_drag_calculator.py and compares terms with benchmark_comparator.py."
+    },
+    {
+      "name": "saas-metrics-coach",
+      "source": "../../finance/skills/saas-metrics-coach",
+      "category": "finance",
+      "description": "Use when someone shares SaaS revenue or customer numbers, or asks about ARR, MRR, churn, LTV, CAC, NRR or how their SaaS is doing. Computes metrics with metrics_calculator.py, quick ratio and unit economics."
+    },
+    {
+      "name": "stock-analysis",
+      "source": "../../finance/skills/stock-analysis",
+      "category": "finance",
+      "description": "Analyze, research or value a listed stock or company (US, global, NSE or BSE) with verified data, ratios, scores and valuation. Use whenever asked if a stock is a buy, what it is worth, or how a company looks."
+    },
+    {
+      "name": "ab-test-setup",
+      "source": "../../marketing-skill/skills/ab-test-setup",
+      "category": "marketing",
+      "description": "Use before planning or launching any A/B, split or multivariate test, or when asked if a result is significant. Sizes the test with sample_size_calculator.py and writes the hypothesis, metric and stop rule first, so it is not called early on noise."
+    },
+    {
+      "name": "ad-creative",
+      "source": "../../marketing-skill/skills/ad-creative",
+      "category": "marketing",
+      "description": "Use for any ad copy request (RSA headlines, Meta, LinkedIn or TikTok ads, bulk variations), before writing. Checks every line against platform character limits and policy with ad_copy_validator.py. Campaign strategy and budgets: paid-ads."
+    },
+    {
+      "name": "aeo",
+      "source": "../../marketing-skill/skills/aeo",
+      "category": "marketing",
+      "description": "Use when content should be cited by ChatGPT, Perplexity, Claude or Gemini (answer engine optimization), before rewriting it. Scores E-E-A-T and structure with aeo_audit.py, rewrites with aeo_optimizer.py and logs citations with citation_tracker.py."
+    },
+    {
+      "name": "ai-decision-authority",
+      "source": "../../marketing-skill/skills/ai-decision-authority",
+      "category": "marketing",
+      "description": "Use before letting AI or an agent act on a marketing or GTM task without human review, or when writing an AI review policy. Places each workflow in AI-primary, collaborative or human-primary by stakes and reversibility."
+    },
+    {
+      "name": "analytics-tracking",
+      "source": "../../marketing-skill/skills/analytics-tracking",
+      "category": "marketing",
+      "description": "Use for any GA4, Google Tag Manager, event-tracking or conversion-tracking setup, audit or broken-event debug, before touching tags. Generates the event taxonomy and tracking plan with tracking_plan_generator.py. Campaign performance analysis: campaign-analytics."
+    },
+    {
+      "name": "app-store-optimization",
+      "source": "../../marketing-skill/skills/app-store-optimization",
+      "category": "marketing",
+      "description": "Use for any App Store or Google Play listing, keyword, ranking or review question, before writing metadata. Scores the listing with aso_scorer.py and checks keywords, competitors, title and subtitle limits and reviews with its 8 ASO scripts."
+    },
+    {
+      "name": "brand-guidelines",
+      "source": "../../marketing-skill/skills/brand-guidelines",
+      "category": "marketing",
+      "description": "Use when writing or enforcing brand guidelines (colors, typography, logo rules, imagery, tone of voice), or checking an asset against them. Builds the color system, type scale and tone matrix, including Anthropic's identity."
+    },
+    {
+      "name": "business-name-fit",
+      "source": "../../marketing-skill/skills/business-name-fit",
+      "category": "marketing",
+      "description": "Use when naming a company, brand or product, or checking whether a name works abroad, before committing to one. Tests a culturally rooted name for pronunciation, bad meanings and trust in each target market, and suggests alternatives."
+    },
+    {
+      "name": "campaign-analytics",
+      "source": "../../marketing-skill/skills/campaign-analytics",
+      "category": "marketing",
+      "description": "Analyze campaign performance on the user's numbers: ROAS, CPA, ROI, multi-touch attribution and funnel drop-off. Use whenever the user asks which channel or ad is working, where spend is wasted, why conversions dropped, or shares campaign results to review."
+    },
+    {
+      "name": "churn-prevention",
+      "source": "../../marketing-skill/skills/churn-prevention",
+      "category": "marketing",
+      "description": "Use when designing a cancel flow, save offers, exit surveys or dunning emails, or cutting failed-payment churn. Sizes the revenue at stake with churn_impact_calculator.py first. Health scores and expansion: customer-success-manager."
+    },
+    {
+      "name": "cinematic-shot-prompting",
+      "source": "../../marketing-skill/skills/cinematic-shot-prompting",
+      "category": "marketing",
+      "description": "Use when creating camera movement, cinematic angles, or motion prompts for AI video generators like Runway Gen-3, Kling, and Luma. Compiles narrative prose into a strict 7-slot camera motion contract."
+    },
+    {
+      "name": "cold-email",
+      "source": "../../marketing-skill/skills/cold-email",
+      "category": "marketing",
+      "description": "Use for any cold outreach or SDR email or follow-up sequence to prospects who did not opt in, before drafting. Scores the sequence for length, personalization and spam risk with email_sequence_analyzer.py. Opted-in nurture: email-sequence."
+    },
+    {
+      "name": "competitor-alternatives",
+      "source": "../../marketing-skill/skills/competitor-alternatives",
+      "category": "marketing",
+      "description": "Use when creating an 'X vs Y', '[product] alternative' or comparison page, before drafting. Builds the comparison matrix with comparison_matrix_builder.py and picks one of four page formats with a fair, sourced structure."
+    },
+    {
+      "name": "content-creator",
+      "source": "../../marketing-skill/skills/content-creator",
+      "category": "marketing",
+      "description": "Use when someone asks for 'content creator' by name. Deprecated alias: hands writing to content-production and planning to content-strategy."
+    },
+    {
+      "name": "content-humanizer",
+      "source": "../../marketing-skill/skills/content-humanizer",
+      "category": "marketing",
+      "description": "Make a draft sound less like AI: fix generic, robotic text with rhythm, specifics, personality and brand voice. Use whenever the user says copy sounds like ChatGPT, bland or stiff, or not like them."
+    },
+    {
+      "name": "content-production",
+      "source": "../../marketing-skill/skills/content-production",
+      "category": "marketing",
+      "description": "Write a blog post, article or guide end to end: research, outline, draft, SEO pass and quality gates. Use whenever the user asks to write a blog post, draft an article on a topic, or turn notes into a full piece."
+    },
+    {
+      "name": "content-strategy",
+      "source": "../../marketing-skill/skills/content-strategy",
+      "category": "marketing",
+      "description": "Use when deciding what content to create (topics, clusters, a blog or content plan), before listing ideas. Maps topic clusters with topic_cluster_mapper.py and ties each piece to a funnel stage and search demand."
+    },
+    {
+      "name": "copy-editing",
+      "source": "../../marketing-skill/skills/copy-editing",
+      "category": "marketing",
+      "description": "Edit, proofread and tighten existing marketing copy in focused passes: clarity, voice, proofreading, specificity, readability and AI tells. Use whenever the user asks to polish, clean up, shorten or fix the wording of a page, email or ad."
+    },
+    {
+      "name": "copywriting",
+      "source": "../../marketing-skill/skills/copywriting",
+      "category": "marketing",
+      "description": "Use for any headline, tagline, CTA, landing, pricing or about-page copy request, before drafting. Scores candidate headlines with headline_scorer.py and applies a page-section framework, so the first draft is tested rather than guessed."
+    },
+    {
+      "name": "email-sequence",
+      "source": "../../marketing-skill/skills/email-sequence",
+      "category": "marketing",
+      "description": "Use for any drip, nurture, onboarding, welcome or re-engagement email sequence to opted-in users, before writing emails. Plans timing, triggers and exits and scores the sequence with sequence_analyzer.py."
+    },
+    {
+      "name": "form-cro",
+      "source": "../../marketing-skill/skills/form-cro",
+      "category": "marketing",
+      "description": "Use when a lead, contact, demo or checkout form is underperforming or being designed, before changing fields. Scores field friction with form_field_analyzer.py. Signup forms: signup-flow-cro."
+    },
+    {
+      "name": "free-tool-strategy",
+      "source": "../../marketing-skill/skills/free-tool-strategy",
+      "category": "marketing",
+      "description": "Use when considering a free calculator, grader, checker or generator as a marketing asset, before building it. Estimates traffic, leads and ROI with tool_roi_estimator.py and scores the idea for search demand and fit."
+    },
+    {
+      "name": "landing",
+      "source": "../../marketing/landing/skills/landing",
+      "category": "marketing",
+      "description": "Use when asked for a premium single-file HTML landing page with 3D CSS, GSAP scroll effects and parallax. Locks positioning in a short intake, validates the palette with brand_palette_validator.py and the output with html_validator.py."
+    },
+    {
+      "name": "launch-strategy",
+      "source": "../../marketing-skill/skills/launch-strategy",
+      "category": "marketing",
+      "description": "Plan a product or feature launch: readiness score and a phased plan by channel. Use whenever the user is launching soon, planning a Product Hunt day, beta or waitlist, or asks how to launch."
+    },
+    {
+      "name": "linkedin-analytics",
+      "source": "../../marketing/linkedin/skills/linkedin-analytics",
+      "category": "marketing",
+      "description": "Use when someone asks why their LinkedIn reach dropped, which posts worked, whether a pattern is real or how to test one. Analyzes posts with post_performance_analyzer.py, mines patterns with pattern_miner.py and plans tests with experiment_planner.py."
+    },
+    {
+      "name": "linkedin-content",
+      "source": "../../marketing/linkedin/skills/linkedin-content",
+      "category": "marketing",
+      "description": "Write, edit or review a LinkedIn post: story, how-to, carousel, video script or poll. Use whenever the user wants a LinkedIn post, asks if their draft is good, or wants a blog or talk turned into posts."
+    },
+    {
+      "name": "linkedin-engagement",
+      "source": "../../marketing/linkedin/skills/linkedin-engagement",
+      "category": "marketing",
+      "description": "Use for LinkedIn comments, connection notes, DMs or outreach plans, or checking outreach volume is safe. Plans targets with comment_target_planner.py, drafts notes with outreach_message_builder.py and checks limits with outreach_volume_guard.py."
+    },
+    {
+      "name": "linkedin-profile",
+      "source": "../../marketing/linkedin/skills/linkedin-profile",
+      "category": "marketing",
+      "description": "Use when auditing or rewriting a LinkedIn profile (headline, About, experience, Featured). Scores the headline with headline_scorer.py, audits completeness with profile_completeness_auditor.py and drafts About with about_section_builder.py."
+    },
+    {
+      "name": "linkedin-skills",
+      "source": "../../marketing/linkedin/skills/linkedin-skills",
+      "category": "marketing",
+      "description": "Use for any organic LinkedIn growth request (strategy, profile, posts, cadence, outreach, analytics). Checks it against LinkedIn's rules with linkedin_policy_gate.py and routes with linkedin_goal_router.py. No automation or scraping."
+    },
+    {
+      "name": "linkedin-strategy",
+      "source": "../../marketing/linkedin/skills/linkedin-strategy",
+      "category": "marketing",
+      "description": "Build a LinkedIn plan rather than a post: content pillars, positioning, a sustainable cadence, whether to start a newsletter. Use whenever the user asks what to post about, how often, or how to grow."
+    },
+    {
+      "name": "local-seo-manager",
+      "source": "../../marketing-skill/skills/local-seo-manager",
+      "category": "marketing",
+      "description": "Use for any local business's Google Business Profile, Maps ranking, service-area pages, citations or review replies, before writing. Checks NAP consistency with nap_checker.py and generates LocalBusiness schema and area pages with its scripts."
+    },
+    {
+      "name": "marketing-context",
+      "source": "../../marketing-skill/skills/marketing-context",
+      "category": "marketing",
+      "description": "Use at the start of any marketing project, or when ICP, positioning or brand voice are missing, before other marketing skills. Writes the shared context file the other skills read and validates it with context_validator.py."
+    },
+    {
+      "name": "marketing-demand-acquisition",
+      "source": "../../marketing-skill/skills/marketing-demand-acquisition",
+      "category": "marketing",
+      "description": "Use when planning demand generation, paid acquisition across Google, LinkedIn and Meta, or a marketing budget, before allocating spend. Computes blended and per-channel CAC with calculate_cac.py and sets MQL to SQL handoffs."
+    },
+    {
+      "name": "marketing-ideas",
+      "source": "../../marketing-skill/skills/marketing-ideas",
+      "category": "marketing",
+      "description": "Use when asked for marketing or growth ideas for a SaaS or software product. Picks from 139 tactics by stage, budget and channel instead of a generic list."
+    },
+    {
+      "name": "marketing-ops",
+      "source": "../../marketing-skill/skills/marketing-ops",
+      "category": "marketing",
+      "description": "Use when a marketing request spans several skills (a campaign across content, SEO, CRO and channels) or it is unclear which skill fits. Routes and sequences the work and tracks it with campaign_tracker.py."
+    },
+    {
+      "name": "marketing-psychology",
+      "source": "../../marketing-skill/skills/marketing-psychology",
+      "category": "marketing",
+      "description": "Apply persuasion and behavioral science ethically to a page, offer or campaign, from 70+ mental models. Use whenever the user asks why people buy or how to nudge them."
+    },
+    {
+      "name": "marketing-skills",
+      "source": "../../marketing-skill/skills/marketing-skills",
+      "category": "marketing",
+      "description": "Use when looking for which of the 44 marketing skills fits a task. Lists them by pod and routes to one; does no marketing work itself."
+    },
+    {
+      "name": "marketing-strategy-pmm",
+      "source": "../../marketing-skill/skills/marketing-strategy-pmm",
+      "category": "marketing",
+      "description": "Use for product positioning, ICP, competitive battlecards or a go-to-market plan, before drafting. Applies April Dunford's positioning method and produces the positioning statement, battlecards and launch plan."
+    },
+    {
+      "name": "onboarding-cro",
+      "source": "../../marketing-skill/skills/onboarding-cro",
+      "category": "marketing",
+      "description": "Use when activation, time-to-value or a first-run experience after signup needs work, before redesigning it. Finds the activation drop-off with activation_funnel_analyzer.py."
+    },
+    {
+      "name": "page-cro",
+      "source": "../../marketing-skill/skills/page-cro",
+      "category": "marketing",
+      "description": "Fix a page that is not converting: section by section audit with fixes ranked by impact. Use whenever a homepage, landing, pricing or feature page gets few signups, sales or clicks."
+    },
+    {
+      "name": "paid-ads",
+      "source": "../../marketing-skill/skills/paid-ads",
+      "category": "marketing",
+      "description": "Use for paid campaign strategy on Google, Meta, LinkedIn or X: structure, targeting, bids, retargeting and budgets. Scores account health with ad_health_scorer.py and models ROAS with roas_calculator.py. Ad copy only: ad-creative."
+    },
+    {
+      "name": "paywall-upgrade-cro",
+      "source": "../../marketing-skill/skills/paywall-upgrade-cro",
+      "category": "marketing",
+      "description": "Use when designing or fixing an in-app paywall, upgrade modal, feature gate or trial-expiry screen. Applies upgrade-moment patterns for users who have already seen value. Public pricing page: page-cro."
+    },
+    {
+      "name": "popup-cro",
+      "source": "../../marketing-skill/skills/popup-cro",
+      "category": "marketing",
+      "description": "Use when creating or fixing a popup, modal, exit-intent, slide-in or banner meant to convert. Sets trigger, frequency, offer and copy rules that avoid hurting the page."
+    },
+    {
+      "name": "pricing-strategy",
+      "source": "../../marketing-skill/skills/pricing-strategy",
+      "category": "marketing",
+      "description": "Use for SaaS pricing tiers, value metric, packaging, a pricing page or a price increase, before proposing numbers. Models revenue across tier options with pricing_modeler.py."
+    },
+    {
+      "name": "programmatic-seo",
+      "source": "../../marketing-skill/skills/programmatic-seo",
+      "category": "marketing",
+      "description": "Use when building many SEO pages from a template and data (location, integration, comparison or directory pages), before generating them. Designs URL patterns with url_pattern_generator.py and guards against thin-content penalties."
+    },
+    {
+      "name": "prompt-engineer-toolkit",
+      "source": "../../marketing-skill/skills/prompt-engineer-toolkit",
+      "category": "marketing",
+      "description": "Use when a marketing team's AI prompts need testing, versioning or governance, before shipping a prompt. A/B tests prompts against cases with prompt_tester.py and keeps diffed versions with prompt_versioner.py."
+    },
+    {
+      "name": "referral-program",
+      "source": "../../marketing-skill/skills/referral-program",
+      "category": "marketing",
+      "description": "Use when designing or fixing a referral, affiliate or ambassador program, before setting rewards. Models payout and ROI with referral_roi_calculator.py and designs the mechanics end to end."
+    },
+    {
+      "name": "schema-markup",
+      "source": "../../marketing-skill/skills/schema-markup",
+      "category": "marketing",
+      "description": "Use for any JSON-LD, schema.org, rich-result or structured-data request, before writing markup. Validates the markup with schema_validator.py against Google's required properties, which catches errors a hand-written block misses."
+    },
+    {
+      "name": "seo-audit",
+      "source": "../../marketing-skill/skills/seo-audit",
+      "category": "marketing",
+      "description": "Find why a site is not ranking: technical SEO, on-page issues, meta tags, site health. Use whenever the user asks why a page is not on Google, why traffic dropped or for an SEO audit."
+    },
+    {
+      "name": "signup-flow-cro",
+      "source": "../../marketing-skill/skills/signup-flow-cro",
+      "category": "marketing",
+      "description": "Use when signup, registration or trial-start conversion is low or a signup flow is being designed. Finds the drop-off step with funnel_drop_analyzer.py and removes friction field by field."
+    },
+    {
+      "name": "site-architecture",
+      "source": "../../marketing-skill/skills/site-architecture",
+      "category": "marketing",
+      "description": "Use for URL structure, navigation, internal linking, hub pages or orphan pages, or when SEO problems are structural. Analyzes the sitemap and link graph with sitemap_analyzer.py before proposing a structure."
+    },
+    {
+      "name": "social-content",
+      "source": "../../marketing-skill/skills/social-content",
+      "category": "marketing",
+      "description": "Write a LinkedIn post, X thread, Instagram, TikTok or Facebook post with each platform's hook, length and format. Use whenever the user wants a post or thread, or one idea for several platforms."
+    },
+    {
+      "name": "social-media-analyzer",
+      "source": "../../marketing-skill/skills/social-media-analyzer",
+      "category": "marketing",
+      "description": "Score social performance: engagement rate, reach, ROI per platform, benchmarks. Load whenever the user asks which platform performs best, if posts are working, or shares social metrics to compare."
+    },
+    {
+      "name": "social-media-manager",
+      "source": "../../marketing-skill/skills/social-media-manager",
+      "category": "marketing",
+      "description": "Plan social media: strategy, content calendar, community management, follower growth. Use whenever the user asks what to post and when, or how to grow followers. Single posts: social-content."
+    },
+    {
+      "name": "source-audit",
+      "source": "../../marketing-skill/skills/source-audit",
+      "category": "marketing",
+      "description": "Use before publishing a draft that cites links: verify that each claim is actually supported by the source it points to, link by link. Triggers include \u5ba1\u7a3f\u3001\u6838\u67e5\u4fe1\u6e90\u3001\u53d1\u5e03\u524d\u68c0\u67e5\u3001fact-check\u3001\u8fd9\u7bc7\u80fd\u4e0d\u80fd\u53d1\u3001\u91cc\u9762\u8bf4\u7684\u5bf9\u4e0d\u5bf9, or any review of an article, tool roundup, comparison, or review post with citations. Produces per-claim verdicts (supported, partial, contradicted, not found, unreachable) with quoted evidence. Not for copy-editing, structure review, or research from scratch."
+    },
+    {
+      "name": "video-content-strategist",
+      "source": "../../marketing-skill/video-content-strategist/skills/video-content-strategist",
+      "category": "marketing",
+      "description": "Use for video strategy, scripts, YouTube SEO, short-form pipelines (Reels, TikTok, Shorts) or turning long content into video, before scripting. Sets hooks, structure and repurposing per platform."
+    },
+    {
+      "name": "webinar-marketing",
+      "source": "../../marketing-skill/skills/webinar-marketing",
+      "category": "marketing",
+      "description": "Use when planning, promoting or fixing a webinar or virtual event (registrations, show-up, follow-up, conversion). Scores each funnel stage with webinar_funnel_scorer.py to find where it leaks."
+    },
+    {
+      "name": "x-twitter-growth",
+      "source": "../../marketing-skill/skills/x-twitter-growth",
+      "category": "marketing",
+      "description": "Use for growing on X/Twitter: tweets, threads, profile audit, competitors or posting plan. Audits the profile with profile_auditor.py, drafts with tweet_composer.py and plans posts with content_planner.py."
+    },
+    {
+      "name": "youtube-full",
+      "source": "../../marketing-skill/skills/youtube-full",
+      "category": "marketing",
+      "description": "Use for any YouTube URL, video ID or @handle, or a request for transcripts, video search, channel, playlist or new-upload monitoring. Fetches them with yt-dlp, youtube-transcript-api and public RSS feeds, with no API key; no video or audio downloads."
+    },
+    {
+      "name": "agile-product-owner",
+      "source": "../../product-team/agile-product-owner/skills/agile-product-owner",
+      "category": "product",
+      "description": "Use for backlog work: writing user stories and acceptance criteria, splitting epics, estimating or prioritizing for a sprint. Generates stories with user_story_generator.py."
+    },
+    {
+      "name": "apple-hig-expert",
+      "source": "../../product-team/apple-hig-expert/skills/apple-hig-expert",
+      "category": "product",
+      "description": "Use when designing or reviewing iOS, macOS, watchOS or visionOS UI against Apple's Human Interface Guidelines, including Liquid Glass, contrast and tap targets. Checks it with hig_checker.py."
+    },
+    {
+      "name": "code-to-prd",
+      "source": "../../product-team/code-to-prd/skills/code-to-prd",
+      "category": "product",
+      "description": "Use when asked to write a PRD or product spec from an existing codebase (reverse-engineer requirements, document pages, fields, routes and endpoints). Maps the code with codebase_analyzer.py and scaffolds the PRD with prd_scaffolder.py."
+    },
+    {
+      "name": "competitive-teardown",
+      "source": "../../product-team/skills/competitive-teardown",
+      "category": "product",
+      "description": "Deep competitor teardown: pricing, reviews, hiring, SEO, UX, scored across 12 dimensions with SWOT and positioning maps. Use whenever the user asks how they compare to a rival or how to respond to a competitor's move."
+    },
+    {
+      "name": "design-qa",
+      "source": "../../product-team/skills/design-qa",
+      "category": "product",
+      "description": "Use when a UI screen, page or component is about to be called done, handed off or shipped, or when generated UI looks generic or half-finished. Gates the rendered result, not the design file - finds controls that do nothing, placeholder copy, removed focus rings, missing loading/empty/error states, low contrast, small targets, hidden focus and broken reflow measured in the real browser, and flags template defaults without blocking on taste."
+    },
+    {
+      "name": "design-qa",
+      "source": "../../product-team/design-qa/skills/design-qa",
+      "category": "product",
+      "description": "Use when a UI screen, page or component is about to be called done, handed off or shipped, or when generated UI looks generic or half-finished. Gates the rendered result, not the design file - finds controls that do nothing, placeholder copy, removed focus rings, missing loading/empty/error states, low contrast, small targets, hidden focus and broken reflow measured in the real browser, and flags template defaults without blocking on taste."
+    },
+    {
+      "name": "experiment-designer",
+      "source": "../../product-team/skills/experiment-designer",
+      "category": "product",
+      "description": "Plan A/B tests and product experiments: hypotheses, sample size, priority, reading results. Use whenever the user asks if a test won, how long to run it or what to test."
+    },
+    {
+      "name": "landing-page-generator",
+      "source": "../../product-team/skills/landing-page-generator",
+      "category": "product",
+      "description": "Use when asked for a landing, marketing or campaign page as a Next.js TSX component with Tailwind. Scaffolds it with landing_page_scaffolder.py using PAS, AIDA or BAB copy, SEO meta and Core Web Vitals targets."
+    },
+    {
+      "name": "product-analytics",
+      "source": "../../product-team/skills/product-analytics",
+      "category": "product",
+      "description": "Use when defining product KPIs, building metric dashboards, running cohort or retention analysis, or interpreting feature adoption trends across product stages."
+    },
+    {
+      "name": "product-discovery",
+      "source": "../../product-team/skills/product-discovery",
+      "category": "product",
+      "description": "Validate product ideas: map assumptions, plan discovery sprints, test problem-solution fit. Use whenever the user asks if an idea is worth building."
+    },
+    {
+      "name": "product-manager-toolkit",
+      "source": "../../product-team/skills/product-manager-toolkit",
+      "category": "product",
+      "description": "PM toolkit: RICE prioritization, customer interview synthesis, PRDs and go-to-market. Use whenever the user asks what to build next, to rank features, write a PRD or sum up interview notes."
+    },
+    {
+      "name": "product-skills",
+      "source": "../../product-team/skills/product-skills",
+      "category": "product",
+      "description": "Use when a product request needs routing across the product-team skills (prioritization, OKRs, UX research, experiments, discovery, roadmaps), or to run the continuous discovery loop. Routes with product_goal_router.py and gates with discovery_cadence_tracker.py and ost_linter.py."
+    },
+    {
+      "name": "product-strategist",
+      "source": "../../product-team/skills/product-strategist",
+      "category": "product",
+      "description": "Head of Product: quarterly OKRs cascaded from company to team, product vision, roadmap, team structure. Use whenever the user asks to set OKRs, a vision or roadmap, or align teams on strategy."
+    },
+    {
+      "name": "research-summarizer",
+      "source": "../../product-team/research-summarizer/skills/research-summarizer",
+      "category": "product",
+      "description": "Use when summarizing a research paper, article or report, comparing several sources or extracting citations into a brief. Formats with format_summary.py and pulls citations with extract_citations.py."
+    },
+    {
+      "name": "roadmap-communicator",
+      "source": "../../product-team/skills/roadmap-communicator",
+      "category": "product",
+      "description": "Write roadmap narratives, release notes, changelogs, stakeholder updates. Use whenever the user explains plans to execs, engineers or customers."
+    },
+    {
+      "name": "saas-scaffolder",
+      "source": "../../product-team/skills/saas-scaffolder",
+      "category": "product",
+      "description": "Use when starting a new SaaS app with auth, database, Stripe billing and a dashboard (Next.js App Router, TypeScript, Tailwind, shadcn/ui, Drizzle). Bootstraps it with project_bootstrapper.py."
+    },
+    {
+      "name": "spec-to-repo",
+      "source": "../../product-team/skills/spec-to-repo",
+      "category": "product",
+      "description": "Use when the user says 'build me an app', 'create a project from this spec', 'scaffold a new repo', 'generate a starter', 'turn this idea into code', 'bootstrap a project', 'I have requirements and need a codebase', or provides a natural-language project specification and expects a complete, runnable repository. Stack-agnostic: Next.js, FastAPI, Rails, Go, Rust, Flutter, and more."
+    },
+    {
+      "name": "ui-design-system",
+      "source": "../../product-team/skills/ui-design-system",
+      "category": "product",
+      "description": "Use when building a design system: tokens, component docs, responsive scales or developer handoff. Generates tokens with design_token_generator.py."
+    },
+    {
+      "name": "ux-researcher-designer",
+      "source": "../../product-team/skills/ux-researcher-designer",
+      "category": "product",
+      "description": "UX research: personas, journey maps, usability test plans, synthesis. Use whenever the user asks who their users are or why they struggle."
+    },
+    {
+      "name": "andreessen",
+      "source": "../../productivity/andreessen/skills/andreessen",
+      "category": "productivity",
+      "description": "Blunt market-first verdict on an idea, venture or career bet, leading with the strongest counterargument, or a 3x5-card daily plan. Use whenever the user asks is there a market, are we at PMF, should I do this, or says pmarca mode."
+    },
+    {
+      "name": "capture",
+      "source": "../../productivity/capture/skills/capture",
+      "category": "productivity",
+      "description": "Use whenever the user unloads a messy brain dump of ideas, tasks and plans ('capture this', 'brain dump', a long unstructured paste) and wants it organized. Sorts it with dump_classifier.py into projects, tasks and connections with nothing lost."
+    },
+    {
+      "name": "deep-work",
+      "source": "../../productivity/deep-work/skills/deep-work",
+      "category": "productivity",
+      "description": "Use when someone wants to plan a deep work day, time-block their calendar or task list, budget or cut shallow work, protect focus hours, track deep-work sessions and streaks, run an end-of-day shutdown ritual, or says \"/deep-work\" or \"/time-block\". Classifies tasks deep vs shallow, builds an energy-first time-blocked schedule that refuses deep demand past the 4-hour ceiling, batches shallow work into at most two windows, and logs focus sessions against a weekly target."
+    },
+    {
+      "name": "fable-goal",
+      "source": "../../productivity/fable-goal/skills/fable-goal",
+      "category": "productivity",
+      "description": "Use when the user wants a /goal prompt rather than the build itself ('/fable-goal', 'turn this into a goal prompt', 'write the prompt that builds X'). Turns their ramble into one copy-paste prompt checked by goal_prompt_self_check.py."
+    },
+    {
+      "name": "inbox-setup",
+      "source": "../../productivity/email/skills/inbox-setup",
+      "category": "productivity",
+      "description": "Use when setting up email triage for the first time, before inbox-triage, or when priorities change. Interviews the user one question at a time and writes the knowledge base inbox-triage reads, validated with kb_validator.py."
+    },
+    {
+      "name": "inbox-triage",
+      "source": "../../productivity/email/skills/inbox-triage",
+      "category": "productivity",
+      "description": "Use when the user wants their inbox processed ('triage my inbox', 'check my email'). Classifies recent mail with the inbox-setup knowledge base, drafts replies it never sends (checked by draft_safety_validator.py) and reports."
+    },
+    {
+      "name": "meetings",
+      "source": "../../productivity/meetings/skills/meetings",
+      "category": "productivity",
+      "description": "Use when someone wants to decide whether a meeting is worth calling, price a meeting in dollars, build a timeboxed agenda with desired outcomes, or turn messy meeting notes into owned action items \u2014 or says \"should this be a meeting\", \"/cs-meeting-prep\", or \"/cs-meeting-actions\". Runs a cost gate (ASYNC / NOT-READY / MEET), builds a decision-first agenda, and extracts an owner + due-date checklist that flags every orphan."
+    },
+    {
+      "name": "monetize",
+      "source": "../../productivity/monetize",
+      "category": "productivity",
+      "description": "Use when someone asks how to earn more from their own experience: side income, side hustle, monetizing a skill, salary ceiling, career leverage, \u526f\u4e1a, \u53d8\u73b0, \u5916\u5feb, \u6280\u80fd\u53d8\u73b0, \u85aa\u8d44\u5929\u82b1\u677f, or pastes a r\u00e9sum\u00e9 asking what they could do with it. Builds one person's side-income plan (hidden-skills audit, opportunity scan, productization, one leverage action, salary ceiling, AI starter pack) with every number sourced or labeled, and lints the report with report_lint.py."
+    },
+    {
+      "name": "reflect",
+      "source": "../../productivity/reflect/skills/reflect",
+      "category": "productivity",
+      "description": "Use when the user says 'step back', 'zoom out', 'are we on track' or 'sanity check this', or work has gone deep into details without a check on direction. Reassesses direction, assumptions and bias across five dimensions."
+    },
+    {
+      "name": "roast",
+      "source": "../../productivity/roast/skills/roast",
+      "category": "productivity",
+      "description": "Roast an idea: a 5-angle panel (Critic, Champion, Analyst, Investigator, Customer) attacks it, then a Judge returns one GO / RESHAPE / KILL verdict with the cheapest test to de-risk it. Use whenever the user wants to pressure-test or validate a business idea, asks for a brutal second opinion before building, asks is this a good idea, says convene the panel, or runs /roast."
+    },
+    {
+      "name": "session-handoff",
+      "source": "../../productivity/handoff/skills/session-handoff",
+      "category": "productivity",
+      "description": "Write a handoff document so a fresh session or another agent can pick up exactly where this one left off: goal, current state, decisions, next steps and the skills to load, referencing existing files instead of copying them, with secrets redacted before saving. Use whenever the user is ending a session, switching machines, running low on context, or asks for a handoff, a handoff doc, a 'pick up where we left off' summary, or to compact the conversation for next time. Saves to a location the user picks on first run (OS temp, home folder or per-project .handoff/) and can auto-load the latest handoff at the next session start."
+    },
+    {
+      "name": "swedish-mentor",
+      "source": "../../productivity/swedish-mentor",
+      "category": "productivity",
+      "description": "Use when someone learning Swedish wants a learning path or YouTube clips and podcasts matched to their CEFR level and skill (SFI, L\u00e4tt Svenska, Radio Sweden p\u00e5 l\u00e4tt svenska)."
+    },
+    {
+      "name": "weekly-review",
+      "source": "../../productivity/weekly-review/skills/weekly-review",
+      "category": "productivity",
+      "description": "Use when someone wants to run a weekly review, close open loops, audit stalled projects and commitments, get their system back to trusted, restart a lapsed review habit, or says \"/cs-weekly-review\". Walks David Allen's three-phase loop \u2014 GET CLEAR, GET CURRENT, GET CREATIVE \u2014 with deterministic scripts that inventory open loops, gate the checklist with named gaps, and score commitment health 0-100."
+    },
+    {
+      "name": "atlassian-admin",
+      "source": "../../project-management/skills/atlassian-admin",
+      "category": "project-management",
+      "description": "Use for Atlassian org administration: Jira or Confluence users and groups, permissions, SSO, marketplace apps or security policy. Audits permissions with permission_audit_tool.py."
+    },
+    {
+      "name": "atlassian-templates",
+      "source": "../../project-management/skills/atlassian-templates",
+      "category": "project-management",
+      "description": "Use when creating or changing Jira or Confluence templates, blueprints or page layouts for reuse across the org. Scaffolds them with template_scaffolder.py."
+    },
+    {
+      "name": "confluence-expert",
+      "source": "../../project-management/skills/confluence-expert",
+      "category": "project-management",
+      "description": "Use when building or restructuring a Confluence space: page hierarchy, permissions, templates, Jira macros or a content audit. Generates structure with space_structure_generator.py and audits with content_audit_analyzer.py."
+    },
+    {
+      "name": "jira-expert",
+      "source": "../../project-management/skills/jira-expert",
+      "category": "project-management",
+      "description": "Jira setup and queries: JQL, workflows, custom fields, automation, dashboards. Use whenever the user needs a Jira search, filter, dashboard or rule set up, or a workflow fixed."
+    },
+    {
+      "name": "meeting-analyzer",
+      "source": "../../project-management/skills/meeting-analyzer",
+      "category": "project-management",
+      "description": "Use when the user shares meeting transcripts (.vtt, .srt, .txt, Otter, Granola, Zoom) or asks how they come across in meetings. Measures speaking ratio, filler words and avoidance patterns and gives coaching."
+    },
+    {
+      "name": "pm-skills",
+      "source": "../../project-management/skills/pm-skills",
+      "category": "project-management",
+      "description": "Router for project-management skills: sprints, portfolio health, Jira, Confluence, stakeholder comms, plus a delivery loop. Use whenever a delivery request is unclear about which PM skill fits, or the user asks to run a delivery loop or pull Jira data into one."
+    },
+    {
+      "name": "scrum-master",
+      "source": "../../project-management/skills/scrum-master",
+      "category": "project-management",
+      "description": "Use for sprint and team analytics: velocity forecasts, sprint health, retrospectives, burndown or blockers. Forecasts with velocity_analyzer.py (Monte Carlo), scores with sprint_health_scorer.py and tracks retro actions with retrospective_analyzer.py."
+    },
+    {
+      "name": "senior-pm",
+      "source": "../../project-management/skills/senior-pm",
+      "category": "project-management",
+      "description": "Project and portfolio management for multi-workstream programs: plans, status reports, risk registers, capacity, executive reporting. Use whenever the user asks how a project is tracking, what the risks are or who has capacity."
+    },
+    {
+      "name": "team-communications",
+      "source": "../../project-management/skills/team-communications",
+      "category": "project-management",
+      "description": "Use for any internal communication: 3P updates, weekly or status reports, newsletters, FAQs, incident reports, leadership updates ('write my update'). Drafts it in the right format for the audience."
+    },
+    {
+      "name": "access-lifecycle",
+      "source": "../../ra-qm-team/skills/access-lifecycle",
+      "category": "ra-qm",
+      "description": "Use when preparing or running a user access review, checking that leavers lost their access, finding orphaned or ownerless service accounts, answering an auditor's access-control request for SOC 2, ISO 27001, PCI DSS, HIPAA or NIST 800-53, or checking whether a finished review campaign will hold up. Diffs the HR roster against account exports, tests the campaign for coverage, self-review, unremoved revokes and rubber-stamping, and maps every exception to the controls it breaks."
+    },
+    {
+      "name": "access-lifecycle",
+      "source": "../../ra-qm-team/access-lifecycle/skills/access-lifecycle",
+      "category": "ra-qm",
+      "description": "Use when preparing or running a user access review, checking that leavers lost their access, finding orphaned or ownerless service accounts, answering an auditor's access-control request for SOC 2, ISO 27001, PCI DSS, HIPAA or NIST 800-53, or checking whether a finished review campaign will hold up. Diffs the HR roster against account exports, tests the campaign for coverage, self-review, unremoved revokes and rubber-stamping, and maps every exception to the controls it breaks."
+    },
+    {
+      "name": "agent-decision-receipts",
+      "source": "../../ra-qm-team/skills/agent-decision-receipts",
+      "category": "ra-qm",
+      "description": "Use when an autonomous agent takes a side-effecting action (deploy, delete, pay, grant access) that may need proving later, or for EU AI Act Art. 12 record-keeping. Builds a tamper-evident signed receipt with build_action_manifest.py and verifies it."
+    },
+    {
+      "name": "capa-officer",
+      "source": "../../ra-qm-team/skills/capa-officer",
+      "category": "ra-qm",
+      "description": "Use for CAPA work in a medical device QMS: root cause analysis (5-Why, fishbone), corrective action plans, effectiveness checks or CAPA metrics. Tracks CAPAs with capa_tracker.py and analyzes causes with root_cause_analyzer.py."
+    },
+    {
+      "name": "cmmc-readiness",
+      "source": "../../ra-qm-team/skills/cmmc-readiness",
+      "category": "ra-qm",
+      "description": "Use when a defense contractor or subcontractor is preparing for a CMMC 2.0 Level 2 self-assessment or C3PAO assessment, calculating or checking an SPRS score against NIST SP 800-171 Rev 2, deciding what can go on a POA&M, tracking POA&M closeout before Conditional status expires, or scoping assets, enclaves and cloud providers that handle CUI. Scores all 110 requirements with the 32 CFR 170.24 weights, blocks gaps that can never be deferred, and classifies the asset inventory into CMMC asset categories."
+    },
+    {
+      "name": "cmmc-readiness",
+      "source": "../../ra-qm-team/cmmc-readiness/skills/cmmc-readiness",
+      "category": "ra-qm",
+      "description": "Use when a defense contractor or subcontractor is preparing for a CMMC 2.0 Level 2 self-assessment or C3PAO assessment, calculating or checking an SPRS score against NIST SP 800-171 Rev 2, deciding what can go on a POA&M, tracking POA&M closeout before Conditional status expires, or scoping assets, enclaves and cloud providers that handle CUI. Scores all 110 requirements with the 32 CFR 170.24 weights, blocks gaps that can never be deferred, and classifies the asset inventory into CMMC asset categories."
+    },
+    {
+      "name": "cra-readiness",
+      "source": "../../ra-qm-team/skills/cra-readiness",
+      "category": "ra-qm",
+      "description": "Use when a company that sells software, connected devices or firmware in the EU asks whether the Cyber Resilience Act (CRA, Regulation 2024/2847) applies, has to report an actively exploited vulnerability or security incident under Article 14 (24h/72h deadlines, ENISA Single Reporting Platform), must classify products as important or critical, pick a conformity route or support period, check an SBOM, or get to CE marking by December 2027. Four deterministic scripts with cited articles."
+    },
+    {
+      "name": "cra-readiness",
+      "source": "../../ra-qm-team/cra-readiness/skills/cra-readiness",
+      "category": "ra-qm",
+      "description": "Use when a company that sells software, connected devices or firmware in the EU asks whether the Cyber Resilience Act (CRA, Regulation 2024/2847) applies, has to report an actively exploited vulnerability or security incident under Article 14 (24h/72h deadlines, ENISA Single Reporting Platform), must classify products as important or critical, pick a conformity route or support period, check an SBOM, or get to CE marking by December 2027. Four deterministic scripts with cited articles."
+    },
+    {
+      "name": "dora-readiness",
+      "source": "../../ra-qm-team/skills/dora-readiness",
+      "category": "ra-qm",
+      "description": "Use when a bank, payment or e-money institution, investment firm, insurer, crypto-asset service provider or fund manager in the EU faces DORA (Regulation 2022/2554, Digital Operational Resilience Act) - is an ICT outage or cyber incident major, when the initial (4h/24h), intermediate (72h) and final reports are due, weekends included; the register of information; ICT or cloud contracts missing audit rights, exit plans or other Article 30 terms; scope and the simplified framework for small firms. Not for DORA DevOps metrics. Three deterministic scripts with cited articles."
+    },
+    {
+      "name": "dora-readiness",
+      "source": "../../ra-qm-team/dora-readiness/skills/dora-readiness",
+      "category": "ra-qm",
+      "description": "Use when a bank, payment or e-money institution, investment firm, insurer, crypto-asset service provider or fund manager in the EU faces DORA (Regulation 2022/2554, Digital Operational Resilience Act) - is an ICT outage or cyber incident major, when the initial (4h/24h), intermediate (72h) and final reports are due, weekends included; the register of information; ICT or cloud contracts missing audit rights, exit plans or other Article 30 terms; scope and the simplified framework for small firms. Not for DORA DevOps metrics. Three deterministic scripts with cited articles."
+    },
+    {
+      "name": "eu-ai-act-specialist",
+      "source": "../../ra-qm-team/skills/eu-ai-act-specialist",
+      "category": "ra-qm",
+      "description": "Use for EU AI Act (Regulation 2024/1689) compliance work: classifying an AI system's risk tier, planning the Art. 43 conformity route and Annex IV file, or listing obligations by role. Runs ai_system_risk_classifier.py, conformity_assessment_planner.py and ai_act_obligation_tracker.py, citing Articles."
+    },
+    {
+      "name": "eu-ai-act-specialist",
+      "source": "../../ra-qm-team/compliance-team-eu-ai-act/skills/eu-ai-act-specialist",
+      "category": "ra-qm",
+      "description": "Use for EU AI Act (Regulation 2024/1689) compliance work: classifying an AI system's risk tier, planning the Art. 43 conformity route and Annex IV file, or listing obligations by role. Runs ai_system_risk_classifier.py, conformity_assessment_planner.py and ai_act_obligation_tracker.py, citing Articles."
+    },
+    {
+      "name": "fda-consultant-specialist",
+      "source": "../../ra-qm-team/skills/fda-consultant-specialist",
+      "category": "ra-qm",
+      "description": "Use for FDA medical device questions: 510(k) vs De Novo vs PMA, predicates and substantial equivalence, QMSR (21 CFR 820), HIPAA or device cybersecurity. Runs fda_submission_tracker.py, qsr_compliance_checker.py and hipaa_risk_assessment.py."
+    },
+    {
+      "name": "gdpr-dsgvo-expert",
+      "source": "../../ra-qm-team/skills/gdpr-dsgvo-expert",
+      "category": "ra-qm",
+      "description": "Use for GDPR or DSGVO work: scanning a codebase for privacy risks, writing a DPIA or tracking data subject requests against the Art. 12(3) deadline. Runs gdpr_compliance_checker.py, dpia_generator.py and data_subject_rights_tracker.py; final calls go to the DPO."
+    },
+    {
+      "name": "information-security-manager-iso27001",
+      "source": "../../ra-qm-team/skills/information-security-manager-iso27001",
+      "category": "ra-qm",
+      "description": "Use when designing or running an ISO 27001 ISMS in HealthTech or MedTech: risk assessment, control implementation, certification or security incidents. Assesses risk with risk_assessment.py and checks controls with compliance_checker.py."
+    },
+    {
+      "name": "isms-audit-expert",
+      "source": "../../ra-qm-team/skills/isms-audit-expert",
+      "category": "ra-qm",
+      "description": "Use for ISO 27001 audit work: internal or surveillance audits, Annex A control evidence, Statement of Applicability, nonconformities, Stage 1 and 2 prep. Plans risk-based audits with isms_audit_scheduler.py."
+    },
+    {
+      "name": "iso42001-specialist",
+      "source": "../../ra-qm-team/skills/iso42001-specialist",
+      "category": "ra-qm",
+      "description": "Use for ISO/IEC 42001 AI management system work: gap analysis against Clauses 4-10, the AI risk register and Annex A controls, or the internal audit plan. Runs aims_gap_analyzer.py, ai_risk_register_builder.py and aims_audit_scheduler.py."
+    },
+    {
+      "name": "iso42001-specialist",
+      "source": "../../ra-qm-team/compliance-team-iso42001/skills/iso42001-specialist",
+      "category": "ra-qm",
+      "description": "Use for ISO/IEC 42001 AI management system work: gap analysis against Clauses 4-10, the AI risk register and Annex A controls, or the internal audit plan. Runs aims_gap_analyzer.py, ai_risk_register_builder.py and aims_audit_scheduler.py."
+    },
+    {
+      "name": "mdr-745-specialist",
+      "source": "../../ra-qm-team/skills/mdr-745-specialist",
+      "category": "ra-qm",
+      "description": "Use for EU MDR 2017/745 work: device classification under Annex VIII, technical file gaps (Annex II/III), clinical evaluation, PMS and PSUR cadence, notified body prep. Checks the file with mdr_gap_analyzer.py."
+    },
+    {
+      "name": "medical-device-software",
+      "source": "../../ra-qm-team/skills/medical-device-software",
+      "category": "ra-qm",
+      "description": "Use for any question about the software inside a medical device, SaMD or regulated health app - which IEC 62304 safety class (A/B/C) it is and how much process and documentation that class needs, what to record about open-source or third-party libraries (SOUP, SBOM), trace matrix and release testing, IEC 81001-5-1 security, or the FDA documentation level and 524B cyber-device duties. Checks the user's files with four scripts that cite the clause."
+    },
+    {
+      "name": "medical-device-software",
+      "source": "../../ra-qm-team/medical-device-software/skills/medical-device-software",
+      "category": "ra-qm",
+      "description": "Use for any question about the software inside a medical device, SaMD or regulated health app - which IEC 62304 safety class (A/B/C) it is and how much process and documentation that class needs, what to record about open-source or third-party libraries (SOUP, SBOM), trace matrix and release testing, IEC 81001-5-1 security, or the FDA documentation level and 524B cyber-device duties. Checks the user's files with four scripts that cite the clause."
+    },
+    {
+      "name": "nis2-readiness",
+      "source": "../../ra-qm-team/skills/nis2-readiness",
+      "category": "ra-qm",
+      "description": "Use when a cyberattack, ransomware or outage hits a hospital, utility, transport, digital-infrastructure or other EU company and it must report under NIS2 (Directive 2022/2555) or the German NIS2UmsuCG/BSIG - 24h early warning, 72h notification, one-month final report. Also for whether a company is an essential or important entity, BSI registration, management-board liability and training (Article 20), an Article 21 gap analysis, or one incident that also triggers DORA, CRA or GDPR reports. Four deterministic scripts with cited articles."
+    },
+    {
+      "name": "nis2-readiness",
+      "source": "../../ra-qm-team/nis2-readiness/skills/nis2-readiness",
+      "category": "ra-qm",
+      "description": "Use when a cyberattack, ransomware or outage hits a hospital, utility, transport, digital-infrastructure or other EU company and it must report under NIS2 (Directive 2022/2555) or the German NIS2UmsuCG/BSIG - 24h early warning, 72h notification, one-month final report. Also for whether a company is an essential or important entity, BSI registration, management-board liability and training (Article 20), an Article 21 gap analysis, or one incident that also triggers DORA, CRA or GDPR reports. Four deterministic scripts with cited articles."
+    },
+    {
+      "name": "qms-audit-expert",
+      "source": "../../ra-qm-team/skills/qms-audit-expert",
+      "category": "ra-qm",
+      "description": "Use for ISO 13485 internal audits: planning the program, running an audit, classifying findings or preparing for an external audit. Optimizes the schedule with audit_schedule_optimizer.py."
+    },
+    {
+      "name": "quality-documentation-manager",
+      "source": "../../ra-qm-team/skills/quality-documentation-manager",
+      "category": "ra-qm",
+      "description": "Use for QMS document control: numbering, versioning, change control or 21 CFR Part 11 e-signatures. Validates documents with document_validator.py and tracks versions with document_version_control.py."
+    },
+    {
+      "name": "quality-manager-qmr",
+      "source": "../../ra-qm-team/skills/quality-manager-qmr",
+      "category": "ra-qm",
+      "description": "Use for QMR duties under ISO 13485 5.5.2: management review, quality policy and objectives, quality KPIs and cost of quality. Tracks reviews with management_review_tracker.py and monitors effectiveness with quality_effectiveness_monitor.py."
+    },
+    {
+      "name": "quality-manager-qms-iso13485",
+      "source": "../../ra-qm-team/skills/quality-manager-qms-iso13485",
+      "category": "ra-qm",
+      "description": "Build or maintain an ISO 13485 medical device QMS: design, documentation, CAPA, audit prep. Use whenever the user faces a 13485 certification audit or needs quality procedures."
+    },
+    {
+      "name": "ra-qm-skills",
+      "source": "../../ra-qm-team/skills/ra-qm-skills",
+      "category": "ra-qm",
+      "description": "Router for regulatory and quality skills: ISO 13485, MDR, FDA, ISO 14971, CAPA, ISO 27001, ISO 42001, EU AI Act, GDPR, SOC 2. Use whenever a compliance request fits no single one."
+    },
+    {
+      "name": "regulatory-affairs-head",
+      "source": "../../ra-qm-team/skills/regulatory-affairs-head",
+      "category": "ra-qm",
+      "description": "Use for medical device market access strategy: FDA 510(k), De Novo or PMA packages, CE marking under MDR, pre-sub meetings, agency deficiency responses or multi-market plans. Analyzes pathways with regulatory_pathway_analyzer.py and tracks submissions with regulatory_tracker.py."
+    },
+    {
+      "name": "risk-management-specialist",
+      "source": "../../ra-qm-team/skills/risk-management-specialist",
+      "category": "ra-qm",
+      "description": "Use for ISO 14971 medical device risk management: hazard analysis, FMEA, fault trees, risk controls, benefit-risk or residual risk. Runs fmea_analyzer.py and risk_matrix_calculator.py."
+    },
+    {
+      "name": "soc2-compliance",
+      "source": "../../ra-qm-team/skills/soc2-compliance",
+      "category": "ra-qm",
+      "description": "Use when the user asks to prepare for SOC 2 audits, map Trust Service Criteria, build control matrices, collect audit evidence, perform gap analysis, or assess SOC 2 Type I vs Type II readiness."
+    },
+    {
+      "name": "deepread",
+      "source": "../../research/deepread",
+      "category": "research",
+      "description": "Use when the user asks to deeply read a book, article, PDF, or document set; extract claims and evidence; build a knowledge map; or learn through Feynman explanation and recall. Covers quick, deep, map, Feynman, and whole-book reading modes."
+    },
+    {
+      "name": "dossier",
+      "source": "../../research/dossier/skills/dossier",
+      "category": "research",
+      "description": "Use for diligence or meeting prep on a specific company, person or organization ('prep me for a meeting with X', 'due diligence on Y'). Tests the user's stated hypothesis with balanced evidence (disconfirming_evidence_balance.py) and writes a .docx dossier."
+    },
+    {
+      "name": "grants",
+      "source": "../../research/grants/skills/grants",
+      "category": "research",
+      "description": "Use for any NIH funding question ('find grants for my research', 'which NIH institute'). Maps the idea to institutes, study sections and NOSIs via RePORTER, matches mechanisms with mechanism_matcher.py and writes a .docx strategy. NIH only."
+    },
+    {
+      "name": "litreview",
+      "source": "../../research/litreview/skills/litreview",
+      "category": "research",
+      "description": "Use when starting a literature review or a literature-based project. Plans the search (PICO, SPIDER) with framework_recommender.py, searches PubMed and OpenAlex with free_search.py and writes a .docx orientation guide. Single-paper lookups: query directly."
+    },
+    {
+      "name": "meta-research",
+      "source": "../../research/meta-research/skills/meta-research",
+      "category": "research",
+      "description": "Use when a wrong answer is expensive: strategy research, comparing several products or markets, validating a hypothesis with outside data. Fans out searches and sub-agents, triangulates each claim across 3+ sources and saves every source with quotes. Quick facts: answer directly."
+    },
+    {
+      "name": "notebooklm",
+      "source": "../../research/notebooklm/skills/notebooklm",
+      "category": "research",
+      "description": "Use for anything in Google NotebookLM: querying notebooks, adding sources, generating Audio or Video Overviews, reports, flashcards or slides. Drives the browser; needs browser automation."
+    },
+    {
+      "name": "patent",
+      "source": "../../research/patent/skills/patent",
+      "category": "research",
+      "description": "Use for prior-art search, freedom-to-operate, patent landscape, acquisition diligence or litigation prior art. Picks the use case with sub_use_case_router.py, searches Google Patents, Espacenet and USPTO and writes a .docx; not legal advice."
+    },
+    {
+      "name": "pulse",
+      "source": "../../research/pulse/skills/pulse",
+      "category": "research",
+      "description": "Use for what people are saying right now about a topic (trends, sentiment, complaints, tool comparisons) across Reddit, Hacker News and the web in a recent window. Returns a cited briefing with engagement signals."
+    },
+    {
+      "name": "research",
+      "source": "../../research/research/skills/research",
+      "category": "research",
+      "description": "Use for any research request that doesn't clearly match a research specialist ('research X', 'look into Y'). Routes with classifier.py to pulse, grants, litreview, syllabus, patent, dossier or deepread, or runs its own cited search."
+    },
+    {
+      "name": "syllabus",
+      "source": "../../research/syllabus/skills/syllabus",
+      "category": "research",
+      "description": "Use when the user shares a course syllabus or outline and wants supplementary readings. Groups topics with topic_grouper.py, finds recent peer-reviewed papers and writes a .docx with summaries and discussion questions."
+    },
+    {
+      "name": "clinical-research",
+      "source": "../../research-ops/skills/clinical-research",
+      "category": "research-ops",
+      "description": "Use when designing a prospective clinical study: choosing primary and secondary endpoints, estimating sample size and power, or scoring feasibility before submission. Runs endpoint_selector.py, sample_size_estimator.py and phase_gate_scorer.py; outputs are estimates for a biostatistician to confirm."
+    },
+    {
+      "name": "interview-mapper",
+      "source": "../../research-ops/skills/interview-mapper",
+      "category": "research-ops",
+      "description": "Use when coding or making sense of one interview transcript (customer, JTBD, expert, usability, exit). Extracts verbatim-grounded nuggets with extract_nuggets.py, verifies quotes with verify_quotes.py and checks conclusions hold across reruns with consensus.py."
+    },
+    {
+      "name": "market-research",
+      "source": "../../research-ops/skills/market-research",
+      "category": "research-ops",
+      "description": "Use for market sizing (TAM, SAM, SOM both top-down and bottom-up), survey sample sizes or segment scoring. Runs market_sizer.py, sample_size_planner.py and segmentation_scorer.py and never returns one unsourced number."
+    },
+    {
+      "name": "product-research",
+      "source": "../../research-ops/skills/product-research",
+      "category": "research-ops",
+      "description": "Use when planning or synthesizing user research: choosing the method, deciding how many participants, or turning coded notes into insights. Runs study_designer.py, saturation_planner.py and insight_synthesizer.py, which refuses single-source insights."
+    },
+    {
+      "name": "research-finance",
+      "source": "../../research-ops/skills/research-finance",
+      "category": "research-ops",
+      "description": "Use for R&D program money: multi-period budgets with indirect cost split, burn and runway against milestones, or capitalize vs expense routing. Runs program_budget_planner.py, burn_runway_tracker.py and capex_vs_opex_router.py."
+    },
+    {
+      "name": "research-ops-skills",
+      "source": "../../research-ops/skills/research-ops-skills",
+      "category": "research-ops",
+      "description": "Use when an enterprise research request needs routing (clinical study design, R&D finance, market sizing, user research): 'what sample size', 'R&D budget'. Lists the research-ops skills and routes to one."
+    },
+    {
+      "name": "video-animatic",
+      "source": "../../video/skills/video-animatic",
+      "category": "video",
+      "description": "Use when building an animation, motion graphic, kinetic type, animated chart from data, or animatic with code and rendering it to MP4 frame-exact. Compiles a scene.v1 JSON into a seekable HTML timeline, lints readability, flashes and contrast, renders with Playwright, and exports clean keyframes for AI shot upgrades."
+    },
+    {
+      "name": "video-beat-board",
+      "source": "../../video/skills/video-beat-board",
+      "category": "video",
+      "description": "Use whenever the user asks \"will this voice-over fit in 30 seconds?\", \"is my reel script too long?\", \"what should I cut?\", or wants a video script turned into a timed shot list. Do not eyeball it - beat_board.py times every beat at 150 wpm speech and 180 wpm reading, refuses a script that does not fit and says exactly how many words to cut."
+    },
+    {
+      "name": "video-conform",
+      "source": "../../video/skills/video-conform",
+      "category": "video",
+      "description": "Use when finishing a video for delivery - mix voice-over and music, normalize loudness, add or burn in captions, and export a checked MP4 that plays everywhere. conform.py builds the ffmpeg command, then fails the export if duration or loudness misses its target."
+    },
+    {
+      "name": "video-director",
+      "source": "../../video/skills/video-director",
+      "category": "video",
+      "description": "Use whenever the user asks you to make, plan or produce a whole video - a launch teaser, promo, explainer, trailer, social clip or short film - from an idea, a brief, a changelog or data. Start here before animating anything; brief_gate.py fixes length, aspect and voice-over budget, then it runs beat board, code animatic, optional AI shots and conform to a finished MP4."
+    }
+  ],
+  "categories": {
+    "agent-development": {
+      "count": 6,
+      "source": "../../agent-launcher",
+      "description": "Claude Managed Agent launcher (unreleased, post-v2.11.2): session-goal orchestrator (context: fork) + interview + stage-launch (BYOK curl) + grade-iterate (bounded outcome loop) + run-without-you (cron deployment loop) + wrap-up. Re-implements anthropics/launch-your-agent (Apache-2.0)."
+    },
+    "business-growth": {
+      "count": 7,
+      "source": "../../business-growth",
+      "description": "Customer success, sales engineering, and revenue operations skills"
+    },
+    "business-operations": {
+      "count": 7,
+      "source": "../../business-operations",
+      "description": "Internal BizOps skills (v2.8.0): process mapping, vendor management, capacity planning (Erlang-C), internal comms (ADKAR+Kotter), knowledge ops (SOP+runbook), procurement (UNSPSC)"
+    },
+    "c-level": {
+      "count": 68,
+      "source": "../../c-level-advisor",
+      "description": "Executive leadership and advisory skills"
+    },
+    "commercial": {
+      "count": 8,
+      "source": "../../commercial",
+      "description": "Per-deal-and-packaging Commercial skills (v2.8.0): pricing strategy, deal desk, partnerships, channel economics, commercial policy, RFP responder, commercial forecaster"
+    },
+    "compliance": {
+      "count": 9,
+      "source": "../../compliance-os",
+      "description": "Compliance-OS skills: ISO 13485 / ISO 27001 / SOC 2 / GDPR / FDA QSR / EU AI Act audit-prep + compliance-readiness orchestrator"
+    },
+    "documentation": {
+      "count": 5,
+      "source": "../../markdown-html",
+      "description": "Markdown-to-HTML converter (v2.10.0 foundation): orchestrator (context: fork, deterministic doctype classifier, refuses < 100 lines per Shihipar) + design-system (one-time onboarding wizard with WCAG-AA-validated 12-token palette, project > global > defaults precedence). Converter sub-skills (md-document, md-review, md-slides) land in v2.10.1."
+    },
+    "engineering": {
+      "count": 54,
+      "source": "../../engineering-team",
+      "description": "Software engineering and technical skills"
+    },
+    "engineering-advanced": {
+      "count": 110,
+      "source": "../../engineering",
+      "description": "Advanced engineering skills - agents, RAG, MCP, CI/CD, databases, observability"
+    },
+    "finance": {
+      "count": 8,
+      "source": "../../finance",
+      "description": "Financial analysis, valuation, and forecasting skills"
+    },
+    "marketing": {
+      "count": 59,
+      "source": "../../marketing-skill",
+      "description": "Marketing, content, and demand generation skills"
+    },
+    "product": {
+      "count": 19,
+      "source": "../../product-team",
+      "description": "Product management and design skills"
+    },
+    "productivity": {
+      "count": 13,
+      "source": "../../productivity",
+      "description": "Personal-productivity skills - capture, email, reflect, handoff, andreessen, roast, weekly-review, deep-work, meetings"
+    },
+    "project-management": {
+      "count": 9,
+      "source": "../../project-management",
+      "description": "Project management and Atlassian skills"
+    },
+    "ra-qm": {
+      "count": 31,
+      "source": "../../ra-qm-team",
+      "description": "Regulatory affairs and quality management skills"
+    },
+    "research": {
+      "count": 10,
+      "source": "../../research",
+      "description": "Research orchestrator + 6 specialists (pulse, litreview, grants, dossier, patent, syllabus, notebooklm)"
+    },
+    "research-ops": {
+      "count": 6,
+      "source": "../../research-ops",
+      "description": "Enterprise Research Operations skills (v2.9.0): clinical study design, R&D program finance, market research methodology, product/user research"
+    },
+    "video": {
+      "count": 4,
+      "source": "../../video",
+      "description": "Video studio: brief gate, beat board, code animatic (scene.v1 -> seekable HTML -> frame-exact MP4), optional AI shot upgrades through the user's own MCP connector, and checked conform"
+    }
+  }
+}

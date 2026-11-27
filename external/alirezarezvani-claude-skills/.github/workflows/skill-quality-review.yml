@@ -1,0 +1,345 @@
+---
+name: Skill Quality Review (Tessl)
+
+'on':
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**/SKILL.md'
+      - '**/scripts/*.py'
+
+concurrency:
+  group: quality-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  detect-skills:
+    name: Detect changed skills
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      skills: ${{ steps.find.outputs.skills }}
+      has_skills: ${{ steps.find.outputs.has_skills }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find changed skill directories
+        id: find
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD 2>/dev/null || echo "")
+          if [ -z "$CHANGED" ]; then
+            echo "skills=[]" >> "$GITHUB_OUTPUT"
+            echo "has_skills=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SKILLS=()
+          SEEN=()
+          while IFS= read -r file; do
+            dir=$(echo "$file" | cut -d'/' -f1-2)
+            case "$dir" in
+              .github/*|.claude/*|.codex/*|.gemini/*|docs/*|scripts/*|commands/*|standards/*|eval-workspace/*|medium/*) continue ;;
+            esac
+            for candidate in "$dir"; do
+              if [ -f "$candidate/SKILL.md" ] && [[ ! " ${SEEN[*]} " =~ " $candidate " ]]; then
+                SKILLS+=("$candidate")
+                SEEN+=("$candidate")
+                break
+              fi
+            done
+          done <<< "$CHANGED"
+
+          if [ ${#SKILLS[@]} -eq 0 ]; then
+            echo "skills=[]" >> "$GITHUB_OUTPUT"
+            echo "has_skills=false" >> "$GITHUB_OUTPUT"
+          else
+            JSON="["
+            for i in "${!SKILLS[@]}"; do
+              [ $i -gt 0 ] && JSON+=","
+              JSON+="\"${SKILLS[$i]}\""
+            done
+            JSON+="]"
+            echo "skills=$JSON" >> "$GITHUB_OUTPUT"
+            echo "has_skills=true" >> "$GITHUB_OUTPUT"
+            echo "Changed skills: $JSON"
+          fi
+
+  review:
+    name: Tessl quality review
+    needs: detect-skills
+    if: needs.detect-skills.outputs.has_skills == 'true'
+    runs-on: ubuntu-latest
+    # Each review polls a server-side run; cap the job so a stuck run cannot hold a runner.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Tessl reviews run server-side and need an API key plus a workspace.
+      # Without both (forks never get secrets) the review is skipped and the
+      # comment says so, instead of reporting every skill as a tool error.
+      - name: Check Tessl configuration
+        id: tessl_cfg
+        env:
+          TESSL_TOKEN: ${{ secrets.TESSL_TOKEN }}
+          TESSL_WORKSPACE: ${{ vars.TESSL_WORKSPACE }}
+        run: |
+          if [ -n "$TESSL_TOKEN" ] && [ -n "$TESSL_WORKSPACE" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Tessl review skipped: set the TESSL_TOKEN secret and the TESSL_WORKSPACE variable to enable it."
+          fi
+
+      - name: Install Tessl CLI
+        if: steps.tessl_cfg.outputs.configured == 'true'
+        run: npm install -g tessl
+
+      - name: Review changed skills
+        id: review
+        env:
+          TESSL_TOKEN: ${{ secrets.TESSL_TOKEN }}
+          TESSL_WORKSPACE: ${{ vars.TESSL_WORKSPACE }}
+          # Advisory until the new `tessl review run` scores have a track
+          # record; set the repo variable TESSL_ENFORCE=true to block merges
+          # below the threshold again.
+          TESSL_ENFORCE: ${{ vars.TESSL_ENFORCE }}
+          CONFIGURED: ${{ steps.tessl_cfg.outputs.configured }}
+          # Changed paths come from the PR; read them from env, not inline.
+          SKILLS: ${{ needs.detect-skills.outputs.skills }}
+        run: |
+          REPORT_FILE=$(mktemp)
+          OVERALL_EXIT=0
+          TESSL_ERRORS=0
+          BELOW=0
+          THRESHOLD=70
+
+          if [ "$CONFIGURED" != "true" ]; then
+            {
+              echo "## 📊 Skill Quality Review (Tessl)"
+              echo ""
+              echo "> ⏭️ Tessl review skipped: the \`TESSL_TOKEN\` secret or the \`TESSL_WORKSPACE\` variable is not set."
+              echo "> Pull requests from forks never receive secrets."
+            } > "$REPORT_FILE"
+            echo "report_file=$REPORT_FILE" >> "$GITHUB_OUTPUT"
+            echo "exit_code=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "## 📊 Skill Quality Review (Tessl)" > "$REPORT_FILE"
+          echo "" >> "$REPORT_FILE"
+          echo "| Skill | Score | Description | Content | Verdict |" >> "$REPORT_FILE"
+          echo "|-------|-------|-------------|---------|---------|" >> "$REPORT_FILE"
+
+          DETAILS_FILE=$(mktemp)
+
+          for skill_dir in $(echo "$SKILLS" | python3 -c "import sys,json; [print(s) for s in json.load(sys.stdin)]"); do
+            echo "::group::Reviewing $skill_dir"
+
+            # `tessl skill review` was removed; `tessl review run` scores the
+            # skill server-side and polls until it finishes. Its JSON schema is
+            # undocumented, so scripts/tessl_review_parse.py finds scores by key.
+            JSON_OUT=$(tessl review run "$skill_dir" --workspace "$TESSL_WORKSPACE" --json 2>&1) || true
+            PARSED=$(printf '%s' "$JSON_OUT" | python3 scripts/tessl_review_parse.py || echo "ERROR|-|-|-|[]")
+            IFS='|' read -r VSTATUS SCORE DS CS SUGGESTIONS <<< "$PARSED"
+            DS_TXT=$([ "$DS" = "-" ] && echo "—" || echo "${DS}%")
+            CS_TXT=$([ "$CS" = "-" ] && echo "—" || echo "${CS}%")
+
+            # Determine verdict. VSTATUS=ERROR means the Tessl CLI or the JSON
+            # parse failed before producing a review — that is a tool outage,
+            # not a genuine 0-score skill, so it must not block the merge
+            # (a real CLI failure scores every skill an identical 0/100; see
+            # the false-negative triage on the v2.12.0 promotion PR #985).
+            if [ "$VSTATUS" = "ERROR" ]; then
+              ICON="⚙️"
+              VERDICT="TOOL ERROR (not scored)"
+              TESSL_ERRORS=$((TESSL_ERRORS + 1))
+              echo "::warning::Tessl could not score $skill_dir — CLI output (truncated): $(echo "$JSON_OUT" | head -c 300)"
+            elif [ "$SCORE" -ge "$THRESHOLD" ]; then
+              ICON="✅"
+              VERDICT="PASS"
+            else
+              ICON="⚠️"
+              VERDICT="NEEDS WORK"
+              BELOW=$((BELOW + 1))
+              if [ "$TESSL_ENFORCE" = "true" ]; then OVERALL_EXIT=1; fi
+            fi
+
+            if [ "$VSTATUS" = "ERROR" ]; then
+              echo "| \`$skill_dir\` | ${ICON} not scored | — | — | ${VERDICT} |" >> "$REPORT_FILE"
+            else
+              echo "| \`$skill_dir\` | **${SCORE}/100** ${ICON} | ${DS_TXT} | ${CS_TXT} | ${VERDICT} |" >> "$REPORT_FILE"
+            fi
+
+            # Add suggestions as details
+            SUGG_COUNT=$(echo "$SUGGESTIONS" | python3 -c "import sys,json; print(len(json.loads(sys.stdin.readline())))" 2>/dev/null || echo "0")
+            if [ "$SUGG_COUNT" -gt 0 ]; then
+              echo "" >> "$DETAILS_FILE"
+              echo "### \`$skill_dir\` — ${SCORE}/100" >> "$DETAILS_FILE"
+              echo "" >> "$DETAILS_FILE"
+              echo "$SUGGESTIONS" | python3 -c "
+          import sys, json
+          suggestions = json.loads(sys.stdin.readline())
+          for s in suggestions:
+              print(f'- {s}')
+          " >> "$DETAILS_FILE"
+            fi
+
+            echo "::endgroup::"
+          done
+
+          # Add details section
+          DETAILS_CONTENT=$(cat "$DETAILS_FILE")
+          if [ -n "$DETAILS_CONTENT" ]; then
+            echo "" >> "$REPORT_FILE"
+            echo "<details><summary>Improvement suggestions</summary>" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            cat "$DETAILS_FILE" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            echo "</details>" >> "$REPORT_FILE"
+          fi
+
+          echo "" >> "$REPORT_FILE"
+          if [ "$TESSL_ENFORCE" = "true" ]; then
+            echo "_Threshold: ${THRESHOLD}/100 — skills below this score need improvement before merge._" >> "$REPORT_FILE"
+          else
+            echo "_Threshold: ${THRESHOLD}/100 — advisory: ${BELOW} skill(s) below it, merge is not blocked._" >> "$REPORT_FILE"
+          fi
+
+          if [ "$TESSL_ERRORS" -gt 0 ]; then
+            echo "" >> "$REPORT_FILE"
+            echo "> ⚙️ ${TESSL_ERRORS} skill(s) could not be scored — the Tessl CLI errored before producing a review." >> "$REPORT_FILE"
+            echo "> Reported as a warning, not a merge blocker. Check the job log." >> "$REPORT_FILE"
+            echo "> An expired \`TESSL_TOKEN\` (keys default to 30 days) is the usual cause." >> "$REPORT_FILE"
+          fi
+
+          echo "report_file=$REPORT_FILE" >> "$GITHUB_OUTPUT"
+          echo "exit_code=$OVERALL_EXIT" >> "$GITHUB_OUTPUT"
+
+      - name: Run internal validators
+        id: internal
+        env:
+          SKILLS: ${{ needs.detect-skills.outputs.skills }}
+        run: |
+          INTERNAL_REPORT=$(mktemp)
+          INTERNAL_EXIT=0
+
+          echo "" >> "$INTERNAL_REPORT"
+          echo "## 🔧 Internal Validation" >> "$INTERNAL_REPORT"
+          echo "" >> "$INTERNAL_REPORT"
+
+          for skill_dir in $(echo "$SKILLS" | python3 -c "import sys,json; [print(s) for s in json.load(sys.stdin)]"); do
+            # Structure validation
+            STRUCT=$(python3 engineering/skills/skill-tester/scripts/skill_validator.py "$skill_dir" --json 2>&1 | python3 -c "
+          import sys, json
+          try:
+              d = json.load(sys.stdin)
+              print(f'{d[\"overall_score\"]}|{d[\"compliance_level\"]}')
+          except:
+              print('0|ERROR')
+          " 2>/dev/null || echo "0|ERROR")
+            IFS='|' read -r SSCORE SLEVEL <<< "$STRUCT"
+
+            # Script testing (if scripts exist)
+            SCRIPT_STATUS="N/A"
+            if [ -d "$skill_dir/scripts" ] && ls "$skill_dir/scripts/"*.py >/dev/null 2>&1; then
+              STEST=$(python3 engineering/skills/skill-tester/scripts/script_tester.py "$skill_dir" --json 2>&1 | python3 -c "
+          import sys, json
+          text = sys.stdin.read()
+          try:
+              start = text.index('{')
+              d = json.loads(text[start:])
+              print(f'{d[\"summary\"][\"passed\"]}/{d[\"summary\"][\"total_scripts\"]} PASS')
+          except:
+              print('ERROR')
+          " 2>/dev/null || echo "ERROR")
+              SCRIPT_STATUS="$STEST"
+            fi
+
+            # Security audit
+            SEC=$(python3 engineering/skills/skill-security-auditor/scripts/skill_security_auditor.py "$skill_dir" --strict --json 2>&1 | python3 -c "
+          import sys, json
+          try:
+              d = json.load(sys.stdin)
+              print(f'{d[\"verdict\"]}')
+          except:
+              print('ERROR')
+          " 2>/dev/null || echo "ERROR")
+
+            if [ "$SEC" = "FAIL" ]; then
+              INTERNAL_EXIT=1
+            fi
+
+            echo "- \`$skill_dir\`: structure ${SSCORE}/100 (${SLEVEL}), scripts ${SCRIPT_STATUS}, security ${SEC}" >> "$INTERNAL_REPORT"
+          done
+
+          echo "internal_report=$INTERNAL_REPORT" >> "$GITHUB_OUTPUT"
+          echo "internal_exit=$INTERNAL_EXIT" >> "$GITHUB_OUTPUT"
+
+      - name: Post review as PR comment
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body = '';
+            try {
+              body += fs.readFileSync('${{ steps.review.outputs.report_file }}', 'utf8');
+            } catch (e) {
+              body += '## 📊 Skill Quality Review\n\nNo Tessl report generated.\n';
+            }
+            try {
+              body += '\n' + fs.readFileSync('${{ steps.internal.outputs.internal_report }}', 'utf8');
+            } catch (e) {}
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const marker = '## 📊 Skill Quality Review';
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+      - name: Fail on low quality or security issues
+        if: steps.review.outputs.exit_code == '1' || steps.internal.outputs.internal_exit == '1'
+        run: |
+          if [ "${{ steps.internal.outputs.internal_exit }}" = "1" ]; then
+            echo "::error::Security audit found CRITICAL/HIGH findings. Merge blocked."
+          fi
+          if [ "${{ steps.review.outputs.exit_code }}" = "1" ]; then
+            echo "::error::Tessl quality review below threshold (70/100). Improve skill before merge."
+          fi
+          exit 1
