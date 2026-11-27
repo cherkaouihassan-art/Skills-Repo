@@ -227,9 +227,9 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - Row 1 panels: past due payables by age; factoring invoices past due by age (the part not yet due is a note only,
   not a bar); LC payments due.
 - Row 2 panels: penalties by quarter (unpaid in blue, unbilled in gold); **"Critical payments"** = the waterfall as a
-  table, largest category first, with the lines under supplier payments (AP): past due factoring invoices, "Suppliers
-  refusing to pay penalties" (reviewer's wording for refusing + likely to refuse, merged), tier 3 and old
-  international. LC is one category too, with one line per month underneath (November, December, January). The panel
+  table, largest category first, with the lines under supplier payments (AP): past due factoring invoices, **"Critical
+  suppliers"** (reviewer's final wording, 27-Nov-2026, for the AP team's refusing + likely to refuse, merged; same label
+  on the waterfall bar), tier 3 and old international. LC is one category too, with one line per month underneath (November, December, January). The panel
   holds two tables side by side: supplier payments (AP) on the left; LC, customs and penalties on the right.
 - No "decision needed" band (tried and removed at the reviewer's request).
 

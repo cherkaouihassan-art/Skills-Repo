@@ -1552,7 +1552,7 @@ def build(data, meta, out):
         tb(s, 0.43, ty + 0.05, 2.35, 0.22, "FIRST PRIORITY PAYMENTS", size=10, bold=True, color=JGD)
         tb(s, 0.43, ty + 0.25, 2.35, 0.2, f"until {until}", size=8.5, bold=True, color=LBLUE)
         tb(s, 0.43, ty + 0.42, 2.35, 0.54, [[(f0(imm), {"size": 28, "bold": True, "color": WHITE}), ("  MMAD", {"size": 10, "color": LBLUE})]])
-        groups = sorted([("Supplier payments (AP)", ap_fp, JB2, [("Factoring\npast due", r_fpd), ("Suppliers\nrefusing", ref_amt), (("Tier 3 &\nold intl" if has_pen else "Critical\ninvoices"), oth_amt)]),
+        groups = sorted([("Supplier payments (AP)", ap_fp, JB2, [("Factoring\npast due", r_fpd), ("Critical\nsuppliers", ref_amt), (("Tier 3 &\nold intl" if has_pen else "Critical\ninvoices"), oth_amt)]),
                          (f"LC due {_ml(lc_im[0][0])}–{_ml(lc_im[-1][0])}", lc_sum, JCY, [(f"LC due\n{_ml(lc_im[0][0])}–{_ml(lc_im[-1][0])}", lc_sum)]),   # one bar, the months underneath
                          (cus_lab, cus_im, SLATE, [(cus_lab.replace(" ", "\n", 1), cus_im)]),
                          (f"Penalties end {pen_when[:3]}", pen_t4, JGD, [(f"Penalties\nend {pen_when[:3]}", pen_t4)])], key=lambda g: -(g[1] or 0))
@@ -1643,7 +1643,7 @@ def build(data, meta, out):
         wC = 2 * pw + 0.12; xC = x2
         panel(xC, y2, wC, h2, "Critical payments (MMAD)", None, JGD)
         tb(s, xC + wC - 3.3, y2 + 0.09, 3.15, 0.22, f"first priority, until {until}", size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
-        subl = {"Supplier payments (AP)": [("Past due factoring invoices", r_fpd)] + ([(f"Suppliers refusing to pay penalties ({ref_n} suppliers)", ref_amt)] if ref_amt > 0.05 else [])
+        subl = {"Supplier payments (AP)": [("Past due factoring invoices", r_fpd)] + ([(f"Critical suppliers ({ref_n} suppliers)", ref_amt)] if ref_amt > 0.05 else [])
                                           + ([(("Tier 3 > 60 days and international > 180 days late" if has_pen else "Critical invoices by aging"), oth_amt)] if oth_amt > 0.05 else [])}
         lc_key = next((n_ for n_, *_ in groups if n_.startswith("LC due")), None)
         if lc_key: subl[lc_key] = [("Due " + dt.date.fromisoformat(str(m)[:7] + "-01").strftime("%B %Y"), v) for m, v in lc_im]   # LC: one category, the months underneath
