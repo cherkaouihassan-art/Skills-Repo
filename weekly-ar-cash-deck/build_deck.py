@@ -1724,22 +1724,23 @@ def build(data, meta, out):
         def pct_(c_, r_): return (c_ / r_ * 100) if r_ and r_ > 0.05 else None
         rspan = f"{_mm(p_rev[0])}–{_mm(p_rev[-1])}"; cspan = f"{_mm(pm[0])}–{_mm(pm[-1])}"; to_ = "to date" if use_coo else f"to {cur_s}"
         s = D.slide("PSR – Cash In vs Revenue Posted by Business Unit")
-        tb(s, 0.52, 0.78, 12.3, 0.35, f"OCP: PSR cash in {f0(PC)} MMAD ({cspan}, {_mm(pm[-1])} {to_}) vs PSR revenue {f0(PR)} MMAD ({rspan}" + (f", {_mm(p_fc[0])} per RFQ1" if p_fc else "") + f") → {pct_(PC, PR):.0f}% coverage", size=12.5, bold=True, color=JB)
+        excl_ = "excl. non-OCP and OCP subsidiaries" if use_coo else "OCP clients only"
+        tb(s, 0.52, 0.78, 12.3, 0.35, f"PSR cash in {f0(PC)} MMAD ({excl_}) vs PSR revenue {f0(PR)} MMAD, {rspan}" + (f" ({_mm(p_fc[0])} per RFQ1)" if p_fc else "") + f" → {pct_(PC, PR):.0f}% coverage", size=12.5, bold=True, color=JB)
         ty, th = 1.16, 1.72
         # ---- headline box
         rect(s, 0.3, ty, 2.55, th, JB, shape=MSO_SHAPE.ROUNDED_RECTANGLE, radius=0.06)
-        tb(s, 0.43, ty + 0.05, 2.35, 0.22, "PSR COVERAGE – OCP", size=10, bold=True, color=JGD)
-        tb(s, 0.43, ty + 0.25, 2.35, 0.2, f"cash in {cspan}, {_mm(pm[-1])} {to_}", size=8.5, bold=True, color=LBLUE)
+        tb(s, 0.43, ty + 0.05, 2.35, 0.22, "PSR COVERAGE", size=10, bold=True, color=JGD)
+        tb(s, 0.43, ty + 0.25, 2.4, 0.2, excl_.replace(" and ", " & "), size=8.5, bold=True, color=LBLUE)
         tb(s, 0.43, ty + 0.42, 2.35, 0.54, [[(f"{pct_(PC, PR):.0f}%", {"size": 28, "bold": True, "color": WHITE}), ("  covered", {"size": 10, "color": LBLUE})]])
         tb(s, 0.43, ty + 1.0, 2.35, 0.7, [[(f"Revenue posted {rspan} ", {}), (f0(PR), {"bold": True})], [(f"Cash in {cspan} ", {}), (f0(PC), {"bold": True})], [("Not yet covered ", {}), (f0(PR - PC), {"bold": True})]], size=8.5, color=WHITE, line_spacing=1.1)
         # ---- by month
         mx, mw_ = 2.97, 5.95
-        panel(mx, ty, mw_, th, "JESA Group by month – PSR revenue vs OCP cash in (MMAD)", None, JB)
+        panel(mx, ty, mw_, th, "JESA Group by month – PSR revenue vs cash in (MMAD)", None, JB)
         mc = []
         for m in pm:
             r_ = sum(prv(b, [m]) for b in pb); c_ = sum(pci(b, [m]) for b in pb); pc = pct_(c_, r_)
             mc.append(f"{_mm(m)}{' RFQ1' if m in p_fc else ''}\n" + (f"{pc:.0f}% covered" if pc is not None else to_))
-        bar_chart(s, mx + 0.05, ty + 0.36, mw_ - 0.1, th - 0.4, mc, [("PSR revenue", [sum(prv(b, [m]) for b in pb) for m in pm]), ("OCP cash in", [sum(pci(b, [m]) for b in pb) for m in pm])], [JB, JCY],
+        bar_chart(s, mx + 0.05, ty + 0.36, mw_ - 0.1, th - 0.4, mc, [("PSR revenue", [sum(prv(b, [m]) for b in pb) for m in pm]), ("Cash in", [sum(pci(b, [m]) for b in pb) for m in pm])], [JB, JCY],
                   gap=60, cat_size=8, label_size=8.5, legend_pos=XL_LEGEND_POSITION.RIGHT)
         # ---- coverage by BU
         cx_ = mx + mw_ + 0.12; cw2 = SW - 0.3 - cx_
@@ -1750,7 +1751,7 @@ def build(data, meta, out):
         # ---- table by BU and month
         y1 = ty + th + 0.1; h1 = SH - 0.3 - y1
         panel(0.3, y1, SW - 0.6, h1, "By business unit and month (MMAD)", None, JB)
-        tb(s, SW - 0.3 - 5.2, y1 + 0.08, 5.05, 0.22, ("Cash in per the OCP payment report (cash position file)" if use_coo else "OCP clients only  ·  cash in per the AR report, by payment date"), size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
+        tb(s, SW - 0.3 - 8.6, y1 + 0.08, 8.45, 0.22, ("Cash in per the OCP payment report (OCP SA and OCP Green Water): excludes non-OCP clients, other OCP subsidiaries and invoices settled by offset" if use_coo else "OCP clients only  ·  cash in per the AR report, by payment date"), size=7.5, color=SLATE, align=PP_ALIGN.RIGHT)
         nr_, nc_ = len(p_rev) + 1, len(pm) + 1
         hdr = ["Business Unit"] + [_mm(m) + (" RFQ1" if m in p_fc else "") for m in p_rev] + ["Total"] + [_mm(m) + (f"\n{to_}" if m not in p_act else "") for m in pm] + ["Total", "Coverage", "Revenue −\ncash in"]
         colw = [1.75] + [0.72] * (nr_ + nc_) + [0.85, 0.9]; tx_, tw_ = 0.45, SW - 0.9
@@ -1765,9 +1766,9 @@ def build(data, meta, out):
         gy = y1 + 0.42; xw = [tw_ * w_ / sum(colw) for w_ in colw]
         x_rev = tx_ + xw[0]; w_rev = sum(xw[1:1 + nr_]); x_ca = x_rev + w_rev; w_ca = sum(xw[1 + nr_:1 + nr_ + nc_])
         rect(s, x_rev, gy, w_rev - 0.03, 0.22, JB); tb(s, x_rev, gy, w_rev - 0.03, 0.22, f"PSR REVENUE POSTED, {rspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-        rect(s, x_ca, gy, w_ca - 0.03, 0.22, JCY); tb(s, x_ca, gy, w_ca - 0.03, 0.22, f"PSR CASH IN – OCP, {cspan.upper()}", size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        rect(s, x_ca, gy, w_ca - 0.03, 0.22, JCY); tb(s, x_ca, gy, w_ca - 0.03, 0.22, (f"PSR CASH IN, EXCL. NON-OCP AND OCP SUBSIDIARIES, {cspan.upper()}" if use_coo else f"PSR CASH IN – OCP, {cspan.upper()}"), size=8, bold=True, color=WHITE, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
         table(s, tx_, gy + 0.24, tw_, hdr, rows, col_w=colw, font_size=9, header_size=8, row_h=min(0.34, (h1 - 0.42 - 0.24 - 0.36 - ST - 0.1) / len(rows)), header_h=0.36, colors=colors, fills=fills, total_last=True, first_col_bold=True, header_fill=JB)
-        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in, OCP", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB), (" (no revenue posted yet)", {})] if p_open else [])
+        total_strip(0.3, y1, SW - 0.6, h1, "Total PSR cash in", f0(PC), [("= ", {}), B(f"{pct_(PC, PR):.0f}%", JB), (f" of the {f0(PR)} MMAD of PSR revenue posted {rspan};  ", {}), B(f0(PR - PC), JB), (" not yet covered", {})] + ([(f";  of which {_mm(p_open[0])} cash in {to_}: ", {}), B(f0(PCo), JB), (" (no revenue posted yet)", {})] if p_open else [])
                     + ([(f";  {_mm(p_fc[0])}: revenue per RFQ1, cash in {to_}", {})] if p_fc else []))
 
     D.section = "bu"

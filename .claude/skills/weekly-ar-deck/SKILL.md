@@ -291,6 +291,11 @@ the coverage slide of the deck, in the cash risks theme, for OCP only.
 - **Cash in = PSR collections of the cash position file** (COO file, per the OCP payment report; tab `CASH_PSR_BU`),
   about 470 MMAD Jul–Nov on 27-Nov-2026. Do not use the AR report here: its "OCP" (Client 1 not flagged NON OCP) gave
   about 600 MMAD, 130 MMAD more (SP2M, Global Mining, AM, Energy Operations), and the reviewer rejected that figure.
+- **Wording (reviewer, 27-Nov-2026): "cash in excluding OCP subsidiaries and non-OCP".** Reconciliation done that day,
+  PSR Jul–Nov: AR all clients 766 − non-OCP 160 = 606; − 110 marked paid in the AR but absent from the OCP payment
+  report (SP2M 57 on 29-Sep, "DIV arrangement" offsets 32, OCP subsidiaries 11, OCP North America 6, AM 4) = 496; − 22
+  on the cash file side (cut-off, exclusions) = 473. OCP Green Water (about 133 in Water & Environment) **is** in the
+  payment report and in the 473: the small note on the slide says "OCP SA and OCP Green Water".
 - **All BUs, JESA Technologies included** (the reviewer first asked to exclude it, then to put it back).
 - Cash in counted up to date, month in progress included. Revenue = "Revenue — PSR" of the cash flow workbook (closed
   months) + **RFQ1 for the month in progress**: the reviewer wants it, the figures by BU must be asked for and saved as
