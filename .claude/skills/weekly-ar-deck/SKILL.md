@@ -214,13 +214,27 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 
 ## 7d. "JESA Cash Risks" dashboard (stand-alone: executive slide + detail slide)
 
-**Format as agreed with the reviewer (26-Nov-2026).** Slide 1 = headline with the cost of not acting (penalties by end
-December and by June), the first-priority box and waterfall, the global exposure box, then five panels: past due
-payables by age, invoices under factoring by age (not yet due + past due buckets), LC payments due, penalties by
-quarter (unpaid and unbilled, stacked) and critical invoices. **No "decision needed" band** (tried and removed at the
-reviewer's request). Slide 2 "detail" = factoring by BU, penalties by payment date, customs paid and projected, unpaid
-invoices by supplier position on invoice dates. No ledger account numbers (4411 / 4417) and "Q4", not "T4", on the
-slides. The notes below describe the content of the blocks.
+**Format as agreed with the reviewer (26/27-Nov-2026).** Slide 1:
+
+- Headline: first priority payments until January, and penalties by end December and by end March if nothing is paid.
+- First-priority box with the period ("until January <year>") and the waterfall, **largest category first**, each
+  category bracketed with its total: supplier payments (AP) = past due factoring invoices + suppliers refusing (the AP
+  team's "refusing" and "likely to refuse" merged, factoring left out) + tier 3 / old international invoices; LC due in
+  the month in progress and the next two (November, December, **January**); customs of two months; penalties end
+  December.
+- Global exposure box "incl. Q1 <year> horizon": three invoice lines bracketed into "= Total AP in our books", LC
+  outstanding, customs to March, **penalties to March** (accumulated Q1 estimate, not June).
+- Row 1 panels: past due payables by age; factoring invoices past due by age (the part not yet due is a note only,
+  not a bar); LC payments due.
+- Row 2 panels: penalties by quarter (unpaid in blue, unbilled in gold); **"Critical payments"** = the waterfall as a
+  table, largest category first, with the lines under supplier payments (AP): past due factoring invoices, "Suppliers
+  refusing to pay penalties" (reviewer's wording for refusing + likely to refuse, merged), tier 3 and old
+  international.
+- No "decision needed" band (tried and removed at the reviewer's request).
+
+Slide 2 "detail" = factoring by BU, penalties by payment date, customs paid and projected, unpaid invoices by supplier
+position on invoice dates. No ledger account numbers (4411 / 4417) and "Q4", not "T4", on the slides. The notes below
+describe the content of the blocks.
 
 `build_deck.py --only risk --out output/JESA_Cash_Risks_<week>.pptx` (built by `run_week.sh`; `--with-risk` puts it in the
 deck after the LC slide, only when asked). Content:
