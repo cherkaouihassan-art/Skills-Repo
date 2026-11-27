@@ -1553,7 +1553,7 @@ def build(data, meta, out):
         tb(s, 0.43, ty + 0.25, 2.35, 0.2, f"until {until}", size=8.5, bold=True, color=LBLUE)
         tb(s, 0.43, ty + 0.42, 2.35, 0.54, [[(f0(imm), {"size": 28, "bold": True, "color": WHITE}), ("  MMAD", {"size": 10, "color": LBLUE})]])
         groups = sorted([("Supplier payments (AP)", ap_fp, JB2, [("Factoring\npast due", r_fpd), ("Suppliers\nrefusing", ref_amt), (("Tier 3 &\nold intl" if has_pen else "Critical\ninvoices"), oth_amt)]),
-                         (f"LC due {_ml(lc_im[0][0])}–{_ml(lc_im[-1][0])}", lc_sum, JCY, [(f"LC due\n{_ml(m)}-{str(m)[2:4]}", v) for m, v in lc_im]),
+                         (f"LC due {_ml(lc_im[0][0])}–{_ml(lc_im[-1][0])}", lc_sum, JCY, [(f"LC due\n{_ml(lc_im[0][0])}–{_ml(lc_im[-1][0])}", lc_sum)]),   # one bar, the months underneath
                          (cus_lab, cus_im, SLATE, [(cus_lab.replace(" ", "\n", 1), cus_im)]),
                          (f"Penalties end {pen_when[:3]}", pen_t4, JGD, [(f"Penalties\nend {pen_when[:3]}", pen_t4)])], key=lambda g: -(g[1] or 0))
         groups = [(n_, t_, c_, [(l_, v_) for l_, v_ in bars if v_ is not None and v_ > 0.05]) for n_, t_, c_, bars in groups if t_ is not None and t_ > 0.05]
@@ -1574,6 +1574,8 @@ def build(data, meta, out):
             gx0 = wx + i_ * slot + 0.05; gw0 = len(bars) * slot - 0.1
             rect(s, gx0, base_y + 0.37, gw0, 0.025, c_)
             if len(bars) > 1: tb(s, gx0 - 0.1, base_y + 0.4, gw0 + 0.2, 0.2, [[(n_ + "  ", {"color": SLATE}), (f0(t_), {"bold": True, "color": NAVY})]], size=7.5, align=PP_ALIGN.CENTER, margin=0.0)
+            elif n_.startswith("LC due"):   # detail per month under the single LC bar
+                tb(s, gx0 - 0.45, base_y + 0.4, gw0 + 0.9, 0.2, [[x for j, (m, v) in enumerate(lc_im) for x in ((("  ·  " if j else "") + _ml(m) + " ", {"color": SLATE}), (f0(v), {"bold": True, "color": NAVY}))]], size=7.5, align=PP_ALIGN.CENTER, margin=0.0)
             i_ += len(bars)
         # global exposure: one box, by category
         gx_ = wx + ww + 0.15; gw_ = SW - 0.3 - gx_

@@ -220,8 +220,8 @@ The reviewer used to strip the deck by hand before sending; the builder now prod
 - First-priority box with the period ("until January <year>") and the waterfall, **largest category first**, each
   category bracketed with its total: supplier payments (AP) = past due factoring invoices + suppliers refusing (the AP
   team's "refusing" and "likely to refuse" merged, factoring left out) + tier 3 / old international invoices; LC due in
-  the month in progress and the next two (November, December, **January**); customs of two months; penalties end
-  December.
+  the month in progress and the next two (November, December, **January**) as **one bar**, with the amount per month
+  written underneath; customs of two months; penalties end December.
 - Global exposure box "incl. Q1 <year> horizon": three invoice lines bracketed into "= Total AP in our books", LC
   outstanding, customs to March, **penalties to March** (accumulated Q1 estimate, not June).
 - Row 1 panels: past due payables by age; factoring invoices past due by age (the part not yet due is a note only,
